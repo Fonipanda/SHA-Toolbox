@@ -1,0 +1,28 @@
+---
+# Database Module Playbook
+# Oracle database management
+
+- name: Database Module Tasks
+  block:
+    - name: Check database type
+      stat:
+        path: "{{ item.value }}"
+      loop:
+        - { key: 'oracle', value: '{{ oracle.oratab_path }}' }
+      register: db_check
+
+    - name: Manage Oracle databases
+      include_role:
+        name: ips_toolbox_oracle
+      when: db_check.results[0].stat.exists
+      tags:
+        - oracle
+        - database
+
+  rescue:
+    - name: Database module error handler
+      debug:
+        msg:
+          - "Error occurred in Database module"
+          - "Task: {{ ansible_failed_task.name }}"
+          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
