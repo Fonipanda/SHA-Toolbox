@@ -1,0 +1,29 @@
+---
+# Backup Module Playbook
+# TSM backup and restore operations
+
+- name: Backup Module Tasks
+  block:
+    - name: Check TSM client
+      include_role:
+        name: ips_toolbox_tsm
+      vars:
+        check_only: true
+      tags:
+        - tsm
+        - check
+
+    - name: Manage backups
+      include_role:
+        name: ips_toolbox_backup
+      when: backup_operation | default('check') != 'check'
+      tags:
+        - backup
+
+  rescue:
+    - name: Backup module error handler
+      debug:
+        msg:
+          - "Error occurred in Backup module"
+          - "Task: {{ ansible_failed_task.name }}"
+          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
