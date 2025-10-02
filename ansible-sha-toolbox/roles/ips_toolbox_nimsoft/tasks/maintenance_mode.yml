@@ -1,0 +1,27 @@
+---
+# Manage Nimsoft maintenance mode
+
+- name: Validate maintenance action
+  assert:
+    that:
+      - maintenance_action in ['enable', 'disable', 'status']
+    fail_msg: "maintenance_action must be 'enable', 'disable', or 'status'"
+
+- name: Get current maintenance status
+  command: "{{ nimsoft.robot_path }}/controller -status"
+  register: nimsoft_status
+  changed_when: false
+
+- name: Enable maintenance mode
+  command: "{{ nimsoft.robot_path }}/controller -maint_start {{ maintenance_duration | default(60) }}"
+  when: maintenance_action == 'enable'
+  register: maintenance_enabled
+
+- name: Disable maintenance mode
+  command: "{{ nimsoft.robot_path }}/controller -maint_stop"
+  when: maintenance_action == 'disable'
+  register: maintenance_disabled
+
+- name: Display maintenance status
+  debug:
+    msg: "{{ nimsoft_status.stdout_lines }}"

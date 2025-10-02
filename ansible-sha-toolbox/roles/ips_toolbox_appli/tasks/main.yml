@@ -1,0 +1,29 @@
+---
+# Main tasks for ips_toolbox_appli role
+
+- name: Manage applications via scripts
+  include_tasks: manage_scripts.yml
+  when: manage_via_scripts | default(true) | bool
+  tags:
+    - apps
+    - scripts
+
+- name: Manage applications via systemd
+  include_tasks: manage_systemd.yml
+  when: manage_via_systemd | default(true) | bool
+  tags:
+    - apps
+    - systemd
+
+- name: Create systemd service
+  include_tasks: create_systemd_service.yml
+  when: create_service | default(false) | bool
+  tags:
+    - systemd
+    - create
+
+- name: Log execution to Supabase
+  include_tasks: ../ips_toolbox_system/tasks/log_to_supabase.yml
+  when: logging.log_to_supabase | default(true) | bool
+  tags:
+    - always

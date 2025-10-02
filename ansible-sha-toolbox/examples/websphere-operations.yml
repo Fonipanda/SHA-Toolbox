@@ -1,0 +1,64 @@
+---
+# Example: WebSphere and IHS operations
+
+- name: WebSphere Operations Examples
+  hosts: websphere_servers
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    # Example 1: List all Liberty servers
+    - name: List Liberty servers
+      include_role:
+        name: ips_toolbox_libertycore
+      vars:
+        server_action: list
+
+    # Example 2: Check server status
+    - name: Check Liberty server status
+      include_role:
+        name: ips_toolbox_libertycore
+      vars:
+        server_action: status
+        server_name: "server1"
+
+    # Example 3: Start Liberty server
+    - name: Start Liberty server
+      include_role:
+        name: ips_toolbox_libertycore
+      vars:
+        server_action: start
+        server_name: "server1"
+
+    # Example 4: Manage IHS
+    - name: Check IHS status
+      include_role:
+        name: ips_toolbox_webserver
+      vars:
+        ihs_action: status
+
+    - name: Restart IHS
+      include_role:
+        name: ips_toolbox_webserver
+      vars:
+        ihs_action: restart
+
+    # Example 5: Manage SSL certificates
+    - name: List SSL certificates
+      include_role:
+        name: ips_toolbox_webserver
+      vars:
+        cert_action: list
+        keystore_path: "/applis/12345-APP01/ihs/ssl"
+        keystore_name: "keystore"
+        keystore_password: "{{ vault_keystore_password }}"
+
+    - name: Check certificate expiry
+      include_role:
+        name: ips_toolbox_webserver
+      vars:
+        cert_action: check_expiry
+        keystore_path: "/applis/12345-APP01/ihs/ssl"
+        keystore_name: "keystore"
+        keystore_password: "{{ vault_keystore_password }}"
+        cert_label: "app_cert"

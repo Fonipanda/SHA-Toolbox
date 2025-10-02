@@ -1,0 +1,63 @@
+---
+# Manage applications via scripts in /etc/local
+
+- name: Find application scripts in /etc/local
+  find:
+    paths: "{{ app_scripts_path }}"
+    patterns:
+      - "start_*"
+      - "stop_*"
+      - "status_*"
+  register: app_scripts
+
+- name: Display found application scripts
+  debug:
+    msg: "Found {{ app_scripts.files | length }} application scripts in {{ app_scripts_path }}"
+
+- name: Execute application action via script
+  block:
+    - name: Validate app_action
+      assert:
+        that:
+          - app_action in valid_app_actions
+        fail_msg: "Invalid app_action. Must be one of: {{ valid_app_actions | join(', ') }}"
+
+    - name: Find matching script for action
+      set_fact:
+        target_script: "{{ app_scripts.files | selectattr('path', 'search', app_action + '_' + app_name) | map(attribute='path') | first | default('') }}"
+      when: app_name is defined
+
+    - name: Check if script exists
+      stat:
+        path: "{{ app_scripts_path }}/{{ app_action }}_{{ app_name }}"
+      register: script_exists
+      when: app_name is defined
+
+    - name: Execute application script
+      command: "{{ app_scripts_path }}/{{ app_action }}_{{ app_name }}"
+      register: script_output
+      when:
+        - app_name is defined
+        - script_exists.stat.exists | default(false)
+
+    - name: Display script output
+      debug:
+        var: script_output.stdout_lines
+      when: script_output is defined
+
+    - name: Script not found
+      debug:
+        msg: "Script {{ app_scripts_path }}/{{ app_action }}_{{ app_name }} not found"
+      when:
+        - app_name is defined
+        - not (script_exists.stat.exists | default(false))
+
+  when: app_name is defined
+
+- name: List all application scripts
+  debug:
+    msg: "{{ item.path | basename }}"
+  loop: "{{ app_scripts.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when: app_name is not defined

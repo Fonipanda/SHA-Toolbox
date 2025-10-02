@@ -1,0 +1,47 @@
+---
+# Example: Create a complete application environment
+# This example creates all necessary filesystems and directories for a new application
+
+- name: Create Application Environment Example
+  hosts: rhel_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    # Application identifiers
+    codeap: "12345"
+    codescar: "APP01"
+    id: "01"  # Optional
+
+    # Application configuration
+    websphere_type: "wlc"  # wlc, wlb, or was
+    create_ihs_dir: true
+    version: "1.0"
+
+    # User and group
+    application_user: "app12345"
+    application_group: "appgroup"
+
+    # Filesystem sizes (GB)
+    custom_fs_sizes:
+      appli_base: 2
+      appli_tmp: 3
+      logs: 2
+      delivery: 5
+
+  roles:
+    - role: ips_toolbox_system
+      vars:
+        create_arborescence: true
+        create_filesystems: true
+        fs_default_sizes: "{{ custom_fs_sizes }}"
+
+  post_tasks:
+    - name: Display created environment
+      debug:
+        msg:
+          - "Application environment created successfully"
+          - "CodeAP: {{ codeap }}"
+          - "CodeScar: {{ codescar }}"
+          - "Base path: /applis/{{ codeap }}-{{ codescar }}-{{ id }}"
+          - "Log path: /applis/logs/{{ codeap }}-{{ codescar }}-{{ id }}"

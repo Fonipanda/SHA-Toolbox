@@ -1,0 +1,38 @@
+---
+# Main tasks for ips_toolbox_oracle role
+
+- name: Check if Oracle is installed
+  stat:
+    path: "{{ oracle.oratab_path }}"
+  register: oracle_installed
+
+- name: Fail if Oracle not installed
+  fail:
+    msg: "Oracle is not installed on this server (no /etc/oratab found)"
+  when: not oracle_installed.stat.exists
+
+- name: List Oracle instances
+  include_tasks: list_instances.yml
+  tags:
+    - list
+    - instances
+
+- name: Get instance information
+  include_tasks: instance_info.yml
+  when: oracle_sid is defined
+  tags:
+    - info
+    - instance
+
+- name: Manage tablespaces
+  include_tasks: manage_tablespaces.yml
+  when: tablespace_action is defined
+  tags:
+    - tablespaces
+
+- name: Check FRA usage
+  include_tasks: check_fra.yml
+  when: check_fra | default(false) | bool
+  tags:
+    - fra
+    - recovery

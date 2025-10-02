@@ -1,0 +1,43 @@
+---
+# Server reboot management
+
+- name: Validate server action
+  assert:
+    that:
+      - server_action in ['reboot', 'shutdown']
+    fail_msg: "server_action must be 'reboot' or 'shutdown'"
+
+- name: Check for running applications
+  shell: |
+    ps aux | grep -E 'java|httpd|oracle' | grep -v grep || true
+  register: running_apps
+  changed_when: false
+
+- name: Display warning about running applications
+  debug:
+    msg:
+      - "WARNING: Running applications detected"
+      - "{{ running_apps.stdout_lines }}"
+  when: running_apps.stdout_lines | length > 0
+
+- name: Confirm reboot
+  pause:
+    prompt: "Confirm {{ server_action }} of {{ ansible_hostname }}? (yes/no)"
+  register: reboot_confirm
+  when: not (force_action | default(false) | bool)
+
+- name: Perform reboot
+  reboot:
+    msg: "Server rebooting via Ansible SHA Toolbox"
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    reboot_timeout: 600
+  when:
+    - server_action == 'reboot'
+    - force_action | default(false) | bool or reboot_confirm.user_input == 'yes'
+
+- name: Perform shutdown
+  command: shutdown -h +1 "Server shutting down via Ansible SHA Toolbox"
+  when:
+    - server_action == 'shutdown'
+    - force_action | default(false) | bool or reboot_confirm.user_input == 'yes'

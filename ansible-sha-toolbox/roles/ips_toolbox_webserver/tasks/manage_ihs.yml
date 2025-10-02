@@ -1,0 +1,28 @@
+---
+# Manage IBM HTTP Server
+
+- name: Validate IHS action
+  assert:
+    that:
+      - ihs_action in ['start', 'stop', 'restart', 'status']
+    fail_msg: "ihs_action must be 'start', 'stop', 'restart', or 'status'"
+
+- name: Get IHS status
+  command: "{{ websphere.ihs_root }}/bin/apachectl status"
+  register: ihs_status
+  changed_when: false
+  failed_when: false
+
+- name: Stop IHS
+  command: "{{ websphere.ihs_root }}/bin/apachectl stop"
+  when: ihs_action in ['stop', 'restart']
+  register: ihs_stopped
+
+- name: Start IHS
+  command: "{{ websphere.ihs_root }}/bin/apachectl start"
+  when: ihs_action in ['start', 'restart']
+  register: ihs_started
+
+- name: Display IHS status
+  debug:
+    msg: "IHS is {{ 'running' if ihs_status.rc == 0 else 'stopped' }}"

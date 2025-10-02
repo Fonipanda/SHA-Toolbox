@@ -1,0 +1,78 @@
+---
+# Main playbook for SHA Toolbox
+# This is the entry point for all SHA operations
+
+- name: SHA Toolbox - Main Playbook
+  hosts: "{{ target_hosts | default('all') }}"
+  gather_facts: yes
+  become: yes
+
+  vars_prompt:
+    - name: toolbox_module
+      prompt: "Which toolbox module? (operating/web/database/backup/all)"
+      private: no
+      default: "operating"
+
+  pre_tasks:
+    - name: Display execution information
+      debug:
+        msg:
+          - "========================================="
+          - "SHA Toolbox Ansible Playbooks"
+          - "========================================="
+          - "Target: {{ inventory_hostname }}"
+          - "Module: {{ toolbox_module }}"
+          - "Environment: {{ environment_name }}"
+          - "User: {{ ansible_user }}"
+          - "========================================="
+
+    - name: Validate target is not production without confirmation
+      pause:
+        prompt: "You are targeting PRODUCTION environment. Continue? (yes/no)"
+      when:
+        - environment_name == 'prod'
+        - not (force_prod | default(false) | bool)
+      register: prod_confirm
+
+    - name: Abort if production not confirmed
+      fail:
+        msg: "Production execution aborted by user"
+      when:
+        - environment_name == 'prod'
+        - prod_confirm.user_input | default('no') != 'yes'
+        - not (force_prod | default(false) | bool)
+
+  tasks:
+    - name: Include Operating module playbook
+      include_tasks: playbooks/operating.yml
+      when: toolbox_module in ['operating', 'all']
+      tags:
+        - operating
+
+    - name: Include Web module playbook
+      include_tasks: playbooks/web.yml
+      when: toolbox_module in ['web', 'all']
+      tags:
+        - web
+
+    - name: Include Database module playbook
+      include_tasks: playbooks/database.yml
+      when: toolbox_module in ['database', 'all']
+      tags:
+        - database
+
+    - name: Include Backup module playbook
+      include_tasks: playbooks/backup.yml
+      when: toolbox_module in ['backup', 'all']
+      tags:
+        - backup
+
+  post_tasks:
+    - name: Display execution summary
+      debug:
+        msg:
+          - "========================================="
+          - "Execution completed successfully"
+          - "Host: {{ inventory_hostname }}"
+          - "Module: {{ toolbox_module }}"
+          - "========================================="

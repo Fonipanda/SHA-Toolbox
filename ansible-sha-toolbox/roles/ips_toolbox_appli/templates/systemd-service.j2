@@ -1,0 +1,24 @@
+[Unit]
+Description={{ service_description | default(service_name + ' Application Service') }}
+After={{ service_after | default('network.target') }}
+{% if service_requires is defined %}
+Requires={{ service_requires }}
+{% endif %}
+
+[Service]
+Type={{ service_type | default('forking') }}
+User={{ service_user | default(application_user) }}
+Group={{ service_group | default(application_group) }}
+ExecStart={{ exec_start }}
+{% if exec_stop is defined %}
+ExecStop={{ exec_stop }}
+{% endif %}
+{% if exec_reload is defined %}
+ExecReload={{ exec_reload }}
+{% endif %}
+PIDFile={{ pid_file | default('/var/run/' + service_name + '.pid') }}
+Restart={{ restart_policy | default('on-failure') }}
+RestartSec={{ restart_sec | default(10) }}
+
+[Install]
+WantedBy={{ wanted_by | default('multi-user.target') }}

@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: SHA Toolbox Team
+  description: System operations role for SHA toolbox
+  company: Your Company
+  license: Proprietary
+  min_ansible_version: 2.9
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+  galaxy_tags:
+    - system
+    - filesystem
+    - sha
+
+dependencies: []

@@ -1,0 +1,29 @@
+---
+# Check backup prerequisites
+
+- name: Check if TSM client is installed
+  stat:
+    path: "{{ backup.tsm_client_path }}"
+  register: tsm_client
+
+- name: Check if backup script exists
+  stat:
+    path: "{{ sha_toolbox_path }}/backup_restore/bin/{{ backup.backup_script }}"
+  register: backup_script
+
+- name: Check backup configuration
+  stat:
+    path: "{{ sha_toolbox_path }}/backup_restore/conf/bt_sauvegarde.conf"
+  register: backup_config
+
+- name: Display prerequisites status
+  debug:
+    msg:
+      - "TSM Client: {{ 'Installed' if tsm_client.stat.exists else 'Not Installed' }}"
+      - "Backup Script: {{ 'Found' if backup_script.stat.exists else 'Not Found' }}"
+      - "Configuration: {{ 'Present' if backup_config.stat.exists else 'Missing' }}"
+
+- name: Fail if prerequisites not met
+  fail:
+    msg: "Backup prerequisites not met. TSM client or backup script missing."
+  when: not (tsm_client.stat.exists and backup_script.stat.exists)

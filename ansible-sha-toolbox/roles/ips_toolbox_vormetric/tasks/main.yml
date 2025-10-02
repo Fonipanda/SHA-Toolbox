@@ -1,0 +1,43 @@
+---
+# Main tasks for ips_toolbox_vormetric role - Encryption Management
+
+- name: Check if Vormetric is installed
+  stat:
+    path: "{{ vormetric.agent_path }}"
+  register: vormetric_installed
+
+- name: Fail if Vormetric not installed
+  fail:
+    msg: "Vormetric is not installed on this server"
+  when: not vormetric_installed.stat.exists
+
+- name: List guardpoints
+  include_tasks: list_guardpoints.yml
+  tags:
+    - list
+    - guardpoints
+
+- name: Create encrypted filesystem
+  include_tasks: create_encrypted_fs.yml
+  when: create_encrypted_fs | default(false) | bool
+  tags:
+    - create
+    - encrypt
+
+- name: Apply policy to directory
+  include_tasks: apply_policy.yml
+  when:
+    - vormetric_action == 'apply'
+    - target_directory is defined
+  tags:
+    - policy
+    - apply
+
+- name: Remove guardpoint
+  include_tasks: remove_guardpoint.yml
+  when:
+    - vormetric_action == 'remove'
+    - target_directory is defined
+  tags:
+    - guardpoint
+    - remove

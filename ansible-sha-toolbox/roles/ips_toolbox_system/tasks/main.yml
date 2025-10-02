@@ -1,0 +1,46 @@
+---
+# Main tasks for ips_toolbox_system role
+
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family }}.yml"
+  when: ansible_os_family in ['RedHat', 'Windows']
+
+- name: Gather system information
+  include_tasks: gather_info.yml
+  tags:
+    - info
+    - system_info
+
+- name: Manage filesystems
+  include_tasks: manage_filesystem.yml
+  when: filesystem_action is defined
+  tags:
+    - filesystem
+    - fs
+
+- name: Create application arborescence
+  include_tasks: create_arborescence.yml
+  when: create_arborescence | default(false) | bool
+  tags:
+    - arborescence
+    - create_app
+
+- name: Manage log rotation
+  include_tasks: log_rotation.yml
+  when: manage_log_rotation | default(false) | bool
+  tags:
+    - logs
+    - rotation
+
+- name: Server reboot management
+  include_tasks: reboot.yml
+  when: server_action in ['reboot', 'shutdown']
+  tags:
+    - reboot
+    - shutdown
+
+- name: Log execution to Supabase
+  include_tasks: log_to_supabase.yml
+  when: logging.log_to_supabase | default(true) | bool
+  tags:
+    - always

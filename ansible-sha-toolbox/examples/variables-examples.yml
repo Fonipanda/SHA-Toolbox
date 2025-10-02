@@ -1,0 +1,130 @@
+---
+# Variable Examples for Different Scenarios
+
+# =====================================
+# Scenario 1: Simple Application
+# =====================================
+simple_app:
+  codeap: "12345"
+  codescar: "APP01"
+  websphere_type: "wlc"
+  create_filesystems: true
+
+# =====================================
+# Scenario 2: Multi-Instance Application
+# =====================================
+multi_instance_app:
+  codeap: "12346"
+  codescar: "APP02"
+  id: "FR"  # French instance
+  websphere_type: "was"
+  create_ihs_dir: true
+
+# Another instance
+multi_instance_app_uk:
+  codeap: "12346"
+  codescar: "APP02"
+  id: "UK"  # UK instance
+  websphere_type: "was"
+
+# =====================================
+# Scenario 3: Custom Filesystem Sizes
+# =====================================
+large_data_app:
+  codeap: "12347"
+  codescar: "APP03"
+  fs_default_sizes:
+    appli_base: 10
+    appli_tmp: 20
+    appli_transfer_in: 50
+    appli_transfer_out: 50
+    logs: 5
+    delivery: 10
+
+# =====================================
+# Scenario 4: Oracle Database Server
+# =====================================
+oracle_db_config:
+  oracle_sid: "ORCL"
+  oracle_home: "/u01/app/oracle/product/19.0.0/dbhome_1"
+  check_fra: true
+
+# =====================================
+# Scenario 5: Backup Configuration
+# =====================================
+backup_config:
+  execute_backup: true
+  backup_type: "INCR_APPLI"
+  check_conformity: true
+
+# =====================================
+# Scenario 6: Middleware Specific
+# =====================================
+
+# CFT Configuration
+cft_config:
+  operation_type: "cft"
+  cft_action: "status"
+  purge_catalog: false
+
+# MQSeries Configuration
+mq_config:
+  operation_type: "mq"
+  qmgr_name: "QM1"
+  display_queues: true
+  display_channels: true
+
+# Nimsoft Configuration
+nimsoft_config:
+  operation_type: "monitoring"
+  maintenance_action: "enable"
+  maintenance_duration: 60
+
+# =====================================
+# Scenario 7: IHS Certificate Management
+# =====================================
+certificate_config:
+  cert_action: "create"
+  keystore_path: "/applis/12345-APP01/ihs/ssl"
+  keystore_name: "keystore"
+  keystore_password: "changeme"  # Use Ansible Vault in production
+  cert_label: "app_certificate"
+  cert_dn: "CN=app.example.com,OU=IT,O=Company,L=Paris,ST=IDF,C=FR"
+
+# =====================================
+# Scenario 8: Application with Shared Resources
+# =====================================
+shared_app_config:
+  codeap: "12348"
+  codescar: "APP04"
+  create_shared: true
+  shared_fs_sizes:
+    shared: 5
+    shared_tmp: 3
+    shared_archives: 10
+
+# =====================================
+# Scenario 9: Log Rotation Configuration
+# =====================================
+log_rotation_config:
+  manage_log_rotation: true
+  log_paths:
+    - "/applis/logs/12345-APP01/*.log"
+    - "/applis/logs/12345-APP01/was/*.log"
+  rotation_frequency: "daily"
+  retention_count: 30
+  compress_logs: true
+
+# =====================================
+# Scenario 10: Systemd Service Creation
+# =====================================
+systemd_service_config:
+  create_service: true
+  service_name: "app-myapp"
+  service_description: "My Application Service"
+  exec_start: "/applis/12345-APP01/scripts/start.sh"
+  exec_stop: "/applis/12345-APP01/scripts/stop.sh"
+  service_user: "app12345"
+  service_group: "appgroup"
+  enable_service: true
+  start_service: false

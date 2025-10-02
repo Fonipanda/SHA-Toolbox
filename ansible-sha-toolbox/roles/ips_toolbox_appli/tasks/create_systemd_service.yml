@@ -1,0 +1,41 @@
+---
+# Create or modify systemd service for application
+
+- name: Validate service parameters
+  assert:
+    that:
+      - service_name is defined
+      - exec_start is defined
+    fail_msg: "service_name and exec_start are required"
+
+- name: Create systemd service file
+  template:
+    src: systemd-service.j2
+    dest: "{{ systemd_path }}/{{ service_name }}.service"
+    mode: '0644'
+  register: service_file_created
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  when: service_file_created is changed
+
+- name: Enable service if requested
+  systemd:
+    name: "{{ service_name }}"
+    enabled: yes
+  when: enable_service | default(false) | bool
+
+- name: Start service if requested
+  systemd:
+    name: "{{ service_name }}"
+    state: started
+  when: start_service | default(false) | bool
+
+- name: Display service information
+  debug:
+    msg:
+      - "Systemd service created: {{ service_name }}.service"
+      - "Path: {{ systemd_path }}/{{ service_name }}.service"
+      - "Enabled: {{ enable_service | default(false) }}"
+      - "Started: {{ start_service | default(false) }}"

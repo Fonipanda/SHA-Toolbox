@@ -1,0 +1,23 @@
+---
+# Test TSM connection
+
+- name: Query TSM server connection
+  command: "{{ backup.tsm_client_path }}/dsmc query session"
+  register: tsm_connection
+  changed_when: false
+  failed_when: false
+
+- name: Display connection status
+  debug:
+    msg:
+      - "TSM Connection: {{ 'OK' if tsm_connection.rc == 0 else 'FAILED' }}"
+      - "{{ tsm_connection.stdout_lines }}"
+
+- name: Get TSM client version
+  command: "{{ backup.tsm_client_path }}/dsmc -version"
+  register: tsm_version
+  changed_when: false
+
+- name: Display TSM version
+  debug:
+    msg: "{{ tsm_version.stdout_lines }}"

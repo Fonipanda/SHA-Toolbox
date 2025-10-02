@@ -1,0 +1,40 @@
+---
+# Main tasks for ips_toolbox_cft role - Cross File Transfer
+
+- name: Check if CFT is installed
+  stat:
+    path: "{{ cft.install_path }}"
+  register: cft_installed
+
+- name: Fail if CFT not installed
+  fail:
+    msg: "CFT is not installed on this server"
+  when: not cft_installed.stat.exists
+
+- name: Manage CFT service
+  include_tasks: manage_cft_service.yml
+  when: cft_action is defined
+  tags:
+    - service
+    - cft
+
+- name: Purge CFT catalog
+  include_tasks: purge_catalog.yml
+  when: purge_catalog | default(false) | bool
+  tags:
+    - purge
+    - catalog
+
+- name: Check IDF conformity
+  include_tasks: check_idf.yml
+  when: check_idf | default(false) | bool
+  tags:
+    - idf
+    - conformity
+
+- name: Check partner connections
+  include_tasks: check_partners.yml
+  when: check_partners | default(false) | bool
+  tags:
+    - partners
+    - connectivity

@@ -1,0 +1,28 @@
+---
+# Main tasks for ips_toolbox_webserver role - IHS Management
+
+- name: Check if IHS is installed
+  stat:
+    path: "{{ websphere.ihs_root }}"
+  register: ihs_installed
+
+- name: Manage IHS service
+  include_tasks: manage_ihs.yml
+  when: ihs_action is defined
+  tags:
+    - ihs
+    - webserver
+
+- name: Manage certificates
+  include_tasks: manage_certificates.yml
+  when: cert_action is defined
+  tags:
+    - certificates
+    - ssl
+
+- name: Create IHS instance
+  include_tasks: create_ihs.yml
+  when: create_ihs | default(false) | bool
+  tags:
+    - create
+    - ihs

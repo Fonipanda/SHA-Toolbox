@@ -1,0 +1,36 @@
+---
+# Main tasks for ips_toolbox_illumio role - Network Security
+
+- name: Check if Illumio VEN is installed
+  stat:
+    path: "{{ illumio.ven_path }}"
+  register: illumio_installed
+
+- name: Fail if Illumio not installed
+  fail:
+    msg: "Illumio VEN is not installed on this server"
+  when: not illumio_installed.stat.exists
+
+- name: Manage VEN service
+  include_tasks: manage_ven.yml
+  when: ven_action is defined
+  tags:
+    - ven
+    - service
+
+- name: Generate reports
+  include_tasks: generate_reports.yml
+  when: generate_report | default(false) | bool
+  tags:
+    - reports
+
+- name: Get VEN status
+  include_tasks: ven_status.yml
+  tags:
+    - status
+
+- name: Manage suspend mode
+  include_tasks: manage_suspend.yml
+  when: suspend_action is defined
+  tags:
+    - suspend

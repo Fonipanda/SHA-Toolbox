@@ -1,0 +1,39 @@
+---
+# Main tasks for ips_toolbox_mq role - MQSeries
+
+- name: Check if MQSeries is installed
+  stat:
+    path: "{{ mqseries.install_path }}"
+  register: mq_installed
+
+- name: Fail if MQSeries not installed
+  fail:
+    msg: "MQSeries is not installed on this server"
+  when: not mq_installed.stat.exists
+
+- name: List Queue Managers
+  include_tasks: list_qmgrs.yml
+  tags:
+    - list
+    - qmgr
+
+- name: Get Queue Manager status
+  include_tasks: qmgr_status.yml
+  when: qmgr_name is defined
+  tags:
+    - status
+    - qmgr
+
+- name: Display queue status
+  include_tasks: queue_status.yml
+  when: display_queues | default(false) | bool
+  tags:
+    - queues
+    - status
+
+- name: List and display channels
+  include_tasks: channel_status.yml
+  when: display_channels | default(false) | bool
+  tags:
+    - channels
+    - status

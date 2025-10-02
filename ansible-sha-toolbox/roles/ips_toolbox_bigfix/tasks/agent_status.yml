@@ -1,0 +1,25 @@
+---
+# Get BigFix agent status
+
+- name: Check BigFix service status
+  systemd:
+    name: besclient
+  register: bigfix_service_status
+
+- name: Display BigFix status
+  debug:
+    msg:
+      - "Service: besclient"
+      - "State: {{ bigfix_service_status.status.ActiveState }}"
+      - "Enabled: {{ bigfix_service_status.status.UnitFileState }}"
+
+- name: Get BigFix client version
+  command: "{{ bigfix.client_path }}/BESClient --version"
+  register: bigfix_version
+  changed_when: false
+  failed_when: false
+
+- name: Display BigFix version
+  debug:
+    msg: "{{ bigfix_version.stdout }}"
+  when: bigfix_version.rc == 0

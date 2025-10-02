@@ -1,0 +1,12 @@
+---
+# Default variables for ips_toolbox_appli role
+
+app_scripts_path: /etc/local
+systemd_path: /etc/systemd/system
+app_action: status
+
+valid_app_actions:
+  - start
+  - stop
+  - restart
+  - status

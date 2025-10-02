@@ -1,0 +1,41 @@
+---
+# Get Oracle instance information
+
+- name: Set Oracle environment
+  set_fact:
+    oracle_env:
+      ORACLE_SID: "{{ oracle_sid }}"
+      ORACLE_HOME: "{{ oracle_home }}"
+      PATH: "{{ oracle_home }}/bin:{{ ansible_env.PATH }}"
+
+- name: Check instance status
+  shell: |
+    echo "SELECT status FROM v\\$instance;" | sqlplus -S / as sysdba
+  environment: "{{ oracle_env }}"
+  register: instance_status
+  changed_when: false
+  become_user: oracle
+
+- name: Check database open mode
+  shell: |
+    echo "SELECT open_mode FROM v\\$database;" | sqlplus -S / as sysdba
+  environment: "{{ oracle_env }}"
+  register: open_mode
+  changed_when: false
+  become_user: oracle
+
+- name: Check if DataGuard is configured
+  shell: |
+    echo "SELECT database_role FROM v\\$database;" | sqlplus -S / as sysdba
+  environment: "{{ oracle_env }}"
+  register: db_role
+  changed_when: false
+  become_user: oracle
+
+- name: Display instance information
+  debug:
+    msg:
+      - "Oracle SID: {{ oracle_sid }}"
+      - "Status: {{ instance_status.stdout_lines[-1] | default('unknown') }}"
+      - "Open Mode: {{ open_mode.stdout_lines[-1] | default('unknown') }}"
+      - "Database Role: {{ db_role.stdout_lines[-1] | default('unknown') }}"

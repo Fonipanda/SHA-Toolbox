@@ -1,0 +1,40 @@
+---
+# Manage applications via systemd services
+
+- name: Find systemd application services
+  shell: systemctl list-units --type=service --all | grep -E 'app-|{{ app_name | default("") }}' | awk '{print $1}' || true
+  register: systemd_services
+  changed_when: false
+
+- name: Display found systemd services
+  debug:
+    msg: "{{ systemd_services.stdout_lines }}"
+  when: systemd_services.stdout_lines | length > 0
+
+- name: Manage systemd service
+  systemd:
+    name: "{{ service_name }}"
+    state: "{{ app_action if app_action != 'status' else omit }}"
+    enabled: "{{ service_enabled | default(omit) }}"
+  register: systemd_result
+  when:
+    - service_name is defined
+    - app_action in ['start', 'stop', 'restart']
+
+- name: Get systemd service status
+  systemd:
+    name: "{{ service_name }}"
+  register: service_status
+  when:
+    - service_name is defined
+    - app_action == 'status'
+
+- name: Display service status
+  debug:
+    msg:
+      - "Service: {{ service_name }}"
+      - "State: {{ service_status.status.ActiveState | default('unknown') }}"
+      - "Enabled: {{ service_status.status.UnitFileState | default('unknown') }}"
+  when:
+    - service_status is defined
+    - service_status.status is defined

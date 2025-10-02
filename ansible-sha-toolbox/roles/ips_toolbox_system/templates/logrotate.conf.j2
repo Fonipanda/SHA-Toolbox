@@ -1,0 +1,13 @@
+{{ log_paths | join('\n') }} {
+    {{ rotation_frequency | default('daily') }}
+    rotate {{ retention_count | default(7) }}
+    {{ 'compress' if compress_logs | default(true) else '' }}
+    delaycompress
+    missingok
+    notifempty
+    create 0640 {{ application_user }} {{ application_group }}
+    sharedscripts
+    postrotate
+        {{ postrotate_command | default('') }}
+    endscript
+}

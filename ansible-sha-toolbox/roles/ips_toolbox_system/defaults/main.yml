@@ -1,0 +1,18 @@
+---
+# Default variables for ips_toolbox_system role
+
+validate_rootvg: true
+auto_create_directories: true
+enforce_permissions: true
+
+default_filesystem_options:
+  type: xfs
+  mount_options: defaults,noatime
+
+default_directory_permissions:
+  mode: '0755'
+  owner: root
+  group: root
+
+application_user: appuser
+application_group: appgroup

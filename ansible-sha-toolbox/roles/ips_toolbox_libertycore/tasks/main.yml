@@ -1,0 +1,28 @@
+---
+# Main tasks for ips_toolbox_libertycore role
+
+- name: Check if Liberty Core is installed
+  stat:
+    path: "{{ websphere.profile_root }}"
+  register: liberty_installed
+
+- name: Manage Liberty servers
+  include_tasks: manage_servers.yml
+  when: server_action is defined
+  tags:
+    - servers
+    - jvm
+
+- name: Deploy application
+  include_tasks: deploy_application.yml
+  when: deploy_app | default(false) | bool
+  tags:
+    - deploy
+    - application
+
+- name: Create Liberty environment
+  include_tasks: create_environment.yml
+  when: create_env | default(false) | bool
+  tags:
+    - create
+    - environment
