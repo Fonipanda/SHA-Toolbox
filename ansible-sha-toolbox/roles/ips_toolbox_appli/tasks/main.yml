@@ -21,9 +21,3 @@
   tags:
     - systemd
     - create
-
-- name: Log execution to Supabase
-  include_tasks: ../ips_toolbox_system/tasks/log_to_supabase.yml
-  when: logging.log_to_supabase | default(true) | bool
-  tags:
-    - always
