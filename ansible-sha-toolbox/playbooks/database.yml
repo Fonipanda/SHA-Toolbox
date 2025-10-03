@@ -1,28 +1,26 @@
+# playbooks/database.yml
 ---
-# Database Module Playbook
-# Oracle database management
-
-- name: Database Module Tasks
+- name: "Database Module Tasks"
   block:
-    - name: Check database type
-      stat:
-        path: "{{ item.value }}"
-      loop:
-        - { key: 'oracle', value: '{{ oracle.oratab_path }}' }
-      register: db_check
-
-    - name: Manage Oracle databases
+    - name: "Check and configure Oracle"
       include_role:
         name: ips_toolbox_oracle
-      when: db_check.results[0].stat.exists
-      tags:
-        - oracle
-        - database
+      vars:
+        oracle_operation: "configure"
+      when: configure_oracle_db | bool
+      tags: database
+
+    - name: "Check and configure SQL Server"
+      include_role:
+        name: ips_toolbox_sqlserver
+      vars:
+        sqlserver_operation: "configure"
+      when: ansible_os_family == "Windows"
+      tags: database
 
   rescue:
-    - name: Database module error handler
-      debug:
+    - name: "Database module error handler"
+      ansible.builtin.debug:
         msg:
-          - "Error occurred in Database module"
+          - "Error in Database module"
           - "Task: {{ ansible_failed_task.name }}"
-          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
