@@ -1,0 +1,10 @@
+[sha_servers]
+server1 ansible_ssh_host=sXXvlXXXXXXX.fr.net.intra
+
+[all:vars]
+env=PROD
+environment_name=prod
+ansible_become_method=sesu
+ansible_become_flags="-"
+sha_image_type=standard
+sha_version=current
