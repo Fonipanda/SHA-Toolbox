@@ -20,7 +20,21 @@
     auto_detect_middleware: "{{ auto_detect_middleware | default(true) }}"
 
   pre_tasks:
-    - name: "0.1 - Gather detailed system information"
+    - name: "Validate Survey inputs"
+      assert:
+        that:
+          - codeAP | length == 5
+          - codeAP is match('^[0-9]{5}$')
+          - codeScar | length == 5
+          - codeScar is match('^[A-Z0-9]{5}$')
+        fail_msg: |
+          Erreur de validation :
+          - codeAP doit contenir exactement 5 chiffres
+          - codeScar doit contenir exactement 5 caractères alphanumériques majuscules
+        success_msg: "✅ Variables Survey validées"
+      tags: always
+
+    - name: "0.1 - Gather system information"
       ansible.builtin.setup:
         gather_subset: all
       tags: always
