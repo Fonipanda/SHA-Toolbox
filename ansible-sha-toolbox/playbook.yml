@@ -1,4 +1,4 @@
-# playbook.yml
+# playbook.yml - Version corrigée
 ---
 - name: "Toolbox - Workflow Complet pour Images SHA"
   hosts: "{{ target_hostname | default('all') }}"
@@ -18,6 +18,8 @@
     configure_webserver: "{{ configure_webserver | default(false) }}"
     configure_oracle_db: "{{ configure_oracle_db | default(false) }}"
     auto_detect_middleware: "{{ auto_detect_middleware | default(true) }}"
+    # NOUVEAU: Initialiser detected_middleware par défaut
+    detected_middleware: []
 
   tasks:
     - block:
@@ -27,7 +29,7 @@
               - codeAP | length == 5
               - codeAP is match('^[0-9]{5}$')
               - codeScar | length == 5
-              - codeScar is match('^[A-Z0-9]{5}$')
+              - codeScar is match('^[A-Za-z0-9]{5}$')
             fail_msg: >
               Erreur de validation :
               - codeAP doit contenir 5 chiffres
@@ -111,6 +113,16 @@
                 msg:
                   - "Detected middleware: {{ detected_middleware }}"
 
+        # NOUVEAU: Initialiser detected_middleware si autodétection désactivée
+        - name: "Initialize middleware for manual mode"
+          set_fact:
+            detected_middleware: >-
+              {%- set m=[] -%}
+              {%- if configure_webserver | bool -%}{%- set m=m+['webserver'] -%}{%- endif -%}
+              {%- if configure_oracle_db | bool -%}{%- set m=m+['oracle'] -%}{%- endif -%}
+              {{ m }}
+          when: not auto_detect_middleware | bool
+
         - name: "0.4 - Set selected modules"
           set_fact:
             selected_modules: >-
@@ -164,4 +176,3 @@
               - "ERROR in Toolbox workflow"
               - "Task: {{ ansible_failed_task.name }}"
               - "Error: {{ ansible_failed_result.msg | default('Unknown') }}"
-
