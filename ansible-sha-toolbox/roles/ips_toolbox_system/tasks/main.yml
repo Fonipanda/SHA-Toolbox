@@ -38,9 +38,3 @@
   tags:
     - reboot
     - shutdown
-
-- name: Log execution to Supabase
-  include_tasks: log_to_supabase.yml
-  when: logging.log_to_supabase | default(true) | bool
-  tags:
-    - always
