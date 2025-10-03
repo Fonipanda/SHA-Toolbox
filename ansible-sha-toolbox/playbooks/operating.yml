@@ -1,107 +1,45 @@
+# playbooks/operating.yml
 ---
-# Operating Module Playbook
-# System operations, filesystem management, application management
-
-- name: Operating Module Tasks
+- name: "Operating Module Tasks"
   block:
-    - name: Gather system information
+    - name: "Phase 1: Toolbox validation"
+      include_role:
+        name: ips_toolbox_toolboxes
+      vars:
+        toolboxes_operation: "check"
+      tags: toolbox_validation
+
+    - name: "Phase 2: SHA foundation validation"
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_operation: "validate"
+      tags: sha_validation
+
+    - name: "Phase 3: Filesystem creation"
       include_role:
         name: ips_toolbox_system
       vars:
-        gather_info: true
-      when: operation_type | default('info') == 'info'
-      tags:
-        - info
+        filesystem_action: create
+      tags: fs_creation
 
-    - name: Manage filesystems
-      include_role:
-        name: ips_toolbox_system
-      when: operation_type == 'filesystem'
-      tags:
-        - filesystem
-
-    - name: Create application arborescence
+    - name: "Phase 4: Application arborescence"
       include_role:
         name: ips_toolbox_system
       vars:
         create_arborescence: true
-      when: operation_type == 'arborescence'
-      tags:
-        - arborescence
+      tags: dir_structure
 
-    - name: Manage applications
-      include_role:
-        name: ips_toolbox_appli
-      when: operation_type == 'application'
-      tags:
-        - application
-
-    - name: Manage monitoring (Nimsoft)
-      include_role:
-        name: ips_toolbox_nimsoft
-      when:
-        - operation_type == 'monitoring'
-        - "'nimsoft' in middleware_paths"
-      tags:
-        - monitoring
-        - nimsoft
-
-    - name: Manage CFT
-      include_role:
-        name: ips_toolbox_cft
-      when:
-        - operation_type == 'cft'
-        - "'cft' in middleware_paths"
-      tags:
-        - cft
-
-    - name: Manage MQSeries
-      include_role:
-        name: ips_toolbox_mq
-      when:
-        - operation_type == 'mq'
-        - "'mqseries' in middleware_paths"
-      tags:
-        - mq
-
-    - name: Manage Vormetric
-      include_role:
-        name: ips_toolbox_vormetric
-      when:
-        - operation_type == 'vormetric'
-        - "'vormetric' in middleware_paths"
-      tags:
-        - vormetric
-
-    - name: Manage Illumio
-      include_role:
-        name: ips_toolbox_illumio
-      when:
-        - operation_type == 'illumio'
-        - "'illumio' in middleware_paths"
-      tags:
-        - illumio
-
-    - name: Manage BigFix
-      include_role:
-        name: ips_toolbox_bigfix
-      when:
-        - operation_type == 'bigfix'
-        - "'bigfix' in middleware_paths"
-      tags:
-        - bigfix
-
-  rescue:
-    - name: Operating module error handler
-      debug:
-        msg:
-          - "Error occurred in Operating module"
-          - "Task: {{ ansible_failed_task.name }}"
-          - "Error: {{ ansible_failed_result.msg | default('Unknown error') }}"
-
-    - name: Log error to Supabase
+    - name: "Phase 5: Log rotation"
       include_role:
         name: ips_toolbox_system
-        tasks_from: log_to_supabase
       vars:
-        execution_status: failed
+        manage_log_rotation: true
+      tags: logs
+
+  rescue:
+    - name: "Operating module error handler"
+      ansible.builtin.debug:
+        msg:
+          - "Error in Operating module"
+          - "Task: {{ ansible_failed_task.name }}"
