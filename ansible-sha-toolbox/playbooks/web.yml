@@ -1,42 +1,42 @@
-# playbooks/web.yml
 ---
-- name: "Web Module Tasks"
-  block:
-    - name: "Deploy to WAS ND"
-      include_role:
-        name: ips_toolbox_wasnd
-      vars:
-        wasnd_operation: "deploy-app"
-      when: "'wasnd' in detected_middleware"
-      tags: web
+- name: Web Module Tasks
+  hosts: "{{ target_hostname }}"
+  gather_facts: yes
+  become: yes
 
-    - name: "Deploy to WAS Base"
-      include_role:
-        name: ips_toolbox_wasbase
-      vars:
-        wasbase_operation: "deploy-app"
-      when: "'wasbase' in detected_middleware"
-      tags: web
+  tasks:
+    - name: Detect WAS type
+      shell: |
+        if [ -f "{{ websphere.profile_root }}/bin/server" ]; then echo "liberty"
+        elif [ -f "{{ websphere.profile_root }}/bin/startServer.sh" ]; then echo "was"
+        else echo "none"; fi
+      register: was_type_detected
+      changed_when: false
 
-    - name: "Deploy to Liberty Core"
-      include_role:
-        name: ips_toolbox_libertycore
-      vars:
-        libertycore_operation: "deploy-app"
-      when: "'libertycore' in detected_middleware"
-      tags: web
+    - name: Set toolbox vars
+      set_fact:
+        toolboxes_component: "web"
+        toolboxes_operation: "{{ was_type_detected.stdout }}"
+        toolboxes_role_name: "ips_toolbox_{{ was_type_detected.stdout }}"
+        toolboxes_task_file_name: "{{ was_type_detected.stdout }}.yml"
 
-    - name: "Configure WebServer"
+    - name: Execute web toolbox
       include_role:
-        name: ips_toolbox_webserver
+        name: "{{ toolboxes_role_name }}"
       vars:
-        webserver_operation: "configure"
-      when: "'webserver' in detected_middleware"
-      tags: web
+        toolboxes_component: "{{ toolboxes_component }}"
+        toolboxes_operation: "{{ toolboxes_operation }}"
+        toolboxes_role_name: "{{ toolboxes_role_name }}"
+        toolboxes_task_file_name: "{{ toolboxes_task_file_name }}"
 
   rescue:
-    - name: "Web module error handler"
-      ansible.builtin.debug:
-        msg:
-          - "Error in Web module"
-          - "Task: {{ ansible_failed_task.name }}"
+    - name: Report web error
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "error"
+        set_results_component: "web"
+        set_results_operation: "{{ was_type_detected.stdout }}"
+        set_results_role_name: "{{ toolboxes_role_name }}"
+        set_results_status: "KO"
+        set_results_value: "Web module failed"
