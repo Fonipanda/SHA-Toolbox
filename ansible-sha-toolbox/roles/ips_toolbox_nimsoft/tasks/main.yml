@@ -1,32 +1,4 @@
 ---
-# Main tasks for ips_toolbox_nimsoft role - Overall Monitoring
-
-- name: Check if Nimsoft is installed
-  stat:
-    path: "{{ nimsoft.robot_path }}"
-  register: nimsoft_installed
-
-- name: Fail if Nimsoft not installed
-  fail:
-    msg: "Nimsoft is not installed on this server"
-  when: not nimsoft_installed.stat.exists
-
-- name: Manage monitoring maintenance mode
-  include_tasks: maintenance_mode.yml
-  when: maintenance_action is defined
-  tags:
-    - maintenance
-    - alerts
-
-- name: Manage policies and profiles
-  include_tasks: manage_policies.yml
-  when: policy_action is defined
-  tags:
-    - policies
-    - profiles
-
-- name: Update Nimsoft components
-  include_tasks: update_nimsoft.yml
-  when: update_nimsoft | default(false) | bool
-  tags:
-    - update
+- name: Nimsoft tasks placeholder
+  debug:
+    msg: "Execute Nimsoft tasks"
