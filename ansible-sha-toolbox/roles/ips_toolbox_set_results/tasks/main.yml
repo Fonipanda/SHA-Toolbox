@@ -1,0 +1,27 @@
+---
+- name: initialize results tab
+  set_fact:
+    results: []
+  when: results is not defined
+
+- name: initialize result name
+  set_fact:
+    temp_result_name: "{{ set_results_result_name | default('temp') }}"
+
+- name: initialize {{ temp_result_name }}
+  set_fact:
+    "{{ temp_result_name }}":
+      - Component: "{{ set_results_component }}"
+        Operation: "{{ set_results_operation }}"
+        State: "{{ set_results_state }}"
+        Status: "{{ set_results_status }}"
+        Value: "{{ set_results_value }}"
+        Item: "{{ set_results_item | default('') }}"
+        User: "{{ ansible_user_id }}"
+        Date: "{{ lookup('pipe','date +%Y-%m-%d %H:%M:%S') }}"
+        Role_name: "{{ set_results_role_name }}"
+        Target: "{{ inventory_hostname }}"
+
+- name: add to facts
+  set_fact:
+    results: "{{ results + hostvars[inventory_hostname][temp_result_name] }}"
