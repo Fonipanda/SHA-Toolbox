@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    pipeline: Jenkinsfile
+    tier: A
+spec:
+  containers:
+  - command:
+    - cat
+    image: image-registry.openshift-image-registry.svc:5000/ns801b004550/ansible-1.1.0
+    name: ansible
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 1024Mi
+      requests:
+        cpu: "0.1"
+        memory: 256Mi
+    tty: true
+    volumeMounts:
+    - mountPath: /home/visitor
+      name: home-visitor
+    - mountPath: /tmp
+      name: tmp
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+  volumes:
+  - emptyDir: {}
+    name: home-visitor
+  - emptyDir: {}
+    name: tmp
