@@ -1,29 +1,4 @@
 ---
-# Main tasks for ips_toolbox_backup role
-
-- name: Check backup prerequisites
-  include_tasks: check_prerequisites.yml
-  tags:
-    - check
-    - prerequisites
-
-- name: Check backup status
-  include_tasks: check_backup_status.yml
-  when: check_status | default(false) | bool
-  tags:
-    - status
-    - verification
-
-- name: Execute backup
-  include_tasks: execute_backup.yml
-  when: execute_backup | default(false) | bool
-  tags:
-    - backup
-    - execute
-
-- name: Check backup conformity
-  include_tasks: check_conformity.yml
-  when: check_conformity | default(false) | bool
-  tags:
-    - conformity
-    - audit
+- name: Backup tasks placeholder
+  debug:
+    msg: "Execute Backup tasks"
