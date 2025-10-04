@@ -1,143 +1,16 @@
----
-# Toolbox global variables for standardized SHA images
+ansible_become_method: sesu
+ansible_become_flags: "-"
 
-# SHA Standard Paths
-sha_base_path: /apps
-sha_toolbox_path: /apps/toolboxes
-sha_exploit_path: /apps/exploit
-sha_applis_path: /applis
-sha_applis_logs_path: /applis/logs
-sha_applis_delivery_path: /applis/delivery
+toolboxes_base_path: "/apps/toolboxes"
+toolboxes_default_operation: "check"
 
-# Volume Groups
-vg_rootvg: rootvg
-vg_apps: vg_apps
-
-# Filesystem Defaults
-fs_default_sizes:
-  toolbox: 5
-  exploit: 2
-  appli_base: 1
-  appli_transfer_in: 1
-  appli_transfer_out: 1
-  appli_tmp: 1
-  appli_archives: 1
-  shared: 1
-  shared_tmp: 1
-  shared_archives: 1
-  logs: 1
-  logs_shared: 1
-  delivery: 2
-  delivery_shared: 2
-
-# CodeAP Patterns
-codeap_pattern: '^\\d{5}$'
-codescar_pattern: '^[A-Z0-9]{5}$'
-id_pattern: '^[A-Z0-9]{2}$'
-
-# Standard Application Directories
-standard_appli_dirs:
-  - conf
-  - scripts
-  - shared
-  - tmp
-  - archives
-  - transfer/in
-  - transfer/out
-
-# Standard Exploit Directories
-standard_exploit_dirs:
-  - autosys
-  - conf
-  - logs
-  - scripts
-  - tmp
-  - delivery
-
-# WebSphere Types
-websphere_types:
-  - was
-  - wlc
-  - wlb
-
-# Middleware Detection Paths
 middleware_paths:
-  cft: /opt/axway/cft
-  mqseries: /opt/mqm
-  oracle: /etc/oratab
-  tsm: /opt/tivoli/tsm/client
-  nimsoft: /opt/nimsoft
-  illumio: /opt/illumio_ven
-  bigfix: /opt/BESClient
-  vormetric: /opt/vormetric
-  websphere: /opt/IBM/WebSphere
-  ihs: /opt/IBM/HTTPServer
-
-# Logging Configuration (AAP2)
-logging:
-  enabled: true
-  log_to_supabase: false
-  log_level: INFO
-  retention_days: 90
-  use_aap2_logging: true
-
-# Security Settings
-security:
-  validate_rootvg_protection: true
-  require_sudo: true
-  audit_changes: true
-  sha_compliance: trueU
-
-# Middleware configurations
-backup:
-  tsm_client_path: /opt/tivoli/tsm/client/ba/bin
-  backup_script: btsauve.ksh
-  log_path: /apps/toolboxes/backup_restore/logs
+  illumio: "/opt/illumio"
+  nimsoft: "/opt/nimsoft"
+  cft: "/opt/cft"
 
 oracle:
-  oratab_path: /etc/oratab
-  base_path: /u01/app/oracle
+  oratab_path: "/etc/oratab"
 
 websphere:
-  profile_root: /opt/IBM/WebSphere/AppServer/profiles
-  ihs_root: /opt/IBM/HTTPServer
-  plugin_root: /opt/IBM/WebSphere/Plugins
-
-nimsoft:
-  robot_path: /opt/nimsoft/robot
-  probe_path: /opt/nimsoft/probes
-
-illumio:
-  ven_path: /opt/illumio_ven
-  workload_path: /var/lib/illumio-ven
-
-vormetric:
-  agent_path: /opt/vormetric/DataSecurityExpert
-  config_path: /etc/vormetric
-
-bigfix:
-  client_path: /opt/BESClient
-  config_path: /var/opt/BESClient
-
-cft:
-  install_path: /opt/axway/cft
-  runtime_path: /opt/axway/cft/runtime
-  conf_path: /opt/axway/cft/conf
-
-mqseries:
-  install_path: /opt/mqm
-  data_path: /var/mqm
-
-# Execution Modes
-execution_mode: production
-dry_run: false
-validate_before_execute: true
-rollback_on_failure: true
-sha_image_compliance: true
-
-# Notification Settings
-notifications:
-  enabled: false
-  smtp_server: ""
-  admin_email: ""
-  use_aap2_notifications: true
+  profile_root: "/opt/WebSphere/AppServer/profiles"
