@@ -1,16 +1,2 @@
 ansible_become_method: sesu
 ansible_become_flags: "-"
-
-toolboxes_base_path: "/apps/toolboxes"
-toolboxes_default_operation: "check"
-
-middleware_paths:
-  illumio: "/opt/illumio"
-  nimsoft: "/opt/nimsoft"
-  cft: "/opt/cft"
-
-oracle:
-  oratab_path: "/etc/oratab"
-
-websphere:
-  profile_root: "/opt/WebSphere/AppServer/profiles"
