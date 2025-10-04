@@ -1,10 +1,2 @@
-[sha_servers]
-server1 ansible_ssh_host=sXXvlXXXXXXX.fr.net.intra
-
-[all:vars]
-env=HORSPROD
-environment_name=dev
-ansible_become_method=sesu
-ansible_become_flags="-"
-sha_image_type=standard
-sha_version=current
+[default]
+server1 ansible_host=sXXvlXXXXXXX.fr.net.intra
