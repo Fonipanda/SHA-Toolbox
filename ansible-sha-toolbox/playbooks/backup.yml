@@ -1,24 +1,38 @@
-# playbooks/backup.yml
 ---
-- name: "Backup Module Tasks"
-  block:
-    - name: "Execute TSM backup"
-      include_role:
-        name: ips_toolbox_tsm
-      vars:
-        tsm_operation: "backup"
-      tags: backup
+- name: Backup Module Tasks
+  hosts: "{{ target_hostname }}"
+  gather_facts: yes
+  become: yes
 
-    - name: "Execute system backup"
+  tasks:
+    - name: Set default operation
+      set_fact:
+        operation_type: "{{ operation }}"
+
+    - name: Set toolbox vars
+      set_fact:
+        toolboxes_component: "backup"
+        toolboxes_operation: "{{ operation_type }}"
+        toolboxes_role_name: "{% if operation_type == 'tsm' %}ips_toolbox_tsm{% else %}ips_toolbox_backup{% endif %}"
+        toolboxes_task_file_name: "{{ operation_type }}.yml"
+
+    - name: Execute backup toolbox
       include_role:
-        name: ips_toolbox_backup
+        name: "{{ toolboxes_role_name }}"
       vars:
-        backup_operation: "execute"
-      tags: backup
+        toolboxes_component: "{{ toolboxes_component }}"
+        toolboxes_operation: "{{ toolboxes_operation }}"
+        toolboxes_role_name: "{{ toolboxes_role_name }}"
+        toolboxes_task_file_name: "{{ toolboxes_task_file_name }}"
 
   rescue:
-    - name: "Backup module error handler"
-      ansible.builtin.debug:
-        msg:
-          - "Error in Backup module"
-          - "Task: {{ ansible_failed_task.name }}"
+    - name: Report backup error
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "error"
+        set_results_component: "backup"
+        set_results_operation: "{{ operation_type }}"
+        set_results_role_name: "{{ toolboxes_role_name }}"
+        set_results_status: "KO"
+        set_results_value: "Backup module failed"
