@@ -1,0 +1,4 @@
+---
+- name: WAS ND tasks placeholder
+  debug:
+    msg: "Execute WAS ND Web tasks"
