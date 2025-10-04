@@ -1,26 +1,35 @@
-# playbooks/database.yml
 ---
-- name: "Database Module Tasks"
-  block:
-    - name: "Check and configure Oracle"
+- name: Database Module Tasks
+  hosts: "{{ target_hostname }}"
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Check Oracle presence
+      stat:
+        path: "{{ oracle.oratab_path }}"
+      register: db_check
+
+    - name: Set toolbox vars
+      set_fact:
+        toolboxes_component: "database"
+        toolboxes_operation: "oracle"
+        toolboxes_role_name: "ips_toolbox_oracle"
+        toolboxes_task_file_name: "oracle.yml"
+
+    - name: Execute database toolbox
       include_role:
         name: ips_toolbox_oracle
-      vars:
-        oracle_operation: "configure"
-      when: configure_oracle_db | bool
-      tags: database
-
-    - name: "Check and configure SQL Server"
-      include_role:
-        name: ips_toolbox_sqlserver
-      vars:
-        sqlserver_operation: "configure"
-      when: ansible_os_family == "Windows"
-      tags: database
+      when: db_check.stat.exists
 
   rescue:
-    - name: "Database module error handler"
-      ansible.builtin.debug:
-        msg:
-          - "Error in Database module"
-          - "Task: {{ ansible_failed_task.name }}"
+    - name: Report database error
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "error"
+        set_results_component: "database"
+        set_results_operation: "oracle"
+        set_results_role_name: "ips_toolbox_oracle"
+        set_results_status: "KO"
+        set_results_value: "Database module failed"
