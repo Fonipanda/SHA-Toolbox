@@ -1,178 +1,20 @@
-# playbook.yml - Version corrigée
 ---
-- name: "Toolbox - Workflow Complet pour Images SHA"
-  hosts: "{{ target_hostname | default('all') }}"
-  gather_facts: yes
-  become: yes
+- import_playbook: playbooks/operating.yml
+  vars_files:
+    - vars/aap2_survey.yml
+  when: operation in ['info','filesystem','arborescence','application','monitoring']
 
-  collections:
-    - community.general
+- import_playbook: playbooks/web.yml
+  vars_files:
+    - vars/aap2_survey.yml
+  when: operation in ['liberty','was','web']
 
-  vars:
-    ansible_display_skipped_hosts: false
-    toolbox_module: "{{ toolbox_module | default('auto') }}"
-    codeAP: "{{ codeAP }}"
-    codeScar: "{{ codeScar }}"
-    id: "{{ id }}"
-    fs_size4apps: "{{ fs_size4apps }}"
-    configure_webserver: "{{ configure_webserver | default(false) }}"
-    configure_oracle_db: "{{ configure_oracle_db | default(false) }}"
-    auto_detect_middleware: "{{ auto_detect_middleware | default(true) }}"
-    # NOUVEAU: Initialiser detected_middleware par défaut
-    detected_middleware: []
+- import_playbook: playbooks/database.yml
+  vars_files:
+    - vars/aap2_survey.yml
+  when: operation == 'oracle'
 
-  tasks:
-    - block:
-        - name: "Validate Survey inputs"
-          assert:
-            that:
-              - codeAP | length == 5
-              - codeAP is match('^[0-9]{5}$')
-              - codeScar | length == 5
-              - codeScar is match('^[A-Za-z0-9]{5}$')
-            fail_msg: >
-              Erreur de validation :
-              - codeAP doit contenir 5 chiffres
-              - codeScar doit contenir 5 caractères alphanumériques
-            success_msg: "✅ Variables Survey validées"
-          tags: always
-
-        - name: "0.1 - Gather system information"
-          ansible.builtin.setup:
-            gather_subset: all
-          tags: always
-
-        - name: "0.2 - Display environment information"
-          ansible.builtin.debug:
-            msg:
-              - "=========================================="
-              - "Toolbox Workflow Complet"
-              - "Target: {{ target_hostname }}"
-              - "Module: {{ toolbox_module }}"
-              - "Environment: {{ env }}"
-              - "=========================================="
-          tags: always
-
-        - name: "0.3 - Auto-detect installed middleware"
-          when: auto_detect_middleware | bool
-          block:
-            - name: "Detect WAS Base"
-              include_role:
-                name: ips_toolbox_wasbase
-              vars:
-                wasbase_operation: "check"
-              register: wasbase_detected
-              ignore_errors: yes
-
-            - name: "Detect Liberty Core"
-              include_role:
-                name: ips_toolbox_libertycore
-              vars:
-                libertycore_operation: "check"
-              register: libertycore_detected
-              ignore_errors: yes
-
-            - name: "Detect WAS ND"
-              include_role:
-                name: ips_toolbox_wasnd
-              vars:
-                wasnd_operation: "check"
-              register: wasnd_detected
-              ignore_errors: yes
-
-            - name: "Detect WebServer"
-              include_role:
-                name: ips_toolbox_webserver
-              vars:
-                webserver_operation: "check"
-              register: webserver_detected
-              ignore_errors: yes
-
-            - name: "Detect Oracle"
-              include_role:
-                name: ips_toolbox_oracle
-              vars:
-                oracle_operation: "check"
-              register: oracle_detected
-              ignore_errors: yes
-              when: configure_oracle_db | bool
-
-            - name: "Set detected middleware facts"
-              set_fact:
-                detected_middleware: >-
-                  {%- set m=[] -%}
-                  {%- if wasbase_detected is defined and not wasbase_detected is skipped -%}{%- set m=m+['wasbase'] -%}{%- endif -%}
-                  {%- if libertycore_detected is defined and not libertycore_detected is skipped -%}{%- set m=m+['libertycore'] -%}{%- endif -%}
-                  {%- if wasnd_detected is defined and not wasnd_detected is skipped -%}{%- set m=m+['wasnd'] -%}{%- endif -%}
-                  {%- if webserver_detected is defined and not webserver_detected is skipped -%}{%- set m=m+['webserver'] -%}{%- endif -%}
-                  {%- if oracle_detected is defined and not oracle_detected is skipped -%}{%- set m=m+['oracle'] -%}{%- endif -%}
-                  {{ m }}
-
-            - name: "Display detection summary"
-              ansible.builtin.debug:
-                msg:
-                  - "Detected middleware: {{ detected_middleware }}"
-
-        # NOUVEAU: Initialiser detected_middleware si autodétection désactivée
-        - name: "Initialize middleware for manual mode"
-          set_fact:
-            detected_middleware: >-
-              {%- set m=[] -%}
-              {%- if configure_webserver | bool -%}{%- set m=m+['webserver'] -%}{%- endif -%}
-              {%- if configure_oracle_db | bool -%}{%- set m=m+['oracle'] -%}{%- endif -%}
-              {{ m }}
-          when: not auto_detect_middleware | bool
-
-        - name: "0.4 - Set selected modules"
-          set_fact:
-            selected_modules: >-
-              {%- set modules=['operating'] -%}
-              {%- if toolbox_module=='auto' -%}
-                {%- if 'wasbase' in detected_middleware or 'libertycore' in detected_middleware or 'wasnd' in detected_middleware or 'webserver' in detected_middleware -%}{%- set modules=modules+['web'] -%}{%- endif -%}
-                {%- if 'oracle' in detected_middleware -%}{%- set modules=modules+['database'] -%}{%- endif -%}
-                {%- set modules=modules+['backup'] -%}
-              {%- else -%}
-                {%- set modules=[toolbox_module] -%}
-              {%- endif -%}
-              {{ modules }}
-
-        - name: "0.5 - Display modules to execute"
-          ansible.builtin.debug:
-            msg: "Modules selected: {{ selected_modules }}"
-
-        - name: "Execute Operating module"
-          include_tasks: playbooks/operating.yml
-          when: "'operating' in selected_modules"
-          tags: ['operating']
-
-        - name: "Execute Web module"
-          include_tasks: playbooks/web.yml
-          when: "'web' in selected_modules"
-          tags: ['web']
-
-        - name: "Execute Database module"
-          include_tasks: playbooks/database.yml
-          when: "'database' in selected_modules"
-          tags: ['database']
-
-        - name: "Execute Backup module"
-          include_tasks: playbooks/backup.yml
-          when: "'backup' in selected_modules"
-          tags: ['backup']
-
-        - name: "Final report"
-          ansible.builtin.debug:
-            msg:
-              - "=========================================="
-              - "FINAL REPORT"
-              - "Target: {{ target_hostname }}"
-              - "Modules executed: {{ selected_modules }}"
-              - "Detected middleware: {{ detected_middleware }}"
-              - "=========================================="
-      rescue:
-        - name: "Global error handler"
-          ansible.builtin.debug:
-            msg:
-              - "ERROR in Toolbox workflow"
-              - "Task: {{ ansible_failed_task.name }}"
-              - "Error: {{ ansible_failed_result.msg | default('Unknown') }}"
+- import_playbook: playbooks/backup.yml
+  vars_files:
+    - vars/aap2_survey.yml
+  when: operation in ['tsm','backup']
