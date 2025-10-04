@@ -1,0 +1,4 @@
+target_hostname: "{{ survey_target_hostname }}"
+codeAP: "{{ survey_codeAP }}"
+codeScar: "{{ survey_codeScar }}"
+operation: "{{ survey_operation | default('check') }}"
