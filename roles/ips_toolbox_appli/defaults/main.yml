@@ -1,12 +1,12 @@
 ---
-# Default variables for ips_toolbox_appli role
 
-app_scripts_path: /etc/local
-systemd_path: /etc/systemd/system
-app_action: status
+appli_component: ""
+appli_operation: ""
+appli_task_file_name: "{{ appli_operation }}_{{ ansible_system }}_{{ appli_component }}.yml"
+app_continue: True
+app_result: ""
+appli_ref: no
+Appli_Win32NT_json: "{{ hostvars[inventory_hostname].ansible_env.TEMP }}\\ansible_{{ hostvars[inventory_hostname].ansible_date_time_date }}_{{ hostvars[inventory_hostname].ansible_date_time.time |replace(':', '') }}.json"
+appli_script_mode: false
 
-valid_app_actions:
-  - start
-  - stop
-  - restart
-  - status
+appli_result_name: ""
