@@ -1,0 +1,21 @@
+{  
+  "Operating_System": "{{ ansible_system | upper }}",
+  "Release": "{% if ansible_lsb.description is defined %}{{ ansible_lsb.description }}{% else %}{{ description2.stdout }}{% endif %}",
+  "System_Uptime": "{% if uptimesystem is defined %}{{ uptimesystem.stdout }} day(s){% else %} 0 day{% endif %}",
+  "Number_Of_Processors": "{{ ansible_processor_count }}",
+  "Processor_Type": "{{ ansible_processor }}",
+  "Processor_Clock_Speed": "{{ clock_speed.stdout }}",
+  "Memory_Size": "{{ (ansible_memtotal_mb/1024) | round(2) }} GB",
+  "volume_group": {
+    {% for vgname in (vgnames_output.stdout_lines | list ) %}
+    "{{ vgname | trim }}": {
+      "PP Size": "{{  hostvars[inventory_hostname]['blocksizeVG'][ vgname | trim ] }} MB", 
+      "PP Total": "{% set sum = 0 %}{% for vginfo in hostvars[inventory_hostname]['ansible_vgs'][ vgname | trim ] %}{% set sum = (sum|int) + (vginfo['total_pps']|int)*(vginfo['pp_size'].split('megabyte')[0]| int) %}{% if loop.last %}{{ (sum/1024) | round(2) }} GB{% endif %}{% endfor %}",
+      "PP Free": "{% set sum = 0 %}{% for vginfo in hostvars[inventory_hostname]['ansible_vgs'][ vgname | trim ] %}{% set sum = (sum|int) + (vginfo['free_pps']|int)*(vginfo['pp_size'].split('megabyte')[0]| int) %}{% if loop.last %}{{ (sum/1024) | round(2) }} GB{% endif %}{% endfor %}",
+      "PP Used": "{% set sum = 0 %}{% for vginfo in hostvars[inventory_hostname]['ansible_vgs'][ vgname | trim ] %}{% set sum = (sum|int) + ((vginfo['total_pps']|int)-(vginfo['free_pps']|int))*(vginfo['pp_size'].split('megabyte')[0]| int) %}{% if loop.last %}{{ (sum/1024) | round(2) }} GB{% endif %}{% endfor %}"
+},  
+    {% endfor %}
+  },
+  "Free_Memory_Size": "{{ (ansible_memfree_mb/1024) | round(2) }} GB"
+}
+
