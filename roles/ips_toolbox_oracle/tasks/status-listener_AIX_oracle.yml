@@ -1,0 +1,36 @@
+---
+
+- name: Begin get status listeners
+  block:
+
+    - name: get listeners status
+      oracle_listener:
+        action: status
+      register: status
+
+    - name: working retreival of listeners' status
+      set_fact:
+        oracle_status: "OK"
+        oracle_state: "{% if status.status is defined %}{{ status.status}}{% endif %}"
+        oracle_value: "{% if status.information is defined %}{{ status.information }}{% endif %}"
+
+  rescue:
+    - name: ansible failure
+      set_fact:
+        oracle_status: "KO"
+        oracle_state: "{% if status.status is defined %}{{ status.status}}{% else %}Unknown{% endif %}"
+        oracle_value: "{% if status.information is defined %}{{ status.information }}{% else %}{{ status.msg }}{% endif %}"
+  always:
+    - name: End get status listeners
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "{{ oracle_state }}"
+        set_results_item: "{% if status.status is defined %}{{ status.status.keys() }}{% endif %}"
+        set_results_component: "{{ oracle_component }}"
+        set_results_operation: "{{ oracle_operation }}"
+        set_results_role_name: "{{ oracle_role_name }}"
+        set_results_value: "{{ oracle_value }}"
+        set_results_result_name: "{{ oracle_result_name }}"
+        set_results_status: "{{ oracle_status }}"        
+
