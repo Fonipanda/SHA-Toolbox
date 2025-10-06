@@ -1,13 +1,5 @@
 ---
 
-# created by: Nicolas VIDEAU For ITG/IPS/PPM02
-#
-# modifications: (name, date, purpose)
-#
-# NAVARRO Wilfried : 25/03/2020 : update to display clear messages
-# Noel KONAN & Moussa SENASLY: 22/12/2021 mise en compatibilite ansible natif et tower
-###
-
 - set_fact:
     cft_component: "{{ role_name.split('_')[-1] }}"
     cft_role_name: "{{ role_name }}"
