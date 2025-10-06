@@ -1,0 +1,24 @@
+{  
+  "Operating_System": "{{ ansible_system | upper }}",
+  "Release": "{% if ansible_lsb.description is defined %}{{ ansible_lsb.description }}{% else %}{{ description2.stdout }}{% endif %}",
+  "System_Uptime": "{{ (ansible_uptime_seconds/86400) | int }} day(s)",
+  "Number_Of_Processors": "{{ ((ansible_processor | count)/3) | int }}",
+  "Processor_Type": "{{ ansible_processor[2] }}",
+  "Processor_Clock_Speed": "{{ clock_speed.stdout }} MHz",
+  "Memory_Size": "{{ (ansible_memory_mb.real.total/1024) | round(2) }} GB",
+  "volume_group": {
+    {% for vgname in (vgnames_output.stdout_lines | list ) %}
+    "{{ vgname | trim }}": {
+      "PE Size": "{{  hostvars[inventory_hostname]['blocksizeVG'][vgname | trim ] }} MB", 
+      "PE Total": "{{ hostvars[inventory_hostname]['ansible_lvm']['vgs'][ vgname | trim ]['size_g'] }} GB",
+      "PE Free": "{{ hostvars[inventory_hostname]['ansible_lvm']['vgs'][ vgname | trim ]['free_g'] }} GB",
+      "PE Used": "{{( hostvars[inventory_hostname]['ansible_lvm']['vgs'][ vgname | trim ]['size_g'] | float ) - ( hostvars[inventory_hostname]['ansible_lvm']['vgs'][ vgname | trim ]['free_g'] | float ) }} GB"
+    },  
+    {% endfor %}
+  },
+  "Free_Memory_Size": "{{ (ansible_memfree_mb/1024) | round(2) }} GB"
+}
+
+
+
+
