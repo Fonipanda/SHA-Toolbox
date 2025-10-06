@@ -1,1 +1,10 @@
+---
+
+
+autosys_component: ""
+autosys_operation: ""
+autosys_task_file_name: "{{ autosys_operation }}_{{ ansible_system }}_{{ autosys_component }}.yml"
+autosys_script_mode: false
+autosys_result_name: ""
+
 
