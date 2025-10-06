@@ -1,40 +1,48 @@
 ---
-# Main tasks for ips_toolbox_cft role - Cross File Transfer
 
-- name: Check if CFT is installed
-  stat:
-    path: "{{ cft.install_path }}"
-  register: cft_installed
+# created by: Nicolas VIDEAU For ITG/IPS/PPM02
+#
+# modifications: (name, date, purpose)
+#
+# NAVARRO Wilfried : 25/03/2020 : update to display clear messages
+# Noel KONAN & Moussa SENASLY: 22/12/2021 mise en compatibilite ansible natif et tower
+###
 
-- name: Fail if CFT not installed
-  fail:
-    msg: "CFT is not installed on this server"
-  when: not cft_installed.stat.exists
+- set_fact:
+    cft_component: "{{ role_name.split('_')[-1] }}"
+    cft_role_name: "{{ role_name }}"
 
-- name: Manage CFT service
-  include_tasks: manage_cft_service.yml
-  when: cft_action is defined
-  tags:
-    - service
-    - cft
+- name: "collect filenames dynamically"
+  set_fact:
+    task_directory_files: "{{ lookup('fileglob', '{{ role_path }}/tasks/*.yml').split(',') | map('basename') | list | reject('match', 'main.yml' ) | list }}"
+    file_name: "{{ cft_task_file_name }}"
 
-- name: Purge CFT catalog
-  include_tasks: purge_catalog.yml
-  when: purge_catalog | default(false) | bool
-  tags:
-    - purge
-    - catalog
 
-- name: Check IDF conformity
-  include_tasks: check_idf.yml
-  when: check_idf | default(false) | bool
-  tags:
-    - idf
-    - conformity
+- name: include tasks operation
+  block:
+    - include_tasks: "{{ cft_task_file_name }}"
+      when: file_name in task_directory_files
 
-- name: Check partner connections
-  include_tasks: check_partners.yml
-  when: check_partners | default(false) | bool
-  tags:
-    - partners
-    - connectivity
+  rescue:
+
+  - name: set result failed operation
+    include_role:
+      name: ips_toolbox_set_results
+    vars:
+      set_results_state: "info"
+      set_results_item: ""
+      set_results_component: "{{ cft_component }}"
+      set_results_operation: "{{ cft_operation }}"
+      set_results_role_name: "{{ cft_role_name }}"
+      set_results_status: "KO"
+      set_results_value: "\
+
+        {% if statResult.stat.exists == false %}\
+
+          task {{ cft_task_file_name }} does not exist\
+
+        {% else %}\
+
+          task execution error\
+
+        {% endif %}"
