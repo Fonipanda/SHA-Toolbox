@@ -1,0 +1,62 @@
+def project_token = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEF'
+def label = "pipeline-slave-${UUID.randomUUID().toString()}"
+def major_version = 1
+def minor_version = 0
+def version
+
+
+properties([ pipelineTriggers([
+                    [
+                        $class: 'GitLabPushTrigger',
+                        branchFilterType: 'All',
+                        triggerOnPush: true,
+                        triggerOnMergeRequest: false,
+                        triggerOpenMergeRequestOnPush: "never",
+                        triggerOnNoteRequest: true,
+                        noteRegex: "Jenkins please retry a build",
+                        skipWorkInProgressMergeRequest: true,
+                        secretToken: project_token
+                    ]
+                ]),
+                [$class: 'BuildDiscarderProperty',strategy: [$class: 'LogRotator', numToKeepStr: '2']]
+            ]);
+
+
+podTemplate(label: label) {
+    node(label) {
+        stage('checkout') {
+            sh 'git config --global http.sslVerify false'
+            deleteDir()
+            checkout scm
+            version = "${major_version}.${minor_version}.${env.BUILD_NUMBER}"
+        }
+
+        stage('test') {
+            echo "define test step"
+        }
+
+        stage('quality') {
+             echo "define quality step"
+        }
+
+        if(env.BRANCH_NAME == 'develop'){
+
+            stage('package') {
+                 echo "define package step"
+            }
+
+            stage('tag') {
+                 echo "define tag step"
+            }
+
+            stage('publish') {
+                 echo "define publish step"
+            }
+
+            stage('invoke cd'){
+                 echo "define invoke cd step"
+            }
+        }
+    }
+}
+
