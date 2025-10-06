@@ -1,36 +1,42 @@
 ---
-# Main tasks for ips_toolbox_illumio role - Network Security
 
-- name: Check if Illumio VEN is installed
-  stat:
-    path: "{{ illumio.ven_path }}"
-  register: illumio_installed
+- set_fact:
+    illumio_component: "{{ role_name.split('_')[-1] }}"
+    illumio_role_name: "{{ role_name }}"
 
-- name: Fail if Illumio not installed
-  fail:
-    msg: "Illumio VEN is not installed on this server"
-  when: not illumio_installed.stat.exists
+- name: include tasks operation
 
-- name: Manage VEN service
-  include_tasks: manage_ven.yml
-  when: ven_action is defined
-  tags:
-    - ven
-    - service
+  block:
 
-- name: Generate reports
-  include_tasks: generate_reports.yml
-  when: generate_report | default(false) | bool
-  tags:
-    - reports
+  - local_action: stat path={{ role_path }}/tasks/{{ illumio_task_file_name }}
+    become: no
+    register: statResult
+    failed_when: statResult.stat.exists == false
 
-- name: Get VEN status
-  include_tasks: ven_status.yml
-  tags:
-    - status
+  - include_tasks: "{{ illumio_task_file_name }}"
+    when: statResult.stat.exists
 
-- name: Manage suspend mode
-  include_tasks: manage_suspend.yml
-  when: suspend_action is defined
-  tags:
-    - suspend
+  rescue:
+
+  - name: set result failed operation
+    include_role:
+      name: ips_toolbox_set_results
+    vars:
+     set_results_state: "info"
+     set_results_item: ""
+     set_results_component: "{{ illumio_component }}"
+     set_results_operation: "{{ illumio_operation }}"
+     set_results_role_name: "{{ illumio_role_name }}"
+     set_results_status: "KO"
+     set_results_value: "\
+
+       {% if statResult.stat.exists == false %}\
+
+          task {{ illumio_task_file_name }} does not exist\
+
+       {% else %}\
+
+          task execution error\
+
+       {% endif %}"
+
