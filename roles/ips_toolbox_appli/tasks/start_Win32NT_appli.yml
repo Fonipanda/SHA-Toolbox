@@ -1,0 +1,110 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that: appli_item != ""
+   msg: "appli_item variable is missing"
+
+- name: start {{ appli_item }}
+  win_shell: |
+    $ErrorActionPreference = "Stop"
+    [string]$ApplicationScript="D:\apps\exploit\scripts\{{ appli_item }}.ps1"
+    [string]$ApplicationArg="-start"
+    [string]$ApplicationStatus="STARTED"
+    [string]$Json="{{ Appli_Win32NT_json }}"
+    [array]$ApplicationListStatus = @("STOPPED","STARTED","STARTING","STOPPING")
+    [PSObject]$Object = New-Object PSObject
+    [int]$Failed=0
+    [int]$Changed=0
+    [string]$Message=""
+    Add-Member -InputObject $Object -MemberType NoteProperty -Name script -Value $ApplicationScript
+    Add-Member -InputObject $Object -MemberType NoteProperty -Name argument -Value $ApplicationArg
+    Add-Member -InputObject $Object -MemberType NoteProperty -Name failed -Value $Failed
+    Add-Member -InputObject $Object -MemberType NoteProperty -Name changed -Value $Changed
+    Add-Member -InputObject $Object -MemberType NoteProperty -Name message -Value $Message
+    try
+    {
+        [bool]$Find=$false
+        [bool]$FindOutput=$false
+        Invoke-Expression -Command "& '$($ApplicationScript)' -status" |ForEach-Object {
+            $Line=$_
+            foreach($item in $ApplicationListStatus)
+            {
+                if ($Line -match $item)
+                {
+                    $FindOutput=$true
+                }
+            }
+            if($Line -match $ApplicationStatus)
+            {
+                $Find=$true
+            }
+        }
+        if(($Find -eq $false) -and ($FindOutput -eq $true))
+        {
+            if(Invoke-Expression -Command "& '$($ApplicationScript)' $($ApplicationArg)")
+            {
+                $Object.changed=1
+                $Find=$true
+            }
+        }
+        if($Find -eq $false)
+        {
+            $Object.failed=1
+            $Object.message="Invalid status script output"
+        }
+    }
+    catch
+    {
+        $Message="$($_.Exception.Message)"
+        $Object.failed=1
+        $Object.message=$Message
+        #Write-Error $Message    
+    }
+    finally
+    { 
+        clear
+        $Object|ConvertTo-Json -Depth 99|Out-File $Json -Force
+    }
+  changed_when: false
+  ignore_errors: yes
+
+- name: Check start {{ appli_item }}
+  win_shell: powershell -NoLogo -noprofile "Get-Content -Path {{ Appli_Win32NT_json }} -Force"
+  args:
+    executable: cmd
+  changed_when: (result.stdout | from_json).changed
+  ignore_errors: yes
+  register: result
+
+- name: set results start {{ appli_item }}
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state:
+      "{% if (result.stdout | from_json).failed == False %}\
+
+        started\
+
+       {% else %}\
+
+        unknown\
+
+       {% endif %}"
+    set_results_item: "{{ appli_item }}"
+    set_results_value: "{{ (result.stdout | from_json).message }}"
+    set_results_component: "{{ appli_component }}"
+    set_results_operation: "{{ appli_operation }}"
+    set_results_role_name: "{{ appli_role_name }}"
+    set_results_result_name: "{{ appli_result_name }}"
+    set_results_status:
+      "{% if (result.stdout | from_json).failed == False %}\
+
+        OK\
+
+       {% else %}\
+
+        KO\
+
+       {% endif %}"
+
