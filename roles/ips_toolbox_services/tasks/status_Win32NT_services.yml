@@ -1,0 +1,67 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+    that:
+      - services_item != ""
+    msg: "services_item variable is missing"
+
+- name: check status service
+  win_service:
+    name: "{{ services_item }}"
+  register: status_service
+  failed_when: false
+
+- name: set results output for services status
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state: 
+      "{% if status_service.state is defined %}\
+
+          {% if status_service.state == 'running' %}\
+
+             started\
+
+          {% else %}\
+
+             stopped\
+
+          {% endif %}\
+
+       {% else %}\
+
+          unknown\
+
+       {% endif %}"
+    set_results_item: "{{ services_item }}"
+    set_results_value: 
+       "{% if status_service.exists is defined and status_service.exists == true %}\
+
+           {{ status_service }}\
+
+        {% elif status_service.exists is defined and status_service.exists == false %}\
+
+           service {{ services_item }} does not exist\
+
+        {% else %}\
+
+           {{ status_service.msg }}\
+
+        {% endif %}"
+    set_results_component: "{{ services_component }}"
+    set_results_operation: "{{ services_operation }}"
+    set_results_role_name: "{{ services_role_name }}"
+    set_results_result_name: "{{ services_result_name }}"
+    set_results_status: 
+      "{% if status_service is defined %}\
+
+          OK\
+
+       {% else %}\
+
+          KO\
+
+       {% endif %}"
+
