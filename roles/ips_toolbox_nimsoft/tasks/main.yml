@@ -1,4 +1,0 @@
----
-- name: Nimsoft tasks placeholder
-  debug:
-    msg: "Execute Nimsoft tasks"
