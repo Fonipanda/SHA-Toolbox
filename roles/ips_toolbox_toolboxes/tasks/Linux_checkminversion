@@ -1,0 +1,42 @@
+---
+
+- name: Check toolbox installation
+  find:
+    paths: "/apps/toolboxes"
+    patterns: "version"
+  register: tbxcheck
+
+- name: Display tbx results
+  debug:
+    msg: "toolbox is not installed"
+  when: tbxcheck.matched < 1
+
+- name: Check toolbox version
+  shell: cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g'
+  register: tbxversion
+  when: tbxcheck.matched > 0
+  changed_when: false
+
+- name: Display tbx version
+  debug:
+    msg: "{{ tbxversion.stdout_lines[0]|int }}"
+  when: tbxcheck.matched > 0
+
+- name: Verif tbx version
+  debug:
+    msg: "{{ (tbxversion.stdout_lines[0]|int >  (minver|int)) }}"
+  when: tbxcheck.matched > 0
+
+- name: set results output for toolbox version prerequisite
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "info"
+    set_results_item: "version_mini_{{ minver }}"
+    set_results_value: "{{ (tbxversion.stdout_lines[0]|int >= (minver|int)) }}" 
+    set_results_component: "toolbox"
+    set_results_status: "OK"
+
+
+- debug:
+    var: results
