@@ -1,3 +1,0 @@
----
-- name: Dispatch system operation
-  include_tasks: "{{ toolboxes_task_file_name }}"
