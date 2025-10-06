@@ -1,0 +1,41 @@
+---
+
+###
+#### purpose: Check if the mksysb has been generated for less than some days (7 by default)
+####
+#### created by:    PERIN David For ITG/IPS/PPM02, 29/08/2018
+#### modifications: (name, date, purpose)
+####
+######
+
+- name: check local mksysb
+  find:
+    paths: "/apps/sys/back/"
+    patterns: "mksysb_*"
+    age: "-{{ backup_mksysb_age_limit }}d"
+  register: chkmksysb_date
+  changed_when: false
+  failed_when: false
+
+- name: set results output for tsm system backup
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state: "info"
+    set_results_item: "mksysb"
+    set_results_value: "{% if chkmksysb_date.matched == 0 %}\
+
+                           KO -- No mksysb files was generated for less than {{ backup_mksysb_age_limit }} days\
+
+                        {% else %}\
+
+                           OK -- At least one mksysb was generated for less than {{ backup_mksysb_age_limit }} days\
+
+                        {% endif %}"
+    set_results_component: "{{ backup_component }}"
+    set_results_operation: "{{ backup_operation }}"
+    set_results_role_name: "{{ backup_role_name }}"
+    set_results_result_name: "{{ backup_result_name }}"
+    set_results_status: "OK"
+
