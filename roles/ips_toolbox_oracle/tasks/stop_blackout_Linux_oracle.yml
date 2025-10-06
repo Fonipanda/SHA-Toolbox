@@ -1,0 +1,66 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - oracle_item != ""
+   msg: "oracle_item variable is missing"
+
+- name: Begin stop blackout
+  block:
+
+  - name: check instance exists
+    shell: cat /etc/oratab | grep ^{{ oracle_item }}
+    register: checkPresence
+    failed_when: false
+    changed_when: false
+
+  - name: stop blackout {{ oracle_item }}
+    oracle_oem:
+      action: stop
+      instanceName: "{{ oracle_item }}"
+    become: true
+    become_user: oracle
+    become_method: su
+    register: stopblackout
+    when:
+      - checkPresence.rc == 0
+    changed_when: stopblackout.changed == True  
+
+  - name: working blackout
+    set_fact:
+      oracle_status: "OK"
+      oracle_state: "{{ stopblackout.state }}"
+      oracle_value: "{% if stopblackout.message is defined %}{{ stopblackout.message }}{% endif %}"
+    when:
+      - checkPresence.rc == 0
+
+  - name: "{{ oracle_item }} not found"
+    set_fact:
+      oracle_status: "KO"
+      oracle_state: "not stopped"
+      oracle_value: "instance {{ oracle_item }} not found"
+    when:
+      - checkPresence.rc != 0
+
+  rescue:
+    - name: ansible failure
+      set_fact:
+        oracle_status: "KO"
+        oracle_value: "{% if stopblackout.message is defined %}{{ stopblackout.message }}{% else %}{{ stopblackout.msg }}{% endif %}"
+        oracle_state: "{{ stopblackout.state }}"
+
+  always:
+    - name: End stop blackout {{ oracle_item }}
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "{{ oracle_state }}"
+        set_results_item: "{{ oracle_item }}"
+        set_results_component: "{{ oracle_component }}"
+        set_results_operation: "{{ oracle_operation }}"
+        set_results_role_name: "{{ oracle_role_name }}"
+        set_results_value: "{{ oracle_value }}"
+        set_results_result_name: "{{ oracle_result_name }}"
+        set_results_status: "{{ oracle_status }}"
+
