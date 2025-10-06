@@ -6,4 +6,3 @@
  services_script_mode: false
  services_result_name: "result"
 
-
