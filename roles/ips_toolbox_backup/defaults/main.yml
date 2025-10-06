@@ -1,0 +1,14 @@
+---
+
+# vars file for backup
+
+backup_component: ""
+backup_operation: ""
+backup_task_file_name: "{{ backup_operation }}_{{ ansible_system }}_{{ backup_component }}.yml"
+backup_mksysb_age_limit: "{{ mksysb_limit | default('7') }}"
+backup_depth: "7"
+backup_instance: ""
+backup_script_mode: false
+backup_refresh_orastate: "yes"
+backup_result_name: ""
+
