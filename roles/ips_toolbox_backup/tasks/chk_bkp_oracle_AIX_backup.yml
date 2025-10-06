@@ -1,0 +1,62 @@
+---
+
+###
+### playbook chk_bkp_oracle.yml
+### purpose: Check if the Oracle backup is conform
+###
+### created by:    Wilfried NAVARRO For ITG/IPS/PPM02, 31/05/2018
+### modifications: David PERIN      04/06/2019 : Add option to refresh oracle backup state
+### modifications: Wilfried NAVARRO 31/10/2019 : Add copy verif_backup.ksh for 19.2.1 toolbox' version
+### modifications: Wilfried NAVARRO 14/11/2019 : Add refresh_instance parameter
+### modifications: David PERIN      30/03/2020 : Change refresh_instance parameter name (--> backup_instance)
+#####
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that: backup_instance != ""
+   msg: "backup_instance variable is missing"
+
+- name: copy script to check oracle backup
+  copy:
+    src: verif_backup.ksh
+    dest: /apps/toolboxes/backup_restore/scripts/verif_backup.ksh
+    mode: 0755
+    owner: root
+
+- name: refresh oracle backup state
+  include_role:
+    name: ips_toolbox_backup
+  vars:
+    backup_operation: refresh_orabkp_state
+    backup_instance: "{{ backup_instance }}"
+    set_results_script_mode: true
+  when: backup_refresh_orastate == 'yes'
+
+- name: check backup {{ backup_instance }} for {{ backup_depth }} days
+  script: check_backup_oracle.ksh {{ backup_instance }} {{ backup_depth }}
+  register: check_backup_oracle
+  changed_when: false
+  failed_when: false
+
+- name: set results output for check backup instance
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "\
+
+          {% if check_backup_oracle.rc == 0 %}\
+
+             compliant\
+
+          {% else %}\
+
+             not compliant\
+
+          {% endif %}"
+    set_results_item: "{{ backup_instance }}"
+    set_results_value: "{{ check_backup_oracle.stdout_lines | last }}"
+    set_results_component: "{{ backup_component }}"
+    set_results_operation: "{{ backup_operation }}"
+    set_results_role_name: "{{ backup_role_name }}"
+    set_results_result_name: "{{ backup_result_name }}"
+    set_results_status: "OK"
