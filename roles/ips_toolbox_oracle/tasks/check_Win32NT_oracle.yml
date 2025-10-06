@@ -1,0 +1,33 @@
+---
+
+- name: check installation
+  win_shell: $x = "$(sqlplus -V)"; $x -match "Release (?<content>.*) Production" 1> null; $matches['content']
+  register: check_installation
+  changed_when: false
+  failed_when: false
+
+- name: Format to Json when autosys is installed
+  set_fact:
+    tmp_json: '{ "installed": "yes" ,"version": {{ check_installation.stdout_lines }} }'
+  when: check_installation.rc == 0 
+
+- name: Format to Json when autosys is not installed
+  set_fact:
+    tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
+  when: check_installation.rc != 0
+
+
+- name: set result output for oracle check
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "info"
+    set_results_item: ""
+    set_results_value: "{{ tmp_json | to_json | from_json }}"
+    set_results_component: "{{ oracle_component }}"
+    set_results_operation: "{{ oracle_operation }}"
+    set_results_role_name: "{{ oracle_role_name }}"
+    set_results_result_name: "{{ oracle_result_name }}"
+    set_results_status: "OK"
+
+
