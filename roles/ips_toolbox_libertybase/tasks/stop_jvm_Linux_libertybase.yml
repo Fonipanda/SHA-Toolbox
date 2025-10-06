@@ -1,0 +1,82 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - libertybase_item != ""
+   msg: "libertybase_item variable is missing"
+
+- name: copy Manage script
+  copy:
+    src: WAS_Manage.ksh 
+    dest: "/applis/"
+    mode: '0755'
+  changed_when: false
+
+- name: copy Manage script2
+  copy:
+    src: wasstartstop_cmd.ksh
+    dest: "/applis/"
+    mode: '0755'
+  changed_when: false
+
+- name: "stopping {{ libertybase_item }}"
+  shell: "/applis/wasstartstop_cmd.ksh stop wlb {{ libertybase_item }}"
+  register: stop_lib_result
+  changed_when: "'successfully' in stop_lib_result.stdout"
+  failed_when: false
+
+- set_fact:
+     state_value_json: ""
+     final_state: "stopped"
+     final_status: "OK"
+
+- set_fact:
+     state_value_json: "not stopped"
+     final_status: "KO"
+  when:
+   - "'No JVM found' in stop_lib_result.stdout"
+
+- set_fact:
+     state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"service\": \"no\" ,\"status\": \"{% if line_json.split(' ')[4] == \"STOPPED\" %}stopped\"{% else %}not stopped\"{% endif %} }{% else %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"service\": \"{{ line_json.split(' ')[7] }}\" ,\"status\": \"{% if line_json.split(' ')[4] == \"STOPPED\" %}stopped\"{% else %}not stopped\"{% endif %} }{% endif %}"
+  loop: "{{ stop_lib_result.stdout_lines }}"
+  loop_control:
+    loop_var: line_json
+  when:
+   - "'No JVM found' not in stop_lib_result.stdout"
+
+- set_fact:
+    final_state: "stopped"
+  when: "'not stopped' not in state_value_json"
+
+- set_fact:
+    final_state: "not stopped"
+  when: "'not stopped' in state_value_json"
+
+- set_fact:
+    final_status: "KO"
+  when:
+   - stop_lib_result.rc != 0
+   - "'No JVM found' not in stop_lib_result.stdout"
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_component: "{{ libertybase_component }}"
+     set_results_operation: "{{ libertybase_operation }}"
+     set_results_role_name: "{{ libertybase_role_name }}"
+     set_results_result_name: "{{ libertybase_result_name }}"
+     set_results_item: "{{ libertybase_item }}"
+     set_results_state: "{{ final_state }}"
+     set_results_status: "{{ final_status }}"
+     set_results_value: "{% if 'No JVM found' in stop_lib_result.stdout %}\
+
+                           application server not found\
+
+                         {% else %}\
+
+                           [ {{ state_value_json[1:] }} ]\
+
+                         {% endif %}"
+
