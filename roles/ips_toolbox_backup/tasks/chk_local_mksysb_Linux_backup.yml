@@ -1,13 +1,5 @@
 ---
 
-###
-#### purpose: Check if the mksysb has been generated for less than some days (7 by default)
-####
-#### created by:    PERIN David For ITG/IPS/PPM02, 29/08/2018
-#### modifications: (name, date, purpose)
-####
-######
-
 - name: check local mksysb
   find:
     paths: "/apps/sys/back/"
