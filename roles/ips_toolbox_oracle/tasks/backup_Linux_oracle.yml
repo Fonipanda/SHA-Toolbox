@@ -1,0 +1,159 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - oracle_item != ""
+   msg: "oracle_item variable is missing"
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: stop play when option parameter does not fit toolbox version
+  assert:
+   that:
+     "{% if oracle_retention_backuporacle == \"BKP\" %}\
+
+        tbxversion.stdout_lines[0]|int >= (1921|int)\
+
+      {% endif %}"
+   msg: "No TSM backup before toolbox's version 19.2.1"
+
+- name: BackupOracle -s {{ oracle_item }} -t {{ oracle_type_backuporacle }} -i {{ oracle_level_backuporacle }} -r {{ oracle_retention_backuporacle }}
+  shell: /apps/toolboxes/sgbd/oracle/exploitation/backup/BackupOracle.ksh -s {{ oracle_item }} -t {{ oracle_type_backuporacle }} -i {{ oracle_level_backuporacle }} -r {{ oracle_retention_backuporacle }}
+  become: true
+  become_user: oracle
+  become_method: su
+  become_flags: "-l"
+  register: result_BackupOracle
+  failed_when: false
+  changed_when:
+    - "'Start' in result_BackupOracle.stdout"
+    - "'PHYSICAL STANDBY' not in result_BackupOracle.stdout"
+  
+- name: launch btsauve.ksh
+  shell: 
+   "{% if oracle_retention_backuporacle != \"BKP\" %}\
+
+       /apps/toolboxes/backup_restore/scripts/btsauve.ksh archive {{ oracle_item }}_{{ oracle_retention_backuporacle }}J\
+
+    {% else %}\
+
+       /apps/toolboxes/backup_restore/scripts/btsauve.ksh backup_rep {{ oracle_item }}_{{ oracle_retention_backuporacle }}\
+
+    {% endif %}"
+  when:
+    - result_BackupOracle.changed == True
+    - result_BackupOracle.rc == 0 or result_BackupOracle.rc == 3
+  register: result_btsauve
+  failed_when: false
+
+- name: set results output for oracle backup
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state: 
+     "{% if result_BackupOracle.rc == 0 and result_BackupOracle.changed == True %}\
+
+         {% if result_btsauve.rc == 0 %}\
+
+            backed up\
+
+         {% else %}\
+
+            not backed up\
+
+         {% endif %}\
+
+      {% elif result_BackupOracle.rc == 1 %}\
+
+         not backed up\
+
+      {% elif result_BackupOracle.rc == 2 %}\
+
+         not backed up\
+
+      {% elif result_BackupOracle.changed == False %}\
+
+         not backed up\
+
+      {% else %}\
+
+         {% if result_btsauve.rc == 0 %}\
+
+            not backed up\
+
+         {% else %}\
+
+            not backed up\
+
+         {% endif %}\
+
+      {% endif %}"
+    set_results_item: "{{ oracle_item }}"
+    set_results_value: 
+     "{% if result_BackupOracle.rc == 0 and result_BackupOracle.changed == True %}\
+
+         {% if result_btsauve.rc == 0 %}\
+
+            OK -- backed up\
+
+         {% else %}\
+
+            KO -- TSM error\
+
+         {% endif %}\
+
+      {% elif result_BackupOracle.rc == 1 %}
+         {{ result_BackupOracle.stdout | regex_search('([ (]+Error.*)') }}\
+
+      {% elif result_BackupOracle.rc == 2 %}\
+
+         KO -- FRA full\
+
+      {% elif result_BackupOracle.changed == False %}\
+
+         KO -- no backup performed
+      {% else %}\
+
+         {% if result_btsauve.rc == 0 %}\
+
+            KO -- No full backup performed\
+
+         {% else %}\
+
+            KO -- No full backup performed and TSM error\
+
+         {% endif %}\
+
+      {% endif %}"
+    set_results_component: "{{ oracle_component }}"
+    set_results_operation: "{{ oracle_operation }}"
+    set_results_role_name: "{{ oracle_role_name }}"
+    set_results_result_name: "{{ oracle_result_name }}"
+    set_results_status: 
+      "{% if result_BackupOracle.rc == 0 and result_BackupOracle.changed == True %}\
+
+          {% if result_btsauve.rc == 0 %}\
+
+             OK\
+
+          {% else %}\
+
+             KO\
+
+          {% endif %}\
+
+       {% elif result_BackupOracle.rc == 0 and result_BackupOracle.changed == False %}\
+
+          OK\
+
+       {% else %}\
+
+          KO\
+
+       {% endif %}"
+
