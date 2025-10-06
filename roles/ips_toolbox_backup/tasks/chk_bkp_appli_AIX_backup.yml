@@ -1,14 +1,5 @@
 ---
 
-###
-### playbook chk_bkp_appli.yml
-### purpose: Check if the applicative TSM Backup is conform
-###
-### created by:    PERIN David For ITG/IPS/PPM02, 31/05/2018
-### modifications: (name, date, purpose)
-#### NAVARRO Wilfried 07/03/2019 bugfix "banner" display
-#####
-
 - name: check backup appli
   script: check_backup_appli.ksh {{ backup_depth }}
   register: chk_bkp_appli
