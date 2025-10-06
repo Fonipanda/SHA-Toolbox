@@ -1,0 +1,97 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - system_lvname != ""
+   msg: "system_lvname variable is missing"
+
+- name: Check if lv {{ system_lvname }} is present
+  shell: lslv {{ system_lvname }}
+  register: islvpresent
+  changed_when: false
+  failed_when: false
+
+- name: remove lv {{ system_lvname }}
+  shell: /apps/toolboxes/exploit/bin/exploit_remove-fs.ksh lv={{ system_lvname }}
+  register: removefsresult
+  changed_when: removefsresult.rc == 0
+  when:
+    - islvpresent.rc == 0
+  failed_when: false
+
+- name: Check if lv {{ system_lvname }} is removed
+  shell: lslv {{ system_lvname }}
+  register: islvremove
+  changed_when: false
+  when:
+    - islvpresent.rc == 0
+    - removefsresult.rc == 0
+  failed_when: false
+
+- name: Flush for Nimsoft
+  shell: /apps/nimsoft/custo/scripts/exploitation/FSFlush.ksh
+  register: flushfs
+  changed_when: false
+  when:
+    - islvremove.rc is defined
+    - islvremove.rc != 0
+  failed_when: false
+
+- name: set results for remove lv
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state:
+     "{% if islvpresent.rc == 0 %}\
+
+         {% if islvremove.rc is defined and islvremove.rc != 0 %}\
+
+            removed\
+
+         {% else %}\
+
+            not removed\
+
+         {% endif %}\
+
+      {% else %}\
+
+         removed\
+
+      {% endif %}"
+    set_results_item: "{{ system_lvname }}"
+    set_results_component: "{{ system_component }}"
+    set_results_operation: "{{ system_operation }}"
+    set_results_role_name: "{{ system_role_name }}"
+    set_results_result_name: "{{ system_result_name }}"
+    set_results_value: 
+     "{% if removefsresult.rc is defined %}\
+
+         {% if removefsresult.rc != 0 %}\
+
+            {{ removefsresult.stdout.split('-E- ')[1].split('\u001b[0m')[0] }}\
+
+         {% endif %}\
+
+      {% endif %}"
+    set_results_status: 
+     "{% if removefsresult.rc is defined %}\
+
+         {% if removefsresult.rc != 0 %}\
+
+            KO\
+
+         {% else %}\
+
+            OK\
+
+         {% endif %}\
+
+      {% else %}\
+
+         OK\
+
+      {% endif %}"
+
