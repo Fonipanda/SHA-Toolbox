@@ -1,0 +1,80 @@
+---
+
+- name: Begin generate and send toolboxes' reports
+  block:
+
+  - name: File to check
+    set_fact:
+      filename: /apps/toolboxes/exploit/GouvBnpp/logs/{{ lookup('pipe', 'date +%d') }}/Report_ToolboxesStats_{{ lookup('pipe', 'date +%Y%m%d') }}_{{ inventory_hostname }}.csv
+
+  - name: Check file presence
+    stat:
+      path: "{{ filename }}"
+    register: checkfilename1
+
+  - name: generates reports
+    shell: /apps/toolboxes/exploit/GouvBnpp/Generate_CsvReport.ksh
+    changed_when: False
+
+  - name: Check file generation
+    stat:
+      path: "{{ filename }}"
+    register: checkfilename2
+    changed_when:
+      - (checkfilename1.stat.exists == False and checkfilename2.stat.exists == True) or (checkfilename1.stat.exists == True and checkfilename1.stat.mtime != checkfilename2.stat.mtime)
+
+  - name: send reports
+    shell: /apps/toolboxes/exploit/GouvBnpp/Send_CsvReport.ksh
+    register: sendReports
+    when: checkfilename2.changed == True
+    failed_when:  False
+    changed_when:
+      - sendReports.rc == 0 and "Unknown curl error" not in sendReports.stdout and "ftp:" not in sendReports.stderr
+
+  - name: working update
+    set_fact:
+      toolboxes_status: "OK"
+      toolboxes_state: "updated"
+      toolboxes_value: "reports generated and sent"
+    when:
+      - checkfilename2.changed == True
+      - sendReports.changed == True
+
+  - name: not working reports generation
+    set_fact:
+      toolboxes_status: "KO"
+      toolboxes_state: "not updated"
+      toolboxes_value: "reports not generated"
+    when:
+      - checkfilename2.changed == False
+
+  - name: not working reports sending
+    set_fact:
+      toolboxes_status: "KO"
+      toolboxes_state: "not updated"
+      toolboxes_value: "reports not sent"
+    when:
+      - checkfilename2.changed == True
+      - sendReports.changed == False
+
+  rescue:
+    - name: ansible failure
+      set_fact:
+        toolboxes_status: "KO"
+        toolboxes_state: "not updated"
+        toolboxes_value: ""
+
+  always:
+  - name: set results output
+    include_role:
+      name: ips_toolbox_set_results
+    vars:
+       set_results_item: ""
+       set_results_component: "{{ toolboxes_component }}"
+       set_results_operation: "{{ toolboxes_operation }}"
+       set_results_role_name: "{{ toolboxes_role_name }}"
+       set_results_result_name: "{{ toolboxes_result_name }}"
+       set_results_state: "{{ toolboxes_state }}"
+       set_results_status: "{{ toolboxes_status }}"
+       set_results_value: "{{ toolboxes_value }}"
+
