@@ -1,0 +1,31 @@
+---
+
+- name: check vormetric
+  vormetric:
+    action: check
+  ignore_errors: yes
+  register: result
+
+- name: set results
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "info"
+    set_results_item: ""
+    set_results_value: "{{ result.check | default(result.msg) }}"
+    set_results_component: "{{ vormetric_component }}"
+    set_results_operation: "{{ vormetric_operation }}"
+    set_results_role_name: "{{ vormetric_role_name }}"
+    set_results_result_name: "{{ vormetric_result_name }}"
+    set_results_status:
+      "{% if result.failed == False %}\
+
+        OK\
+
+       {% else %}\
+
+        KO\
+
+       {% endif %}"
+
+
