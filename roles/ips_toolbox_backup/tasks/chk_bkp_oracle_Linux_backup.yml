@@ -1,17 +1,5 @@
 ---
 
-###
-### playbook chk_bkp_oracle.yml
-### purpose: Check if the Oracle backup is conform
-###
-### created by:    Wilfried NAVARRO For ITG/IPS/PPM02, 31/05/2018
-### modifications: David PERIN      04/06/2019 : Add option to refresh oracle backup state
-### modifications: Wilfried NAVARRO 31/10/2019 : Add copy verif_backup.ksh for 19.2.1 toolbox' version
-### modifications: Wilfried NAVARRO 14/11/2019 : Add refresh_instance parameter
-### modifications: David PERIN      30/03/2020 : Change refresh_instance parameter name (--> backup_instance)
-###
-#####
-
 - name: stop play when a mandatory variable is missing
   assert:
    that: backup_instance != ""
