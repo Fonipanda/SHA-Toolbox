@@ -1,0 +1,14 @@
+---
+  
+- Operating_System: "{{ ansible_system }}"
+- Release: "{{ ansible_lsb.description }}"
+- System_Uptime: "{{ facter_system_uptime.uptime }}"
+- Number_Of_Processors: "{{ facter_physicalprocessorcount }}"
+- Processor_Type: "{{ facter_processor0 }}"
+- Processor_Clock_Speed: "---"
+- Memory_Size: "{{ facter_memorysize }}"
+- Free_Memory_Size: "---"
+
+
+
+
