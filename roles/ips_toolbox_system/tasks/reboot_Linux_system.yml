@@ -1,0 +1,133 @@
+---
+
+- name: check uptime variable value between 3 and 30
+  shell: uptime
+  changed_when: false
+  failed_when: ((system_uptime_max | int > 30 | int) or (system_uptime_max | int < 3 | int))
+
+- name: Reboot system
+  shell: sleep 10 && /sbin/shutdown -r now
+  async: "{{ system_stop_timeout }}"
+  poll: 0
+  ignore_errors: true
+
+- name: Wait for system to stop
+  local_action:
+    module: wait_for
+    host: "{{ inventory_hostname }}"
+    port: 22
+    state: stopped
+    delay: 0
+    timeout: "{{ system_stop_timeout }}"
+    sleep: 1
+    
+- name: Wait for system to become reachable again
+  wait_for_connection:
+     delay: 1
+     timeout: "{{ system_restart_timeout }}"
+     sleep: 5
+
+- name: Uptime first check - part 1
+  shell: uptime | awk -F"," '{print$1}' | awk -F" " '{print$3" "$4}' | sed -e 's/:/h/'
+  changed_when: false
+  register: uptime_value
+
+- name: Uptime first check - part 2
+  shell: uptime | grep -w min | grep -v day
+  failed_when: false
+  changed_when: false
+  register: uptime_chk_scd
+
+- name: Uptime first check - part 3
+  shell: uptime | grep -w min | grep -v day | awk -F" " '{print$3}'
+  changed_when: false
+  register: uptime_chk
+  when: uptime_chk_scd.rc == 0
+
+- name: Wait for system to stop - last chance
+  local_action:
+    module: wait_for
+    host: "{{ inventory_hostname }}"
+    port: 22
+    state: stopped
+    delay: 0
+    timeout: "{{ system_stop_timeout }}"
+    sleep: 1
+  when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
+
+- name: Wait for system to become reachable again - last chance
+  wait_for_connection:
+     delay: 1
+     timeout: "{{ system_restart_timeout }}"
+     sleep: 5
+  when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
+
+- name: Uptime second check - part 1
+  shell: uptime | awk -F"," '{print$1}' | awk -F" " '{print$3" "$4}' | sed -e 's/:/h/'
+  changed_when: false
+  register: uptime
+  when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
+
+- name: Uptime second check - part 2
+  shell: uptime | grep -w min | grep -v day
+  failed_when: false
+  changed_when: false
+  register: uptime_chk_scd_last
+  when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
+
+- name: Uptime second check - part 3
+  shell: uptime | grep -w min | grep -v day | awk -F" " '{print$3}'
+  changed_when: false
+  register: uptime_chk_last
+  when: 
+   - uptime_chk_scd_last.rc is defined 
+   - uptime_chk_scd_last.rc == 0
+
+- name: fail if uptime is not conform
+  debug:
+    var: uptime_value
+  failed_when: ((uptime_chk_last.stdout_lines[0]) | int > (uptime_max | int)) or  (uptime_chk_scd_last.rc != 0)
+  when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
+
+- name: set result output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{% if ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int <= (system_uptime_max | int))) %}\
+
+                         rebooted\
+
+                         {% else %}\
+
+                            {% if uptime.stdout is defined %}\
+
+                               rebooted\
+
+                            {% else %}\
+
+                               error\
+
+                            {% endif %}\
+
+                         {% endif %}"
+    set_results_item: ""
+    set_results_value:  "{% if ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int <= (system_uptime_max | int))) %}\
+
+                         The server was rebooted  {{ uptime_value.stdout }} ago\
+
+                         {% else %}\
+
+                            {% if uptime.stdout is defined %}\
+
+                               The server was rebooted  {{ uptime.stdout }} ago\
+
+                            {% endif %}\
+
+                         {% endif %}"
+    set_results_component: "{{ system_component }}"
+    set_results_operation: "{{ system_operation }}"
+    set_results_role_name: "{{ system_role_name }}"
+    set_results_result_name: "{{ system_result_name }}"
+    set_results_status: "OK"
+
+
