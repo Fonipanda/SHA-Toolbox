@@ -1,14 +1,5 @@
 ---
 
-###
-#### playbook chk_bkp_sys.yml
-#### purpose: Check if the system TSM Backup is conform
-####
-#### created by:    PERIN David For ITG/IPS/PPM02, 31/05/2018
-#### modifications: (name, date, purpose)
-#### NAVARRO Wilfried 07/03/2019 bugfix "banner" display
-######
-
 - name: Check tsm installed
   find:
     paths: "/opt/tivoli/tsm/client/ba/bin"
