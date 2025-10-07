@@ -1,0 +1,44 @@
+# templates/surveys/aap2_survey.json
+# Configuration du Survey AAP2 pour les Job Templates
+{
+  "name": "SHA Application Environment Survey",
+  "description": "Survey pour la construction d'environnement applicatif SHA",
+  "spec": [
+    {
+      "question_name": "Hostname du serveur cible",
+      "question_description": "Nom d'hôte ou FQDN du serveur sur lequel déployer l'environnement applicatif",
+      "required": true,
+      "type": "text",
+      "variable": "Hostname",
+      "min": 1,
+      "max": 253,
+      "default": "",
+      "choices": "",
+      "new_question": true
+    },
+    {
+      "question_name": "Code AP (Application)",
+      "question_description": "Code applicatif sur 5 positions numériques (ex: 12345)",
+      "required": true,
+      "type": "text",
+      "variable": "CodeAP",
+      "min": 5,
+      "max": 5,
+      "default": "",
+      "choices": "",
+      "new_question": true
+    },
+    {
+      "question_name": "Code5car (Pentagramme)",
+      "question_description": "Code5car sur 5 caractères alphanumériques (ex: APP01)",
+      "required": true,
+      "type": "text",
+      "variable": "code5car",
+      "min": 5,
+      "max": 5,
+      "default": "",
+      "choices": "",
+      "new_question": true
+    }
+  ]
+}
