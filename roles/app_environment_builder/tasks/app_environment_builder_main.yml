@@ -1,0 +1,39 @@
+# roles/app_environment_builder/tasks/main.yml
+# Rôle principal pour la construction de l'environnement applicatif
+---
+- name: "Initialisation du rôle app_environment_builder"
+  ansible.builtin.debug:
+    msg: "Début de la construction de l'environnement applicatif pour {{ target_codeap }}-{{ target_code5car }}"
+
+- name: "Validation des variables obligatoires"
+  ansible.builtin.assert:
+    that:
+      - target_codeap is defined
+      - target_code5car is defined
+      - target_codeap | length == 5
+      - target_code5car | length == 5
+    fail_msg: "CodeAP et code5car doivent être définis et contenir exactement 5 caractères"
+
+- name: "Définition des variables locales"
+  ansible.builtin.set_fact:
+    app_dir_name: "{{ target_codeap }}-{{ target_code5car }}"
+    app_base_path: "/applis/{{ target_codeap }}-{{ target_code5car }}"
+    app_logs_path: "/applis/logs/{{ target_codeap }}-{{ target_code5car }}"
+    app_delivery_path: "/applis/delivery/{{ target_codeap }}-{{ target_code5car }}"
+    
+- name: "Inclusion des tâches de détection OS"
+  ansible.builtin.include_tasks: detect_os.yml
+  tags: [detection]
+
+- name: "Inclusion des tâches de détection middleware"  
+  ansible.builtin.include_tasks: detect_middleware.yml
+  tags: [detection]
+
+- name: "Inclusion des tâches de création de structure"
+  ansible.builtin.include_tasks: create_app_structure.yml
+  tags: [filesystem]
+
+- name: "Configuration spécifique par OS"
+  ansible.builtin.include_tasks: "{{ ansible_os_family | lower }}_setup.yml"
+  when: ansible_os_family in ['AIX', 'RedHat', 'Windows']
+  tags: [os_specific]

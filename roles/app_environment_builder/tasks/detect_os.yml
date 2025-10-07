@@ -1,0 +1,157 @@
+# roles/app_environment_builder/tasks/detect_os.yml
+# Détection automatique de l'OS et collecte des informations système
+---
+- name: "Collecte des facts système étendus"
+  ansible.builtin.setup:
+    gather_subset:
+      - "all"
+  tags: [facts]
+
+- name: "Détection spécifique AIX"
+  block:
+    - name: "Collecte des informations AIX"
+      ansible.builtin.shell: |
+        oslevel -s
+      register: aix_oslevel
+      changed_when: false
+      
+    - name: "Version du kernel AIX"
+      ansible.builtin.shell: |
+        uname -v
+      register: aix_kernel
+      changed_when: false
+      
+    - name: "Informations hardware AIX"
+      ansible.builtin.shell: |
+        lscfg -vp | head -20
+      register: aix_hardware
+      changed_when: false
+      failed_when: false
+      
+    - name: "Configuration des volumes groups AIX"
+      ansible.builtin.shell: |
+        lsvg
+      register: aix_volume_groups
+      changed_when: false
+      failed_when: false
+      
+  when: ansible_os_family == "AIX"
+  tags: [aix]
+
+- name: "Détection spécifique RHEL/Linux"
+  block:
+    - name: "Version RHEL détaillée"
+      ansible.builtin.shell: |
+        cat /etc/redhat-release
+      register: rhel_version
+      changed_when: false
+      when: ansible_distribution == "RedHat"
+      
+    - name: "Informations sur les partitions"
+      ansible.builtin.shell: |
+        lsblk -f
+      register: linux_partitions
+      changed_when: false
+      failed_when: false
+      
+    - name: "Services systemd actifs"
+      ansible.builtin.shell: |
+        systemctl list-units --type=service --state=active | head -20
+      register: linux_services
+      changed_when: false
+      failed_when: false
+      
+    - name: "Packages installés critiques"
+      ansible.builtin.shell: |
+        rpm -qa | grep -E "(websphere|oracle|java|httpd)" | head -10
+      register: linux_critical_packages
+      changed_when: false
+      failed_when: false
+      
+  when: ansible_os_family == "RedHat"
+  tags: [rhel]
+
+- name: "Détection spécifique Windows"
+  block:
+    - name: "Version Windows détaillée"
+      ansible.windows.win_shell: |
+        Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, WindowsBuildLabEx
+      register: windows_version
+      changed_when: false
+      
+    - name: "Services Windows critiques"
+      ansible.windows.win_shell: |
+        Get-Service | Where-Object {$_.Status -eq "Running" -and $_.Name -match "(was|ihs|oracle|sql)"} | Select-Object Name, Status
+      register: windows_services
+      changed_when: false
+      failed_when: false
+      
+    - name: "Programmes installés"
+      ansible.windows.win_shell: |
+        Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object {$_.DisplayName -match "(WebSphere|Oracle|IBM|Microsoft SQL)"} | Select-Object DisplayName, DisplayVersion
+      register: windows_programs
+      changed_when: false
+      failed_when: false
+      
+  when: ansible_os_family == "Windows"
+  tags: [windows]
+
+- name: "Vérification de l'espace disque"
+  ansible.builtin.shell: |
+    df -h | grep -E "(vg_apps|applis)"
+  register: disk_space_check
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Vérification de l'espace disque Windows"
+  ansible.windows.win_shell: |
+    Get-WmiObject -Class Win32_LogicalDisk | Select-Object DeviceID, Size, FreeSpace
+  register: windows_disk_space
+  changed_when: false
+  when: ansible_os_family == "Windows"
+
+- name: "Consolidation des informations OS détectées"
+  ansible.builtin.set_fact:
+    detected_os_info:
+      family: "{{ ansible_os_family }}"
+      distribution: "{{ ansible_distribution | default('Unknown') }}"
+      version: "{{ ansible_distribution_version | default('Unknown') }}"
+      architecture: "{{ ansible_architecture }}"
+      hostname: "{{ ansible_hostname }}"
+      fqdn: "{{ ansible_fqdn }}"
+      kernel: "{{ ansible_kernel }}"
+      memory_mb: "{{ ansible_memtotal_mb }}"
+      cpu_cores: "{{ ansible_processor_vcpus }}"
+      # Informations spécifiques selon l'OS
+      specific_info: "{{ 
+        {
+          'aix_oslevel': aix_oslevel.stdout | default('N/A'),
+          'aix_kernel': aix_kernel.stdout | default('N/A'),
+          'aix_volume_groups': aix_volume_groups.stdout_lines | default([]),
+          'rhel_version': rhel_version.stdout | default('N/A'),
+          'linux_services': linux_services.stdout_lines | default([]),
+          'linux_packages': linux_critical_packages.stdout_lines | default([]),
+          'windows_version': windows_version.stdout | default('N/A'),
+          'windows_services': windows_services.stdout_lines | default([]),
+          'windows_programs': windows_programs.stdout_lines | default([])
+        } 
+      }}"
+      disk_info: "{{ 
+        disk_space_check.stdout_lines | default([]) if ansible_os_family != 'Windows' 
+        else windows_disk_space.stdout_lines | default([]) 
+      }}"
+      detection_timestamp: "{{ ansible_date_time.iso8601 }}"
+      
+- name: "Affichage des informations OS détectées"
+  ansible.builtin.debug:
+    var: detected_os_info
+  tags: [debug]
+
+- name: "Enregistrement des facts OS pour les autres rôles"
+  ansible.builtin.set_fact:
+    cacheable: true
+    os_detection_completed: true
+    os_family_detected: "{{ detected_os_info.family }}"
+    os_distribution: "{{ detected_os_info.distribution }}"
+    os_version: "{{ detected_os_info.version }}"
