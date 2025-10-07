@@ -1,0 +1,64 @@
+#!/bin/ksh
+
+#set -x
+
+# --- Get the current path of the status script --- #
+script_current_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+
+# --- Get the ihs name --- #
+ihs_name=$(echo $script_current_dir | grep "sw-" | awk -F "/" '{print $NF}' | grep "sw-" )
+if [ "${ihs_name}" == "" ];then
+echo "Wrong IHS directory or directory does not respect norms"
+  exit 1
+fi
+
+# --- Convert httpd.conf to unix --- #
+dos2unix $script_current_dir/conf/httpd.conf 1>/dev/null 2>&1
+
+# --- Check the ihs pid --- #
+ihs_pidfile=$(grep -w ^PidFile $script_current_dir/conf/httpd.conf | awk '{print $2}')
+if [ -f ${ihs_pidfile} ];then
+  ihs_pid=$(cat ${ihs_pidfile} 2>/dev/null)
+  if [[ $? != 0 ]];then
+    echo "Error: Unable to read ${ihs_pidfile} , check file permissions"
+    exit 1
+  fi
+  # --- Check if the ihs pid is running --- #
+  ps -f -p ${ihs_pid} 1>/dev/null 2>&1
+  if [[ $? != 0 ]];then
+    echo "Error: No process running with the pid found in ${ihs_pidfile}"
+    echo "Deleting ${ihs_pidfile} file..."
+    rm -f ${ihs_pidfile}
+    if [[ $? != 0 ]];then
+      echo "Error: Unable to delete ${ihs_pidfile} file, check file permissions"
+      exit 1
+    fi
+    exit 1
+  else
+    # --- Check if the ihs pid is linked to the ihs name --- #
+    ps -f -p ${ihs_pid} | grep ${ihs_name} 1>/dev/null 2>&1
+    if [[ $? == 0 ]];then
+      echo "The IHS ${ihs_name} is STARTED"
+      exit 0
+    else
+      echo "Error: The process with the pid found in ${ihs_pidfile} is not linked to the IHS ${ihs_name} process"
+      echo "Deleting ${ihs_pidfile} file..."
+      rm -f ${ihs_pidfile}
+      if [[ $? != 0 ]];then
+        echo "Error: Unable to delete ${ihs_pidfile} file, check file permissions"
+        exit 1
+      fi
+      exit 1
+    fi
+  fi
+else
+  ps -ef | grep ${ihs_name} | grep -v grep | grep httpd 1>/dev/null 2>&1
+  if [[ $? != 0 ]];then
+    echo "The IHS ${ihs_name} is STOPPED"
+    exit 0
+  else
+    echo "Error: There is process for IHS ${ihs_name} but no pidfile, check manually"
+    exit 1
+  fi
+fi
+
