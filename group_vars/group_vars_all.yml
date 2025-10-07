@@ -1,0 +1,251 @@
+# group_vars/all.yml
+# Variables globales pour tous les environnements SHA
+# Réutilise et étend les variables SHA-Toolbox existantes
+---
+# Variables héritées de SHA-Toolbox
+ansible_become_method: sesu
+ansible_become_flags: "-"
+
+# Variables globales du projet SHA Application Environment
+project_name: "SHA Application Environment Builder"
+project_version: "1.0"
+sha_toolbox_version: "latest"
+
+# Variables de conformité BP21
+bp21_compliance: true
+it_rules_compliance: true
+toolbox_integration: true
+
+# Répertoires standards selon BP21
+standard_paths:
+  apps_base: "/apps"
+  applis_base: "/applis"
+  toolboxes_base: "/apps/toolboxes"
+  exploit_base: "/apps/exploit"
+  
+# Volume groupes standards
+volume_groups:
+  root: "rootvg"
+  apps: "vg_apps"
+  
+# Tailles par défaut des filesystems (conformément aux normes BP21)
+default_filesystem_sizes:
+  app_main: "1G"
+  app_transfer_in: "1G"
+  app_transfer_out: "1G"
+  app_tmp: "1G"
+  app_archives: "1G"
+  app_logs: "1G"
+  app_delivery: "2G"
+  shared: "1G"
+  shared_tmp: "1G"
+  shared_archives: "1G"
+  shared_logs: "1G"
+  shared_delivery: "2G"
+
+# Utilisateurs et groupes standards par middleware
+middleware_users:
+  websphere:
+    user: "was"
+    group: "was"
+    home: "/home/was"
+    shell: "/bin/ksh"
+  oracle:
+    user: "oracle"
+    group: "dba"
+    home: "/home/oracle"
+    shell: "/bin/ksh"
+  mq:
+    user: "mqm"
+    group: "mqm"
+    home: "/var/mqm"
+    shell: "/bin/ksh"
+  cft:
+    user: "cft"
+    group: "cft"
+    home: "/home/cft"
+    shell: "/bin/ksh"
+
+# Permissions standards
+standard_permissions:
+  directories:
+    applis: "0755"
+    logs: "0755"
+    scripts: "0755"
+    conf: "0750"
+    tmp: "0777"
+    transfer: "0755"
+  files:
+    scripts: "0755"
+    configs: "0644"
+    logs: "0644"
+
+# Configuration de reporting
+reporting:
+  enabled: true
+  format: "json"
+  retention_days: 90
+  base_dir: "/tmp/ansible_reports"
+  include_facts: true
+  include_performance: true
+  include_compliance: true
+
+# Configuration de sauvegarde
+backup:
+  enabled: true
+  retention_prod: "30d"
+  retention_isoprod: "14d"
+  retention_horsprod: "7d"
+  base_dir: "/tmp/ansible_backups"
+  compress: true
+  
+# Configuration de logging Ansible
+ansible_logging:
+  enabled: true
+  level: "INFO"
+  format: "json"
+  retention: 30
+  max_size: "100MB"
+
+# Timeouts et retry
+execution_timeouts:
+  default: 300
+  filesystem_creation: 600
+  middleware_config: 900
+  compliance_check: 180
+  
+retry_settings:
+  max_attempts: 3
+  delay: 30
+  
+# Variables d'environnement spécifiques
+environment_defaults:
+  prod:
+    validation_level: "strict"
+    backup_required: true
+    approval_required: true
+    rollback_enabled: true
+  isoprod:
+    validation_level: "medium"
+    backup_required: true
+    approval_required: false
+    rollback_enabled: true
+  horsprod:
+    validation_level: "low"
+    backup_required: false
+    approval_required: false
+    rollback_enabled: false
+
+# Intégration avec les rôles SHA-Toolbox existants
+sha_toolbox_roles:
+  system: "ips_toolbox_system"
+  appli: "ips_toolbox_appli"
+  backup: "ips_toolbox_backup"
+  toolboxes: "ips_toolbox_toolboxes"
+  wasnd: "ips_toolbox_wasnd"
+  wasbase: "ips_toolbox_wasbase"
+  libertycore: "ips_toolbox_libertycore"
+  libertybase: "ips_toolbox_libertybase"
+  webserver: "ips_toolbox_webserver"
+  oracle: "ips_toolbox_oracle"
+  sqlserver: "ips_toolbox_sqlserver"
+  mq: "ips_toolbox_mq"
+  cft: "ips_toolbox_cft"
+  illumio: "ips_toolbox_illumio"
+  tsm: "ips_toolbox_tsm"
+  services: "ips_toolbox_services"
+
+# Patterns de détection des middlewares
+middleware_detection_patterns:
+  websphere_wasnd:
+    paths: ["/opt/IBM/WebSphere/AppServer", "/usr/IBM/WebSphere/AppServer"]
+    files: ["bin/startManager.sh", "bin/startNode.sh"]
+    processes: ["dmgr", "nodeagent"]
+  websphere_wasbase:
+    paths: ["/opt/IBM/WebSphere/AppServer", "/usr/IBM/WebSphere/AppServer"]
+    files: ["bin/startServer.sh"]
+    processes: ["server1"]
+  liberty_core:
+    paths: ["/opt/IBM/WebSphere/Liberty", "/usr/IBM/WebSphere/Liberty"]
+    files: ["bin/server"]
+    processes: ["java.*liberty"]
+  liberty_base:
+    paths: ["/opt/IBM/WebSphere/Liberty", "/usr/IBM/WebSphere/Liberty"]
+    files: ["bin/server"]
+    processes: ["java.*liberty"]
+  ihs:
+    paths: ["/opt/IBM/HTTPServer", "/usr/IBM/HTTPServer"]
+    files: ["bin/httpd"]
+    processes: ["httpd"]
+  oracle:
+    paths: ["/u01/app/oracle", "/opt/oracle"]
+    files: ["/etc/oratab"]
+    processes: ["ora_pmon", "ora_smon"]
+  sqlserver:
+    services: ["mssql-server"]
+    processes: ["sqlservr"]
+  mq:
+    paths: ["/opt/mqm", "/usr/mqm"]
+    files: ["bin/dspmq"]
+    processes: ["amqzxma0", "runmqchi"]
+  cft:
+    paths: ["/opt/axway", "/usr/cft"]
+    processes: ["cftmain", "cfttcp"]
+  illumio:
+    services: ["illumio-ven"]
+    processes: ["illumio-agent"]
+  tsm:
+    paths: ["/opt/tivoli/tsm/client", "/usr/tivoli/tsm/client"]
+    files: ["ba/bin/dsmc"]
+
+# Configuration des notifications
+notifications:
+  enabled: true
+  channels:
+    teams: "webhook_teams_sha"
+    email: "smtp_sha"
+    slack: "webhook_slack_sha"
+  events:
+    - "job_start"
+    - "job_success" 
+    - "job_failure"
+    - "approval_required"
+
+# Variables de sécurité
+security:
+  enforce_sudo: true
+  log_commands: true
+  require_tty: false
+  secure_path: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  
+# Configuration des facts caching
+fact_caching:
+  enabled: true
+  timeout: 3600
+  backend: "jsonfile"
+  connection: "/tmp/ansible_facts_cache"
+
+# Variables de validation
+validation:
+  codeap_pattern: "^[0-9]{5}$"
+  code5car_pattern: "^[A-Za-z0-9]{5}$"
+  hostname_pattern: "^[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]?$"
+  
+# Exclusions pour les filesystems rootvg (conformité BP21)
+rootvg_exclusions:
+  - "/tmp"
+  - "/var/tmp"
+  - "/home"
+  - "/opt"
+  
+# Applications métier autorisées sur rootvg (exceptions BP21)
+rootvg_exceptions:
+  - "/etc/local"
+  - "/opt/tivoli/tsm/client/ba/bin/dsm.sys"
+
+# Configuration par défaut des services
+default_services:
+  enable_at_boot: true
+  restart_on_failure: true
+  timeout_start: 300
+  timeout_stop: 120
