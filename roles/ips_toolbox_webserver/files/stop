@@ -1,0 +1,99 @@
+#!/bin/ksh
+
+#set -x
+
+# --- Get the current path of the stop script --- #
+script_current_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+
+# --- Get the ihs name --- #
+ihs_name=$(echo $script_current_dir | grep "sw-" | awk -F "/" '{print $NF}' | grep "sw-" )
+if [ "${ihs_name}" == "" ];then
+echo "Wrong IHS directory or directory does not respect norms"
+  exit 1
+fi
+
+# --- Convert httpd.conf to unix --- #
+dos2unix $script_current_dir/conf/httpd.conf 1>/dev/null 2>&1
+
+# --- Check the ihs pid --- #
+ihs_pidfile=$(grep -w ^PidFile $script_current_dir/conf/httpd.conf | awk '{print $2}')
+if [ -f ${ihs_pidfile} ];then
+  ihs_pid=$(cat ${ihs_pidfile} 2>/dev/null)
+  if [[ $? != 0 ]];then
+    echo "Error: Unable to read ${ihs_pidfile} , check file permissions"
+    exit 1
+  fi
+  # --- Check if the ihs pid is running --- #
+  ps -f -p ${ihs_pid} 1>/dev/null 2>&1
+  if [[ $? != 0 ]];then
+    echo "No process running with pid ${ihs_pid}"
+    echo "Deleting ${ihs_pidfile} file..."
+    rm -f ${ihs_pidfile}
+    if [[ $? != 0 ]];then
+      echo "Error: Unable to delete ${ihs_pidfile} file, check file permissions"
+      exit 1
+    fi
+  else
+    # --- Check if the ihs pid is linked to the ihs name --- #
+    ps -f -p ${ihs_pid} | grep ${ihs_name} 1>/dev/null 2>&1
+    if [[ $? != 0 ]];then
+      echo "The process with the pid found in ${ihs_pidfile} is not linked to the IHS ${ihs_name} process"
+      echo "Deleting ${ihs_pidfile} file..."
+      rm -f ${ihs_pidfile}
+      if [[ $? != 0 ]];then
+        echo "Error: Unable to delete ${ihs_pidfile} file, check file permissions"
+        exit 1
+      fi
+    else
+      # --- Kill ihs pid --- #
+      echo "Killing process..."
+      kill -TERM ${ihs_pid} 2>/dev/null
+      if [[ $? != 0 ]];then
+        echo "Error: Unable to kill process ${ihs_pid}, check user permissions"
+        exit 1
+      else
+        # --- Check there is no remaining process linked to ihs --- #
+        sleep 3
+        ps -ef | grep ${ihs_name} | grep -v grep | grep httpd 1>/dev/null 2>&1
+        if [[ $? != 0 ]];then
+          echo "IHS ${ihs_name} is stopped"
+          exit 0
+        else
+          echo "Error: There is still remaining processes for IHS ${ihs_name}, check manually"
+          exit 1
+        fi
+      fi
+    fi
+  fi
+fi
+
+# --- Check processes linked to ihs if there is no ihs pid file --- #
+echo "Checking process linked to ${ihs_name}..."
+ps -ef | grep ${ihs_name} | grep -v grep | grep httpd 1>/dev/null 2>&1
+if [[ $? != 0 ]];then
+  echo "No process found."
+  echo "IHS ${ihs_name} already stopped"
+  exit 0
+else
+  # --- Kill ihs processes --- #
+  echo "Process for ${ihs_name} was found"
+  echo "Killing process..."
+  for ihs_detect_pid in $(ps -ef | grep ${ihs_name} | grep -v grep | grep httpd | awk '{print $2}')
+  do
+    kill -TERM ${ihs_detect_pid} 2>/dev/null
+    if [[ $? != 0 ]];then
+      echo "Error: Unable to kill process ${ihs_detect_pid}, check user permissions"
+      exit 1
+    fi
+  done
+  sleep 3
+  ps -ef | grep ${ihs_name} | grep -v grep | grep httpd 1>/dev/null 2>&1
+  if [[ $? != 0 ]];then
+    echo "IHS ${ihs_name} is stopped"
+    exit 0
+  else
+    echo "Error: There is still remaining process for IHS ${ihs_name} not linked to a pidfile, check manually"
+    exit 1
+  fi
+fi
+
