@@ -1,0 +1,30 @@
+#!/bin/ksh
+
+#set -x
+
+# --- initialize ihs status output --- #
+ihs_start_all=/tmp/ihs_start.txt
+ihs_list=/tmp/ihs_list.lst
+> $ihs_start_all
+
+# --- Get ihs dir_name list --- #
+find /applis/*/ihs/ -type d -name sw* > $ihs_list
+
+# ---  start IHS  --- #
+
+if [ -s /tmp/ihs_list.lst ];then
+  for ihs_item in $(cat $ihs_list);do
+    ihs_name=$(echo $ihs_item | awk -F '/' '{print$5}')
+    if [ -f /tmp/ihs_ref_status_stopped_${ihs_name} ];then
+      echo "The IHS ${ihs_name} referenced stopped" >> $ihs_start_all
+    else
+      cd $ihs_item
+      ./start 2>/dev/null >> $ihs_start_all
+    fi
+  done
+else
+  echo "No ihs found" > $ihs_start_all
+fi
+
+cat $ihs_start_all
+
