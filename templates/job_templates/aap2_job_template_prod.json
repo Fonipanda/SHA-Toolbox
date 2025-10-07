@@ -1,0 +1,134 @@
+# templates/job_templates/aap2_job_template_prod.json
+# Configuration du Job Template AAP2 pour l'environnement PRODUCTION
+{
+  "name": "SHA-ApplicationEnv-PROD",
+  "description": "Construction automatisée d'environnement applicatif SHA en PRODUCTION",
+  "job_type": "run",
+  "inventory": "SHA-PROD-Inventory",
+  "project": "SHA-Application-Environment",
+  "playbook": "main_playbook_prod.yml",
+  "scm_branch": "main",
+  "credential": "SHA-PROD-Machine-Credential",
+  "vault_credential": "SHA-Vault-Credential",
+  "execution_environment": "SHA-EE-Production",
+  "forks": 1,
+  "limit": "{{ Hostname }}",
+  "verbosity": 0,
+  "extra_vars": {
+    "environment_type": "PROD",
+    "validation_level": "strict",
+    "enable_rollback": true,
+    "backup_retention": "30d",
+    "compliance_check": true
+  },
+  "job_tags": "all",
+  "skip_tags": "debug,experimental",
+  "start_at_task": "",
+  "timeout": 7200,
+  "use_fact_cache": true,
+  "host_config_key": "",
+  "ask_scm_branch_on_launch": false,
+  "ask_diff_mode_on_launch": false,
+  "ask_variables_on_launch": false,
+  "ask_limit_on_launch": true,
+  "ask_tags_on_launch": false,
+  "ask_skip_tags_on_launch": false,
+  "ask_job_type_on_launch": false,
+  "ask_verbosity_on_launch": false,
+  "ask_inventory_on_launch": false,
+  "ask_credential_on_launch": false,
+  "survey_enabled": true,
+  "become_enabled": true,
+  "diff_mode": false,
+  "allow_simultaneous": false,
+  "custom_virtualenv": null,
+  "job_slice_count": 1,
+  "webhook_service": "",
+  "webhook_credential": null,
+  "prevent_instance_group_fallback": false,
+  "survey": {
+    "name": "SHA Application Environment Survey - PRODUCTION",
+    "description": "Variables requises pour la construction d'environnement applicatif en PRODUCTION",
+    "spec": [
+      {
+        "question_name": "Hostname du serveur cible",
+        "question_description": "Nom d'hôte complet (FQDN) du serveur de production",
+        "required": true,
+        "type": "text",
+        "variable": "Hostname",
+        "min": 1,
+        "max": 253,
+        "default": "",
+        "choices": "",
+        "new_question": true
+      },
+      {
+        "question_name": "Code AP (Application)",
+        "question_description": "Code applicatif sur 5 positions numériques selon le référentiel REFI",
+        "required": true,
+        "type": "text",
+        "variable": "CodeAP",
+        "min": 5,
+        "max": 5,
+        "default": "",
+        "choices": "",
+        "new_question": true
+      },
+      {
+        "question_name": "Code5car (Pentagramme)",
+        "question_description": "Code5car sur 5 caractères alphanumériques pour identification visuelle",
+        "required": true,
+        "type": "text",
+        "variable": "code5car",
+        "min": 5,
+        "max": 5,
+        "default": "",
+        "choices": "",
+        "new_question": true
+      }
+    ]
+  },
+  "notification_templates_started": ["SHA-Notification-Teams"],
+  "notification_templates_success": ["SHA-Notification-Teams"],
+  "notification_templates_error": ["SHA-Notification-Teams-Error"],
+  "labels": ["SHA", "Production", "Application-Environment", "BP21"],
+  "instance_groups": ["Production-Controllers"],
+  "organization": "IT-Infrastructure",
+  "credentials": [
+    {
+      "name": "SHA-PROD-Machine-Credential",
+      "credential_type": "Machine"
+    },
+    {
+      "name": "SHA-Vault-Credential", 
+      "credential_type": "Vault"
+    }
+  ],
+  "execution_settings": {
+    "concurrent_jobs": 1,
+    "retry_attempts": 2,
+    "retry_delay": 300,
+    "max_execution_time": 7200,
+    "cleanup_job_retention": 90,
+    "log_level": "INFO"
+  },
+  "approval_settings": {
+    "approval_required": true,
+    "approver_groups": ["SHA-Production-Approvers", "IT-Architecture"],
+    "approval_timeout": 86400,
+    "auto_approve_users": []
+  },
+  "security_settings": {
+    "privilege_escalation": "sudo",
+    "become_user": "root",
+    "ssh_key_unlock": "automatic",
+    "vault_unlock": "automatic"
+  },
+  "monitoring_settings": {
+    "enable_monitoring": true,
+    "metrics_collection": true,
+    "log_aggregation": true,
+    "alert_on_failure": true,
+    "performance_tracking": true
+  }
+}
