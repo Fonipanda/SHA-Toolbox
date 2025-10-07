@@ -1,0 +1,24 @@
+#!/bin/ksh
+
+#set -x
+
+# --- initialize ihs status output --- #
+ihs_stop_all=/tmp/ihs_stop.txt
+ihs_list=/tmp/ihs_list.lst
+> $ihs_stop_all
+
+# --- Get ihs dir_name list --- #
+find /applis/*/ihs/ -type d -name sw* > $ihs_list
+
+# ---  stop IHS  --- #
+if [ -s /tmp/ihs_list.lst ];then
+  for ihs_item in $(cat $ihs_list);do
+    cd $ihs_item
+    ./stop 2>/dev/null >> $ihs_stop_all
+  done
+else
+  echo "No ihs found" > $ihs_stop_all
+fi
+
+cat $ihs_stop_all
+
