@@ -1,0 +1,10 @@
+#!/bin/ksh
+
+#set -x
+
+# --- Get the current path of the restart script --- #
+script_current_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+
+# --- Run IHS stop and start --- #
+${script_current_dir}/stop && ${script_current_dir}/start
+
