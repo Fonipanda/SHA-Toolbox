@@ -1,0 +1,26 @@
+# roles/report_generator/tasks/main.yml
+# Rôle principal pour la génération des rapports d'exécution
+---
+- name: "Initialisation du générateur de rapports"
+  ansible.builtin.debug:
+    msg: "Début de la génération du rapport d'exécution"
+
+- name: "Validation des variables de reporting"
+  ansible.builtin.assert:
+    that:
+      - execution_report is defined
+      - execution_id is defined
+      - report_dir is defined
+    fail_msg: "Les variables de reporting sont obligatoires"
+
+- name: "Inclusion des tâches de collecte des facts"
+  ansible.builtin.include_tasks: collect_facts.yml
+  tags: [collect]
+
+- name: "Inclusion des tâches de génération JSON"
+  ansible.builtin.include_tasks: generate_json.yml
+  tags: [json]
+
+- name: "Inclusion des tâches de génération stdout"
+  ansible.builtin.include_tasks: generate_stdout.yml
+  tags: [stdout]

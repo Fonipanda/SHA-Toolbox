@@ -1,0 +1,174 @@
+# roles/report_generator/tasks/collect_facts.yml
+# Collecte des informations finales pour le rapport
+---
+- name: "Collecte des informations système finales"
+  ansible.builtin.setup:
+    gather_subset:
+      - "all"
+  tags: [facts]
+
+- name: "Collecte des informations sur les filesystems"
+  ansible.builtin.shell: |
+    {% if ansible_os_family != "Windows" %}
+    df -h | grep -E "(applis|logs|delivery)" || echo "Aucun filesystem applicatif trouvé"
+    {% endif %}
+  register: filesystem_final_status
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Collecte des informations Windows filesystems"
+  ansible.windows.win_shell: |
+    Get-ChildItem -Path "D:\applis" -Directory -ErrorAction SilentlyContinue | Select-Object Name, CreationTime
+  register: filesystem_final_status_win
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "Windows"
+
+- name: "Collecte des packages installés récemment"
+  ansible.builtin.shell: |
+    {% if ansible_os_family == "RedHat" %}
+    rpm -qa --last | head -20
+    {% elif ansible_os_family == "AIX" %}
+    lslpp -L | tail -20
+    {% endif %}
+  register: recently_installed_packages
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family in ["RedHat", "AIX"]
+
+- name: "Collecte des services actifs"
+  ansible.builtin.shell: |
+    {% if ansible_os_family == "RedHat" %}
+    systemctl list-units --type=service --state=active | grep -E "(was|ihs|oracle|mq|cft)" || echo "Aucun service middleware actif"
+    {% elif ansible_os_family == "AIX" %}
+    ps -ef | grep -E "(was|ihs|oracle|mq|cft)" | grep -v grep || echo "Aucun processus middleware actif"
+    {% endif %}
+  register: active_services
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Collecte des services Windows"
+  ansible.windows.win_shell: |
+    Get-Service | Where-Object {$_.Name -match "(was|ihs|oracle|mq|sql)" -and $_.Status -eq "Running"} | Select-Object Name, Status
+  register: active_services_win
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "Windows"
+
+- name: "Collecte des utilisateurs créés récemment"
+  ansible.builtin.shell: |
+    {% if ansible_os_family == "RedHat" %}
+    getent passwd | grep -E "was|oracle|mqm|cft" || echo "Aucun utilisateur middleware trouvé"
+    {% elif ansible_os_family == "AIX" %}
+    lsuser -a home was oracle mqm cft 2>/dev/null || echo "Aucun utilisateur middleware trouvé"
+    {% endif %}
+  register: middleware_users
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Vérification de la conformité de l'arborescence créée"
+  ansible.builtin.shell: |
+    if [ -d "/applis/{{ code_ap }}-{{ code5car }}" ]; then
+      echo "Structure principale: OK"
+      ls -la "/applis/{{ code_ap }}-{{ code5car }}" | wc -l
+      echo "Sous-répertoires: $(ls /applis/{{ code_ap }}-{{ code5car }}/ | wc -l)"
+      echo "Logs directory: $([ -d '/applis/logs/{{ code_ap }}-{{ code5car }}' ] && echo 'OK' || echo 'MISSING')"
+      echo "Delivery directory: $([ -d '/applis/delivery/{{ code_ap }}-{{ code5car }}' ] && echo 'OK' || echo 'MISSING')"
+    else
+      echo "Structure principale: MISSING"
+    fi
+  register: structure_compliance_check
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows" and code_ap is defined and code5car is defined
+
+- name: "Vérification des scripts applicatifs"
+  ansible.builtin.shell: |
+    echo "Scripts /etc/local:"
+    ls -la /etc/local/app_{{ code5car }}_* 2>/dev/null | wc -l || echo "0"
+    echo "Scripts /applis:"
+    ls -la /applis/{{ code_ap }}-{{ code5car }}/scripts/app_{{ code5car }}_* 2>/dev/null | wc -l || echo "0"
+  register: scripts_check
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows" and code_ap is defined and code5car is defined
+
+- name: "Collecte des erreurs système récentes"
+  ansible.builtin.shell: |
+    {% if ansible_os_family == "RedHat" %}
+    journalctl --since="1 hour ago" --priority=err --no-pager -n 10 || echo "Aucune erreur récente"
+    {% elif ansible_os_family == "AIX" %}
+    errpt | head -10 || echo "Aucune erreur récente"
+    {% endif %}
+  register: recent_system_errors
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Collecte de l'utilisation disque finale"
+  ansible.builtin.shell: |
+    {% if ansible_os_family != "Windows" %}
+    df -h | head -1
+    df -h | grep -E "(vg_apps|applis)" || echo "Aucun filesystem applicatif monté"
+    {% endif %}
+  register: final_disk_usage
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Consolidation des facts collectés"
+  ansible.builtin.set_fact:
+    collected_facts:
+      system_info:
+        hostname: "{{ ansible_hostname }}"
+        fqdn: "{{ ansible_fqdn }}"
+        os_family: "{{ ansible_os_family }}"
+        distribution: "{{ ansible_distribution | default('Unknown') }}"
+        version: "{{ ansible_distribution_version | default('Unknown') }}"
+        architecture: "{{ ansible_architecture }}"
+        kernel: "{{ ansible_kernel }}"
+        uptime: "{{ ansible_uptime_seconds | default(0) }}"
+        memory_total: "{{ ansible_memtotal_mb | default(0) }}"
+        cpu_cores: "{{ ansible_processor_vcpus | default(0) }}"
+      filesystem_info:
+        status: "{{ filesystem_final_status.stdout_lines | default([]) if ansible_os_family != 'Windows' else filesystem_final_status_win.stdout_lines | default([]) }}"
+        disk_usage: "{{ final_disk_usage.stdout_lines | default([]) }}"
+      packages_info:
+        recently_installed: "{{ recently_installed_packages.stdout_lines | default([]) }}"
+      services_info:
+        active_services: "{{ active_services.stdout_lines | default([]) if ansible_os_family != 'Windows' else active_services_win.stdout_lines | default([]) }}"
+      users_info:
+        middleware_users: "{{ middleware_users.stdout_lines | default([]) }}"
+      compliance_info:
+        structure_check: "{{ structure_compliance_check.stdout_lines | default([]) }}"
+        scripts_check: "{{ scripts_check.stdout_lines | default([]) }}"
+      errors_info:
+        recent_errors: "{{ recent_system_errors.stdout_lines | default([]) }}"
+      collection_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+- name: "Mise à jour des listes pour le rapport final"
+  ansible.builtin.set_fact:
+    filesystem_modifications: "{{ filesystem_modifications | default([]) }}"
+    installed_packages_list: "{{ recently_installed_packages.stdout_lines | default([]) }}"
+    created_users_list: "{{ middleware_users.stdout_lines | default([]) }}"
+    modified_configs_list: "{{ modified_configs_list | default([]) }}"
+    services_status_list: "{{ active_services.stdout_lines | default([]) if ansible_os_family != 'Windows' else active_services_win.stdout_lines | default([]) }}"
+    deployment_success: "{{ deployment_success | default(true) }}"
+
+- name: "Affichage du résumé de collecte"
+  ansible.builtin.debug:
+    msg: |
+      =========================================================
+      COLLECTE DES FACTS TERMINÉE
+      =========================================================
+      Hostname: {{ ansible_hostname }}
+      OS: {{ ansible_os_family }} {{ ansible_distribution | default('') }} {{ ansible_distribution_version | default('') }}
+      Filesystems: {{ filesystem_final_status.stdout_lines | default([]) | length if ansible_os_family != 'Windows' else filesystem_final_status_win.stdout_lines | default([]) | length }}
+      Services actifs: {{ active_services.stdout_lines | default([]) | length if ansible_os_family != 'Windows' else active_services_win.stdout_lines | default([]) | length }}
+      Packages récents: {{ recently_installed_packages.stdout_lines | default([]) | length }}
+      Erreurs récentes: {{ recent_system_errors.stdout_lines | default([]) | length }}
+      =========================================================
+  tags: [debug]
