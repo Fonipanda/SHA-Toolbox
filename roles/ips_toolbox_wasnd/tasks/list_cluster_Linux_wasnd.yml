@@ -1,0 +1,104 @@
+---
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/web/version && cat /apps/toolboxes/web/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: "Listing cluster"
+  command: chdir=/apps/toolboxes/web/WasOperating/wasstartstop ./wasstartstop.ksh list clt "{{ wasnd_was_vi | default('85') }}"
+  register: wasopr_result
+  changed_when: false
+  when: tbxversion.stdout_lines[0]|int >= (17240|int)
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_item: ""
+     set_results_component: "{{ wasnd_component }}"
+     set_results_operation: "{{ wasnd_operation }}"
+     set_results_role_name: "{{ wasnd_role_name }}"
+     set_results_result_name: "{{ wasnd_result_name }}"
+     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+
+                           listed\
+
+                         {% else %}\
+
+                           toolboxes under required version\
+
+                         {% endif %}"
+     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+
+                            {% if wasopr_result.rc == 0 %}\
+
+                               OK\
+
+                            {% else %}\
+
+                               KO\
+
+                            {% endif %}\
+
+                          {% else %}\
+
+                            KO\
+
+                          {% endif %}"
+     set_results_value: "{% set JVM_NAME = '' %}\
+
+                             {% set JVM_LIST = '' %}\
+
+                             {% set DICT_STATUS = {} %}\
+
+                             {% for line in wasopr_result.stdout_lines %}\
+
+                             {% set new_line = line.split('\\u001b[92m') %}\
+
+                             {% for line_new in new_line %}\
+
+                             {% set new_line = line_new.split('\\u001b[0m') %}\
+
+                             {% set lines_state = new_line %}
+                             {% for line_new in new_line %}\
+
+                             {% set line_new = line_new | string %}\
+
+                             {% if 'sa-' in line_new and not 'WebSphere' in line_new %}\
+
+                             {% set JVM_NAME = line_new.split('>')[1] %}
+                             {% if DICT_STATUS.update({JVM_NAME : JVM_NAME}) %} {% endif %}\
+
+                             {% elif '-> clt' in line_new and not 'cluster' in line_new %}\
+
+                             {% set JVM_NAME = line_new.split('>')[1] %}
+                             {% if DICT_STATUS.update({ JVM_NAME : JVM_NAME}) %} {% endif %}\
+
+                             {% endif %}\
+
+                             {% endfor %}\
+
+                             {% endfor %}\
+
+                             {% endfor %}\
+
+                             {% if DICT_STATUS %}\
+
+                             {% set JVM_LIST = DICT_STATUS.keys() %}\
+
+                             {% set JVM_NAME = JVM_LIST[0] %}\
+
+                             {% if JVM_NAME %}\
+
+                             {{ JVM_LIST }}
+                             {% else %}\
+
+                                Not found the components jvm or cluster was\
+
+                             {% endif %}\
+
+                             {% else %}
+                                Not found the components jvm or cluster was\
+
+                             {% endif %}"
