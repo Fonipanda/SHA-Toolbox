@@ -1,0 +1,178 @@
+# roles/report_generator/templates/final_report.json.j2
+{
+  "execution_summary": {
+    "execution_id": "{{ execution_report.execution_id }}",
+    "environment": "{{ execution_report.environment }}",
+    "hostname": "{{ execution_report.hostname }}",
+    "code_ap": "{{ execution_report.code_ap }}",
+    "code5car": "{{ execution_report.code5car }}",
+    "start_time": "{{ execution_report.start_time }}",
+    "end_time": "{{ execution_report.end_time | default(ansible_date_time.iso8601) }}",
+    "duration": "{{ ((execution_report.end_time | default(ansible_date_time.iso8601) | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp() - (execution_report.start_time | to_datetime('%Y-%m-%dT%H:%M:%SZ')).timestamp()) | int }} seconds",
+    "success": {{ execution_report.success | default(true) | lower }},
+    "ansible_version": "{{ ansible_version.full | default('Unknown') }}"
+  },
+  "system_detection": {
+    "os_info": {
+      "family": "{{ execution_report.detected_os.family | default('Unknown') }}",
+      "distribution": "{{ execution_report.detected_os.distribution | default('Unknown') }}",
+      "version": "{{ execution_report.detected_os.version | default('Unknown') }}",
+      "architecture": "{{ execution_report.detected_os.architecture | default('Unknown') }}",
+      "kernel": "{{ execution_report.detected_os.kernel | default('Unknown') }}",
+      "hostname": "{{ execution_report.detected_os.hostname | default('Unknown') }}",
+      "fqdn": "{{ execution_report.detected_os.fqdn | default('Unknown') }}",
+      "memory_mb": {{ execution_report.detected_os.memory_mb | default(0) }},
+      "cpu_cores": {{ execution_report.detected_os.cpu_cores | default(0) }},
+      "detection_timestamp": "{{ execution_report.detected_os.detection_timestamp | default(ansible_date_time.iso8601) }}"
+    },
+    "middleware_detected": [
+{% for middleware in execution_report.detected_middleware %}
+      {
+        "name": "{{ middleware }}",
+        "details": {{ middleware_details[middleware] | default({}) | to_json }}
+      }{% if not loop.last %},{% endif %}
+{% endfor %}
+    ],
+    "middleware_count": {{ execution_report.detected_middleware | length }}
+  },
+  "filesystem_changes": [
+{% for fs in execution_report.filesystem_changes %}
+    {
+      "name": "{{ fs.name | default('Unknown') }}",
+      "mount_point": "{{ fs.mount_point | default('Unknown') }}",
+      "size": "{{ fs.size | default('Unknown') }}",
+      "status": "{{ fs.status | default('Unknown') }}",
+      "change_timestamp": "{{ fs.timestamp | default(ansible_date_time.iso8601) }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+  "installed_packages": [
+{% for package in execution_report.installed_packages %}
+    {
+      "name": "{{ package.split()[0] | default('Unknown') }}",
+      "version": "{{ package.split()[1] | default('Unknown') }}",
+      "install_time": "{{ package.split()[2:] | join(' ') | default('Unknown') }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+  "created_users": [
+{% for user in execution_report.created_users %}
+    {
+      "username": "{{ user.split(':')[0] | default('Unknown') }}",
+      "uid": "{{ user.split(':')[2] | default('Unknown') }}",
+      "gid": "{{ user.split(':')[3] | default('Unknown') }}",
+      "home": "{{ user.split(':')[5] | default('Unknown') }}",
+      "shell": "{{ user.split(':')[6] | default('Unknown') }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+  "modified_configs": [
+{% for config in execution_report.modified_configs %}
+    {
+      "file_path": "{{ config.path | default('Unknown') }}",
+      "action": "{{ config.action | default('modified') }}",
+      "backup_path": "{{ config.backup | default('N/A') }}",
+      "checksum_before": "{{ config.checksum_before | default('N/A') }}",
+      "checksum_after": "{{ config.checksum_after | default('N/A') }}",
+      "change_timestamp": "{{ config.timestamp | default(ansible_date_time.iso8601) }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+  "services_status": [
+{% for service in execution_report.services_status %}
+    {
+      "service_name": "{{ service.split()[0] | default('Unknown') }}",
+      "status": "{{ service.split()[1] | default('Unknown') }}",
+      "pid": "{{ service.split()[2] | default('N/A') }}",
+      "description": "{{ service.split()[3:] | join(' ') | default('') }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ],
+  "compliance_check": {
+    "structure_validation": {
+      "main_directory": "{{ '/applis/' + execution_report.code_ap + '-' + execution_report.code5car }}",
+      "main_directory_exists": {{ structure_compliance_check.stdout_lines | default([]) | length > 0 and 'OK' in structure_compliance_check.stdout }},
+      "logs_directory_exists": {{ 'Logs directory: OK' in structure_compliance_check.stdout }},
+      "delivery_directory_exists": {{ 'Delivery directory: OK' in structure_compliance_check.stdout }},
+      "subdirectories_count": {{ structure_compliance_check.stdout_lines | default([]) | select('match', '.*Sous-répertoires.*') | list | first | regex_replace('.*: (\\d+).*', '\\1') | int | default(0) }},
+      "scripts_etc_local": {{ scripts_check.stdout_lines | default([]) | select('match', '.*Scripts /etc/local.*') | list | length > 0 }},
+      "scripts_applis": {{ scripts_check.stdout_lines | default([]) | select('match', '.*Scripts /applis.*') | list | length > 0 }}
+    },
+    "filesystem_compliance": {
+      "vg_apps_mounted": {{ filesystem_final_status.stdout_lines | default([]) | select('match', '.*vg_apps.*') | list | length > 0 }},
+      "application_filesystems": {{ filesystem_final_status.stdout_lines | default([]) | select('match', '.*applis.*') | list | length }},
+      "total_app_disk_usage": "{{ filesystem_final_status.stdout_lines | default([]) | select('match', '.*applis.*') | list | join(', ') }}"
+    }
+  },
+  "errors_warnings": {
+    "errors": [
+{% for error in execution_report.errors %}
+      {
+        "message": "{{ error }}",
+        "timestamp": "{{ ansible_date_time.iso8601 }}"
+      }{% if not loop.last %},{% endif %}
+{% endfor %}
+    ],
+    "warnings": [
+{% for warning in execution_report.warnings %}
+      {
+        "message": "{{ warning }}",
+        "timestamp": "{{ ansible_date_time.iso8601 }}"
+      }{% if not loop.last %},{% endif %}
+{% endfor %}
+    ],
+    "system_errors": [
+{% for sys_error in recent_system_errors.stdout_lines | default([]) %}
+      {
+        "error_detail": "{{ sys_error }}",
+        "source": "system_log"
+      }{% if not loop.last %},{% endif %}
+{% endfor %}
+    ]
+  },
+  "performance_metrics": {
+    "total_filesystems_created": {{ execution_report.filesystem_changes | length }},
+    "total_directories_created": {{ created_directories | default([]) | length }},
+    "total_packages_installed": {{ execution_report.installed_packages | length }},
+    "total_services_configured": {{ execution_report.services_status | length }},
+    "memory_usage_mb": {{ ansible_memtotal_mb | default(0) }},
+    "disk_usage": {{ final_disk_usage.stdout_lines | default([]) | to_json }},
+    "cpu_usage_during_execution": "N/A"
+  },
+  "next_steps": {
+    "recommended_actions": [
+{% if not execution_report.success %}
+      "Analyser les erreurs et corriger les problèmes identifiés",
+      "Relancer le playbook après correction des erreurs",
+{% endif %}
+{% if execution_report.detected_middleware | length == 0 %}
+      "Vérifier l'installation des middlewares si nécessaire",
+{% endif %}
+      "Configurer les applications métiers dans l'arborescence créée",
+      "Tester les scripts de démarrage/arrêt créés dans /etc/local",
+      "Configurer la sauvegarde applicative via TSM",
+      "Valider les permissions sur les répertoires applicatifs"
+    ],
+    "validation_checklist": [
+      "Vérifier l'existence de /applis/{{ execution_report.code_ap }}-{{ execution_report.code5car }}",
+      "Tester les scripts app_{{ execution_report.code5car }}_status dans /etc/local",
+      "Valider les montages des filesystems vg_apps",
+      "Contrôler les logs dans /applis/logs/{{ execution_report.code_ap }}-{{ execution_report.code5car }}",
+      "Vérifier la connectivité des middlewares détectés"
+    ]
+  },
+  "report_metadata": {
+    "generated_by": "SHA Application Environment Builder",
+    "ansible_playbook": "main_playbook_{{ execution_report.environment | lower }}.yml",
+    "ansible_host": "{{ inventory_hostname }}",
+    "execution_user": "{{ ansible_user | default('root') }}",
+    "report_version": "1.0",
+    "report_format": "JSON",
+    "total_execution_steps": "{{ ansible_play_batch | default([]) | length + 10 }}",
+    "successful_steps": "{{ ansible_play_batch | default([]) | length if execution_report.success else 'partial' }}",
+    "report_generated_at": "{{ ansible_date_time.iso8601 }}",
+    "sha_toolbox_version": "{{ sha_toolbox_version | default('Latest') }}",
+    "compliance_standards": ["BP21", "IT Rules Toolboxes"],
+    "environment_type": "{{ execution_report.environment }}"
+  }
+}
