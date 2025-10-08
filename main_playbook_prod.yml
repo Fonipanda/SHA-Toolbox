@@ -1,24 +1,21 @@
 # main_playbook_prod.yml
-# Main playbook pour environnement PRODUCTION
-# Détecte automatiquement l'OS et middleware, construit l'environnement applicatif
+# Main playbook pour environnement PRODUCTION (avec bloc rescue correct)
 ---
 - name: "SHA Application Environment Builder - PRODUCTION"
   hosts: "{{ hostname | default('all') }}"
   gather_facts: true
   become: true
   serial: 1
-  
+
   vars:
     environment_type: "PROD"
     code_ap: "{{ CodeAP }}"
     code5car: "{{ code5car }}"
     hostname_target: "{{ Hostname }}"
-    
-    # Variables de reporting
     execution_timestamp: "{{ ansible_date_time.iso8601 }}"
     execution_id: "{{ ansible_date_time.epoch }}"
     report_dir: "/tmp/ansible_reports"
-    
+
   pre_tasks:
     - name: "[PROD] Validation des variables obligatoires"
       ansible.builtin.assert:
@@ -28,14 +25,14 @@
           - Hostname is defined and Hostname != ""
         fail_msg: "Les variables CodeAP, code5car et Hostname sont obligatoires"
       tags: [validation]
-    
+
     - name: "[PROD] Création du répertoire de rapport"
       ansible.builtin.file:
         path: "{{ report_dir }}"
         state: directory
         mode: '0755'
       tags: [setup]
-      
+
     - name: "[PROD] Initialisation du rapport d'exécution"
       ansible.builtin.set_fact:
         execution_report:
@@ -57,268 +54,261 @@
       tags: [setup]
 
   tasks:
-    # Phase 1: Détection et collecte des faits
-    - name: "[PROD] Phase 1 - Détection de l'environnement"
+    - name: "[PROD] Pipeline principal avec gestion d'échec"
       block:
-        - name: "[PROD] Détection de l'OS et collecte des faits système"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: detect_os
-          tags: [detection]
-          
-        - name: "[PROD] Détection du middleware installé"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: detect_middleware
-          tags: [detection]
-          
-        - name: "[PROD] Mise à jour du rapport avec les détections"
-          ansible.builtin.set_fact:
-            execution_report: "{{ execution_report | combine({
-              'detected_os': detected_os_info,
-              'detected_middleware': detected_middleware_list
-            }) }}"
-          tags: [detection]
-          
-    # Phase 2: Sauvegarde et point de restauration
-    - name: "[PROD] Phase 2 - Création du point de sauvegarde"
-      block:
-        - name: "[PROD] Création du point de rollback"
+        # Toutes les phases principales (détection, sauvegarde, création env., middleware, services, vérifications post)
+        - name: "[PROD] Phase 1 - Détection de l'environnement"
+          block:
+            - name: "[PROD] Détection de l'OS et collecte des faits système"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: detect_os
+              tags: [detection]
+
+            - name: "[PROD] Détection du middleware installé"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: detect_middleware
+              tags: [detection]
+
+            - name: "[PROD] Mise à jour du rapport avec les détections"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'detected_os': detected_os_info,
+                  'detected_middleware': detected_middleware_list
+                }) }}"
+              tags: [detection]
+
+        - name: "[PROD] Phase 2 - Création du point de sauvegarde"
           ansible.builtin.include_role:
             name: backup_manager
             tasks_from: create_rollback_point
           vars:
             backup_type: "pre_deployment"
           tags: [backup]
-          
-    # Phase 3: Création de l'environnement applicatif
-    - name: "[PROD] Phase 3 - Construction de l'environnement applicatif"
-      block:
-        - name: "[PROD] Vérification de la conformité du serveur"
-          ansible.builtin.include_role:
-            name: ips_toolbox_system
-          vars:
-            system_operation: "check_conformity"
-          tags: [verification]
-          
-        - name: "[PROD] Création de l'arborescence applicative"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: create_app_structure
-          vars:
-            target_codeap: "{{ code_ap }}"
-            target_code5car: "{{ code5car }}"
-          tags: [filesystem]
-          
-        # Appel conditionnel selon l'OS détecté
-        - name: "[PROD] Configuration spécifique AIX"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: aix_setup
-          when: detected_os_info.family == "AIX"
-          tags: [os_specific]
-          
-        - name: "[PROD] Configuration spécifique RHEL"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: rhel_setup
-          when: detected_os_info.family == "RedHat"
-          tags: [os_specific]
-          
-        - name: "[PROD] Configuration spécifique Windows"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: windows_setup
-          when: detected_os_info.family == "Windows"
-          tags: [os_specific]
-          
-    # Phase 4: Configuration des middlewares détectés
-    - name: "[PROD] Phase 4 - Configuration des middlewares"
-      block:
-        - name: "[PROD] Configuration WebSphere WAS ND"
-          ansible.builtin.include_role:
-            name: ips_toolbox_wasnd
-          when: "'WebSphere_WAS_ND' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration WebSphere WAS Base"
-          ansible.builtin.include_role:
-            name: ips_toolbox_wasbase
-          when: "'WebSphere_WAS_Base' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration Liberty Core"
-          ansible.builtin.include_role:
-            name: ips_toolbox_libertycore
-          when: "'Liberty_Core' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration Liberty Base"
-          ansible.builtin.include_role:
-            name: ips_toolbox_libertybase
-          when: "'Liberty_Base' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration IHS Web Server"
-          ansible.builtin.include_role:
-            name: ips_toolbox_webserver
-          when: "'IHS' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration Oracle Database"
-          ansible.builtin.include_role:
-            name: ips_toolbox_oracle
-          when: "'Oracle' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration SQL Server"
-          ansible.builtin.include_role:
-            name: ips_toolbox_sqlserver
-          when: "'SQLServer' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration MQ Series"
-          ansible.builtin.include_role:
-            name: ips_toolbox_mq
-          when: "'MQSeries' in detected_middleware_list"
-          tags: [middleware]
-          
-        - name: "[PROD] Configuration CFT"
-          ansible.builtin.include_role:
-            name: ips_toolbox_cft
-          when: "'CFT' in detected_middleware_list"
-          tags: [middleware]
-          
-    # Phase 5: Configuration des services système
-    - name: "[PROD] Phase 5 - Configuration des services système"
-      block:
-        - name: "[PROD] Configuration Toolbox système"
-          ansible.builtin.include_role:
-            name: ips_toolbox_toolboxes
-          tags: [toolbox]
-          
-        - name: "[PROD] Configuration de la sauvegarde TSM"
-          ansible.builtin.include_role:
-            name: ips_toolbox_backup
-          vars:
-            backup_operation: "configure_appli_backup"
-            backup_codeap: "{{ code_ap }}"
-            backup_code5car: "{{ code5car }}"
-          tags: [backup]
-          
-        - name: "[PROD] Configuration Illumio (si présent)"
-          ansible.builtin.include_role:
-            name: ips_toolbox_illumio
-          when: "'Illumio' in detected_middleware_list"
-          tags: [security]
-          
-        - name: "[PROD] Configuration des services applicatifs"
-          ansible.builtin.include_role:
-            name: ips_toolbox_services
-          tags: [services]
-          
-    # Phase 6: Vérifications post-déploiement
-    - name: "[PROD] Phase 6 - Vérifications post-déploiement"
-      block:
-        - name: "[PROD] Vérification de l'arborescence créée"
-          ansible.builtin.stat:
-            path: "/applis/{{ code_ap }}-{{ code5car }}"
-          register: appli_dir_check
-          tags: [verification]
-          
-        - name: "[PROD] Vérification des filesystems"
-          ansible.builtin.shell: |
-            df -h | grep "/applis/{{ code_ap }}-{{ code5car }}"
-          register: filesystem_check
-          failed_when: false
-          changed_when: false
-          tags: [verification]
-          
-        - name: "[PROD] Test des scripts applicatifs"
-          ansible.builtin.stat:
-            path: "/etc/local/app_{{ code5car }}_status"
-          register: appli_scripts_check
-          tags: [verification]
 
-  post_tasks:
-    - name: "[PROD] Génération du rapport final"
-      block:
-        - name: "[PROD] Collecte des informations finales"
-          ansible.builtin.include_role:
-            name: report_generator
-            tasks_from: collect_facts
-          tags: [reporting]
-          
-        - name: "[PROD] Mise à jour du rapport avec les résultats"
-          ansible.builtin.set_fact:
-            execution_report: "{{ execution_report | combine({
-              'end_time': ansible_date_time.iso8601,
-              'filesystem_changes': filesystem_modifications | default([]),
-              'installed_packages': installed_packages_list | default([]),
-              'created_users': created_users_list | default([]),
-              'modified_configs': modified_configs_list | default([]),
-              'services_status': services_status_list | default([]),
-              'success': deployment_success | default(true)
-            }) }}"
-          tags: [reporting]
-          
-        - name: "[PROD] Génération du rapport JSON"
-          ansible.builtin.include_role:
-            name: report_generator
-            tasks_from: generate_json
-          tags: [reporting]
-          
-        - name: "[PROD] Génération du résumé stdout"
-          ansible.builtin.include_role:
-            name: report_generator
-            tasks_from: generate_stdout
-          tags: [reporting]
-          
-        - name: "[PROD] Affichage du résumé d'exécution"
-          ansible.builtin.debug:
-            msg: |
-              =========================================================
-              RÉSUMÉ D'EXÉCUTION - ENVIRONNEMENT PRODUCTION
-              =========================================================
-              Serveur cible    : {{ hostname_target }}
-              Code AP          : {{ code_ap }}
-              Code5car         : {{ code5car }}
-              OS détecté       : {{ detected_os_info.distribution | default('N/A') }} {{ detected_os_info.version | default('') }}
-              Middleware       : {{ detected_middleware_list | join(', ') if detected_middleware_list else 'Aucun' }}
-              Filesystems créés: {{ filesystem_modifications | length | default(0) }}
-              Services configurés: {{ services_status_list | length | default(0) }}
-              Statut           : {{ 'SUCCÈS' if deployment_success | default(true) else 'ÉCHEC' }}
-              Rapport JSON     : {{ report_dir }}/execution_report_{{ execution_id }}.json
-              =========================================================
-          tags: [reporting]
+        - name: "[PROD] Phase 3 - Construction de l'environnement applicatif"
+          block:
+            - name: "[PROD] Vérification de la conformité du serveur"
+              ansible.builtin.include_role:
+                name: ips_toolbox_system
+              vars:
+                system_operation: "check_conformity"
+              tags: [verification]
 
-  rescue:
-    - name: "[PROD] Gestion des erreurs et rollback"
-      block:
-        - name: "[PROD] Enregistrement de l'erreur"
-          ansible.builtin.set_fact:
-            execution_report: "{{ execution_report | combine({
-              'errors': execution_report.errors + [ansible_failed_result.msg | default('Erreur inconnue')],
-              'success': false,
-              'end_time': ansible_date_time.iso8601
-            }) }}"
-          
-        - name: "[PROD] Génération du rapport d'erreur"
-          ansible.builtin.include_role:
-            name: report_generator
-            tasks_from: generate_json
-          
-        - name: "[PROD] Affichage de l'erreur"
-          ansible.builtin.debug:
-            msg: |
-              =========================================================
-              ERREUR - ENVIRONNEMENT PRODUCTION
-              =========================================================
-              Une erreur s'est produite lors du déploiement.
-              Consulter le rapport JSON pour plus de détails.
-              Rapport : {{ report_dir }}/execution_report_{{ execution_id }}.json
-              =========================================================
-          
-        - name: "[PROD] Échec du playbook"
-          ansible.builtin.fail:
-            msg: "Déploiement échoué en environnement PRODUCTION"
+            - name: "[PROD] Création de l'arborescence applicative"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: create_app_structure
+              vars:
+                target_codeap: "{{ code_ap }}"
+                target_code5car: "{{ code5car }}"
+              tags: [filesystem]
+
+            - name: "[PROD] Configuration spécifique AIX"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: aix_setup
+              when: detected_os_info.family == "AIX"
+              tags: [os_specific]
+
+            - name: "[PROD] Configuration spécifique RHEL"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: rhel_setup
+              when: detected_os_info.family == "RedHat"
+              tags: [os_specific]
+
+            - name: "[PROD] Configuration spécifique Windows"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: windows_setup
+              when: detected_os_info.family == "Windows"
+              tags: [os_specific]
+
+        - name: "[PROD] Phase 4 - Configuration des middlewares"
+          block:
+            - name: "[PROD] Configuration WebSphere WAS ND"
+              ansible.builtin.include_role:
+                name: ips_toolbox_wasnd
+              when: "'WebSphere_WAS_ND' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration WebSphere WAS Base"
+              ansible.builtin.include_role:
+                name: ips_toolbox_wasbase
+              when: "'WebSphere_WAS_Base' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration Liberty Core"
+              ansible.builtin.include_role:
+                name: ips_toolbox_libertycore
+              when: "'Liberty_Core' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration Liberty Base"
+              ansible.builtin.include_role:
+                name: ips_toolbox_libertybase
+              when: "'Liberty_Base' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration IHS Web Server"
+              ansible.builtin.include_role:
+                name: ips_toolbox_webserver
+              when: "'IHS' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration Oracle Database"
+              ansible.builtin.include_role:
+                name: ips_toolbox_oracle
+              when: "'Oracle' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration SQL Server"
+              ansible.builtin.include_role:
+                name: ips_toolbox_sqlserver
+              when: "'SQLServer' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration MQ Series"
+              ansible.builtin.include_role:
+                name: ips_toolbox_mq
+              when: "'MQSeries' in detected_middleware_list"
+              tags: [middleware]
+
+            - name: "[PROD] Configuration CFT"
+              ansible.builtin.include_role:
+                name: ips_toolbox_cft
+              when: "'CFT' in detected_middleware_list"
+              tags: [middleware]
+
+        - name: "[PROD] Phase 5 - Configuration des services système"
+          block:
+            - name: "[PROD] Configuration Toolbox système"
+              ansible.builtin.include_role:
+                name: ips_toolbox_toolboxes
+              tags: [toolbox]
+
+            - name: "[PROD] Configuration de la sauvegarde TSM"
+              ansible.builtin.include_role:
+                name: ips_toolbox_backup
+              vars:
+                backup_operation: "configure_appli_backup"
+                backup_codeap: "{{ code_ap }}"
+                backup_code5car: "{{ code5car }}"
+              tags: [backup]
+
+            - name: "[PROD] Configuration Illumio (si présent)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_illumio
+              when: "'Illumio' in detected_middleware_list"
+              tags: [security]
+
+            - name: "[PROD] Configuration des services applicatifs"
+              ansible.builtin.include_role:
+                name: ips_toolbox_services
+              tags: [services]
+
+        - name: "[PROD] Phase 6 - Vérifications post-déploiement"
+          block:
+            - name: "[PROD] Vérification de l'arborescence créée"
+              ansible.builtin.stat:
+                path: "/applis/{{ code_ap }}-{{ code5car }}"
+              register: appli_dir_check
+              tags: [verification]
+
+            - name: "[PROD] Vérification des filesystems"
+              ansible.builtin.shell: |
+                df -h | grep "/applis/{{ code_ap }}-{{ code5car }}"
+              register: filesystem_check
+              failed_when: false
+              changed_when: false
+              tags: [verification]
+
+            - name: "[PROD] Test des scripts applicatifs"
+              ansible.builtin.stat:
+                path: "/etc/local/app_{{ code5car }}_status"
+              register: appli_scripts_check
+              tags: [verification]
+
+        - name: "[PROD] Génération du rapport final"
+          block:
+            - name: "[PROD] Collecte des informations finales"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: collect_facts
+              tags: [reporting]
+
+            - name: "[PROD] Mise à jour du rapport avec les résultats"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'end_time': ansible_date_time.iso8601,
+                  'filesystem_changes': filesystem_modifications | default([]),
+                  'installed_packages': installed_packages_list | default([]),
+                  'created_users': created_users_list | default([]),
+                  'modified_configs': modified_configs_list | default([]),
+                  'services_status': services_status_list | default([]),
+                  'success': deployment_success | default(true)
+                }) }}"
+              tags: [reporting]
+
+            - name: "[PROD] Génération du rapport JSON"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_json
+              tags: [reporting]
+
+            - name: "[PROD] Génération du résumé stdout"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_stdout
+              tags: [reporting]
+
+            - name: "[PROD] Affichage du résumé d'exécution"
+              ansible.builtin.debug:
+                msg: |
+                  =========================================================
+                  RÉSUMÉ D'EXÉCUTION - ENVIRONNEMENT PRODUCTION
+                  =========================================================
+                  Serveur cible    : {{ hostname_target }}
+                  Code AP          : {{ code_ap }}
+                  Code5car         : {{ code5car }}
+                  OS détecté       : {{ detected_os_info.distribution | default('N/A') }} {{ detected_os_info.version | default('') }}
+                  Middleware       : {{ detected_middleware_list | join(', ') if detected_middleware_list else 'Aucun' }}
+                  Filesystems créés: {{ filesystem_modifications | length | default(0) }}
+                  Services configurés: {{ services_status_list | length | default(0) }}
+                  Statut           : {{ 'SUCCÈS' if deployment_success | default(true) else 'ÉCHEC' }}
+                  Rapport JSON     : {{ report_dir }}/execution_report_{{ execution_id }}.json
+                  =========================================================
+              tags: [reporting]
+
+      rescue:
+        - name: "[PROD] Gestion des erreurs et rollback"
+          block:
+            - name: "[PROD] Enregistrement de l'erreur"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'errors': execution_report.errors + [ansible_failed_result.msg | default('Erreur inconnue')],
+                  'success': false,
+                  'end_time': ansible_date_time.iso8601
+                }) }}"
+
+            - name: "[PROD] Génération du rapport d'erreur"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_json
+
+            - name: "[PROD] Affichage de l'erreur"
+              ansible.builtin.debug:
+                msg: |
+                  =========================================================
+                  ERREUR - ENVIRONNEMENT PRODUCTION
+                  =========================================================
+                  Une erreur s'est produite lors du déploiement.
+                  Consulter le rapport JSON pour plus de détails.
+                  Rapport : {{ report_dir }}/execution_report_{{ execution_id }}.json
+                  =========================================================
+
+            - name: "[PROD] Échec du playbook"
+              ansible.builtin.fail:
+                msg: "Déploiement échoué en environnement PRODUCTION"
