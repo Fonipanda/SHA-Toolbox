@@ -238,3 +238,48 @@
               ansible.builtin.include_role:
                 name: report_generator
                 tasks_from: generate_stdout
+              vars:
+                environment_type: "ISOPROD"
+            - name: "Affichage du résumé d'exécution"
+              ansible.builtin.debug:
+                msg: |
+                  =========================================================
+                  RÉSUMÉ D'EXÉCUTION - ENVIRONNEMENT ISO-PRODUCTION
+                  =========================================================
+                  Serveur cible    : {{ hostname_target }}
+                  Code AP          : {{ code_ap }}
+                  Code5car         : {{ code5car }}
+                  OS détecté       : {{ detected_os_info.distribution | default('N/A') }} {{ detected_os_info.version | default('') }}
+                  Middleware       : {{ detected_middleware_list | join(', ') if detected_middleware_list else 'Aucun' }}
+                  Statut           : {{ 'SUCCÈS' if deployment_success | default(true) else 'ÉCHEC' }}
+                  Rapport JSON     : {{ report_dir }}/execution_report_{{ execution_id }}.json
+                  =========================================================
+      rescue:
+        - name: "Gestion des erreurs et rollback ISOPROD"
+          block:
+            - name: "Enregistrement de l'erreur"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'errors': execution_report.errors + [ansible_failed_result.msg | default('Erreur inconnue')],
+                  'success': false,
+                  'end_time': ansible_date_time.iso8601
+                }) }}"
+            - name: "Génération du rapport d'erreur"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_json
+              vars:
+                environment_type: "ISOPROD"
+            - name: "Affichage de l'erreur ISOPROD"
+              ansible.builtin.debug:
+                msg: |
+                  =========================================================
+                  ERREUR - ENVIRONNEMENT ISO-PRODUCTION
+                  =========================================================
+                  Une erreur s'est produite lors du déploiement.
+                  Consulter le rapport JSON pour plus de détails.
+                  Rapport : {{ report_dir }}/execution_report_{{ execution_id }}.json
+                  =========================================================
+            - name: "Échec du playbook ISOPROD"
+              ansible.builtin.fail:
+                msg: "Déploiement échoué en environnement ISO-PRODUCTION"
