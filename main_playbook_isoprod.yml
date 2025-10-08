@@ -1,8 +1,7 @@
 # main_playbook_isoprod.yml
-# Main playbook pour environnement ISO-PRODUCTION (avec bloc rescue conforme)
 ---
 - name: "SHA Application Environment Builder - ISO-PRODUCTION"
-  hosts: "{{ hostname | default('all') }}"
+  hosts: "{{ Hostname | default('all') }}"
   gather_facts: true
   become: true
   serial: 1
@@ -26,15 +25,11 @@
           - code5car is defined and code5car != ""
           - Hostname is defined and Hostname != ""
         fail_msg: "Les variables CodeAP, code5car et Hostname sont obligatoires"
-      tags: [validation]
-
     - name: "[ISOPROD] Création du répertoire de rapport"
       ansible.builtin.file:
         path: "{{ report_dir }}"
         state: directory
         mode: '0755'
-      tags: [setup]
-
     - name: "[ISOPROD] Initialisation du rapport d'exécution"
       ansible.builtin.set_fact:
         execution_report:
@@ -53,43 +48,193 @@
           services_status: []
           errors: []
           warnings: []
-      tags: [setup]
 
   tasks:
-    - name: "[ISOPROD] Pipeline principal avec gestion d'échec"
+    - name: "Bloc principal avec gestion d'échec"
       block:
-        # Toutes vos étapes principales ISOPROD, même structure que PROD adapté à ISOPROD…
-        # (Utilisez le pattern ci-dessus : bloc + rescue, adaptez les variables, tags et conditions,
-        # collez ici la logique métier spécifique ISOPROD…)
-        - name: "[ISOPROD] ... (Identique à production, voir PROD ci-dessus, adapter les phases/services/options)"
-
-      rescue:
-        - name: "[ISOPROD] Gestion des erreurs et rollback"
+        # PHASES identiques à la production : détection, sauvegarde, construction, middlewares, services, vérifications, rapport final, mais en mode ISOPROD
+        - name: "[ISOPROD] Détection de l'OS et collecte des faits système"
+          ansible.builtin.include_role:
+            name: app_environment_builder
+            tasks_from: detect_os
+        - name: "[ISOPROD] Détection du middleware installé"
+          ansible.builtin.include_role:
+            name: app_environment_builder
+            tasks_from: detect_middleware
+        - name: "[ISOPROD] Mise à jour du rapport avec les détections"
+          ansible.builtin.set_fact:
+            execution_report: "{{ execution_report | combine({
+              'detected_os': detected_os_info,
+              'detected_middleware': detected_middleware_list
+            }) }}"
+        - name: "[ISOPROD] Création du point de rollback"
+          ansible.builtin.include_role:
+            name: backup_manager
+            tasks_from: create_rollback_point
+          vars:
+            backup_type: "pre_deployment_isoprod"
+            backup_retention: "7d"
+        - name: "[ISOPROD] Vérification de la conformité du serveur"
+          ansible.builtin.include_role:
+            name: ips_toolbox_system
+          vars:
+            system_operation: "check_conformity"
+            validation_level: "{{ validation_level }}"
+        - name: "[ISOPROD] Création de l'arborescence applicative"
+          ansible.builtin.include_role:
+            name: app_environment_builder
+            tasks_from: create_app_structure
+          vars:
+            target_codeap: "{{ code_ap }}"
+            target_code5car: "{{ code5car }}"
+            environment_type: "ISOPROD"
+        - name: "[ISOPROD] Configurations spécifiques OS"
           block:
-            - name: "[ISOPROD] Enregistrement de l'erreur"
-              ansible.builtin.set_fact:
-                execution_report: "{{ execution_report | combine({
-                  'errors': execution_report.errors + [ansible_failed_result.msg | default('Erreur inconnue')],
-                  'success': false,
-                  'end_time': ansible_date_time.iso8601
-                }) }}"
-
-            - name: "[ISOPROD] Génération du rapport d'erreur"
+            - name: "AIX"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: aix_setup
+              vars:
+                environment_type: "ISOPROD"
+              when: detected_os_info.family == "AIX"
+            - name: "RHEL"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: rhel_setup
+              vars:
+                environment_type: "ISOPROD"
+              when: detected_os_info.family == "RedHat"
+            - name: "Windows"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: windows_setup
+              vars:
+                environment_type: "ISOPROD"
+              when: detected_os_info.family == "Windows"
+        - name: "[ISOPROD] Configuration des middlewares"
+          block:
+            - name: "WebSphere WAS ND"
+              ansible.builtin.include_role:
+                name: ips_toolbox_wasnd
+              vars:
+                was_environment: "ISOPROD"
+                enable_debug_mode: "{{ allow_testing_features }}"
+              when: "'WebSphere_WAS_ND' in detected_middleware_list"
+            - name: "WebSphere WAS Base"
+              ansible.builtin.include_role:
+                name: ips_toolbox_wasbase
+              vars:
+                was_environment: "ISOPROD"
+                enable_debug_mode: "{{ allow_testing_features }}"
+              when: "'WebSphere_WAS_Base' in detected_middleware_list"
+            - name: "Liberty Core"
+              ansible.builtin.include_role:
+                name: ips_toolbox_libertycore
+              vars:
+                liberty_environment: "ISOPROD"
+              when: "'Liberty_Core' in detected_middleware_list"
+            - name: "Liberty Base"
+              ansible.builtin.include_role:
+                name: ips_toolbox_libertybase
+              vars:
+                liberty_environment: "ISOPROD"
+              when: "'Liberty_Base' in detected_middleware_list"
+            - name: "IHS"
+              ansible.builtin.include_role:
+                name: ips_toolbox_webserver
+              vars:
+                ihs_environment: "ISOPROD"
+              when: "'IHS' in detected_middleware_list"
+            - name: "Oracle"
+              ansible.builtin.include_role:
+                name: ips_toolbox_oracle
+              vars:
+                oracle_environment: "ISOPROD"
+              when: "'Oracle' in detected_middleware_list"
+            - name: "SQL Server"
+              ansible.builtin.include_role:
+                name: ips_toolbox_sqlserver
+              vars:
+                sqlserver_environment: "ISOPROD"
+              when: "'SQLServer' in detected_middleware_list"
+            - name: "MQ Series"
+              ansible.builtin.include_role:
+                name: ips_toolbox_mq
+              vars:
+                mq_environment: "ISOPROD"
+              when: "'MQSeries' in detected_middleware_list"
+            - name: "CFT"
+              ansible.builtin.include_role:
+                name: ips_toolbox_cft
+              vars:
+                cft_environment: "ISOPROD"
+              when: "'CFT' in detected_middleware_list"
+        - name: "[ISOPROD] Configuration des services système"
+          block:
+            - name: "Toolbox système"
+              ansible.builtin.include_role:
+                name: ips_toolbox_toolboxes
+              vars:
+                toolbox_environment: "ISOPROD"
+            - name: "Sauvegarde TSM"
+              ansible.builtin.include_role:
+                name: ips_toolbox_backup
+              vars:
+                backup_operation: "configure_appli_backup"
+                backup_codeap: "{{ code_ap }}"
+                backup_code5car: "{{ code5car }}"
+                backup_environment: "ISOPROD"
+                backup_frequency: "daily"
+            - name: "Illumio"
+              ansible.builtin.include_role:
+                name: ips_toolbox_illumio
+              vars:
+                illumio_environment: "ISOPROD"
+                illumio_mode: "test"
+              when: "'Illumio' in detected_middleware_list"
+            - name: "Services applicatifs"
+              ansible.builtin.include_role:
+                name: ips_toolbox_services
+              vars:
+                services_environment: "ISOPROD"
+        - name: "[ISOPROD] Vérifications post-déploiement et tests"
+          block:
+            - name: "Arborescence"
+              ansible.builtin.stat:
+                path: "/applis/{{ code_ap }}-{{ code5car }}"
+              register: appli_dir_check
+            - name: "Filesystems"
+              ansible.builtin.shell: |
+                df -h | grep "/applis/{{ code_ap }}-{{ code5car }}"
+              register: filesystem_check
+              failed_when: false
+              changed_when: false
+            - name: "Scripts applicatifs"
+              ansible.builtin.stat:
+                path: "/etc/local/app_{{ code5car }}_status"
+              register: appli_scripts_check
+            - name: "Tests validation ISOPROD"
+              ansible.builtin.shell: |
+                echo "Tests ISOPROD - Validation des permissions"
+                ls -la "/applis/{{ code_ap }}-{{ code5car }}"
+              register: isoprod_specific_tests
+              failed_when: false
+              changed_when: false
+        - name: "[ISOPROD] Rapport final"
+          block:
+            - name: "Collecte des informations finales"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: collect_facts
+              vars:
+                environment_type: "ISOPROD"
+            - name: "Génération du rapport JSON"
               ansible.builtin.include_role:
                 name: report_generator
                 tasks_from: generate_json
-
-            - name: "[ISOPROD] Affichage de l'erreur"
-              ansible.builtin.debug:
-                msg: |
-                  =========================================================
-                  ERREUR - ENVIRONNEMENT ISO-PRODUCTION
-                  =========================================================
-                  Une erreur s'est produite lors du déploiement.
-                  Consulter le rapport JSON pour plus de détails.
-                  Rapport : {{ report_dir }}/execution_report_{{ execution_id }}.json
-                  =========================================================
-
-            - name: "[ISOPROD] Échec du playbook"
-              ansible.builtin.fail:
-                msg: "Déploiement échoué en environnement ISO-PRODUCTION"
+              vars:
+                environment_type: "ISOPROD"
+            - name: "Génération du résumé stdout"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_stdout
