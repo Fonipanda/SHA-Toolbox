@@ -1,0 +1,38 @@
+# roles/report_generator/tasks/generate_json.yml
+# Génération du rapport JSON d'exécution
+---
+- name: "Validation des variables pour la génération JSON"
+  ansible.builtin.assert:
+    that:
+      - execution_report is defined
+      - execution_id is defined
+      - report_dir is defined
+    fail_msg: "Les variables execution_report, execution_id et report_dir sont obligatoires"
+
+- name: "Création du fichier de rapport JSON"
+  ansible.builtin.template:
+    src: "final_report.json.j2"
+    dest: "{{ report_dir }}/execution_report_{{ execution_id }}.json"
+    mode: '0644'
+  register: json_report_creation
+
+- name: "Vérification de la création du rapport JSON"
+  ansible.builtin.stat:
+    path: "{{ report_dir }}/execution_report_{{ execution_id }}.json"
+  register: json_report_check
+
+- name: "Affichage du chemin du rapport JSON"
+  ansible.builtin.debug:
+    msg: |
+      =========================================================
+      RAPPORT JSON GÉNÉRÉ
+      =========================================================
+      Fichier: {{ report_dir }}/execution_report_{{ execution_id }}.json
+      Taille: {{ json_report_check.stat.size | default('N/A') }} bytes
+      Création: {{ 'SUCCÈS' if json_report_check.stat.exists else 'ÉCHEC' }}
+      =========================================================
+
+- name: "Enregistrement du chemin du rapport pour les autres tâches"
+  ansible.builtin.set_fact:
+    json_report_path: "{{ report_dir }}/execution_report_{{ execution_id }}.json"
+    json_report_created: "{{ json_report_check.stat.exists }}"
