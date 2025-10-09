@@ -1,0 +1,154 @@
+# roles/report_generator/tasks/generate_stdout.yml
+# Génération du résumé stdout d'exécution
+# Fichier manquant créé pour corriger l'erreur "Could not find specified file in role: tasks/generate_stdout"
+---
+- name: "Validation des variables pour la génération stdout"
+  ansible.builtin.assert:
+    that:
+      - execution_report is defined
+      - environment_type is defined
+    fail_msg: "Les variables execution_report et environment_type sont obligatoires"
+
+- name: "Préparation des données pour le résumé stdout"
+  ansible.builtin.set_fact:
+    stdout_summary_data:
+      environment: "{{ environment_type | upper }}"
+      hostname: "{{ execution_report.hostname | default(ansible_hostname) }}"
+      code_ap: "{{ execution_report.code_ap | default('N/A') }}"
+      code5car: "{{ execution_report.code5car | default('N/A') }}"
+      os_detected: "{{ execution_report.detected_os.distribution | default('Unknown') }} {{ execution_report.detected_os.version | default('') }}"
+      middleware_list: "{{ execution_report.detected_middleware | join(', ') if execution_report.detected_middleware else 'Aucun' }}"
+      filesystems_created: "{{ execution_report.filesystem_changes | length | default(0) }}"
+      services_configured: "{{ execution_report.services_status | length | default(0) }}"
+      execution_status: "{{ 'SUCCÈS' if execution_report.success | default(true) else 'ÉCHEC' }}"
+      start_time: "{{ execution_report.start_time | default('N/A') }}"
+      end_time: "{{ execution_report.end_time | default(ansible_date_time.iso8601) }}"
+      report_path: "{{ report_dir | default('/tmp/ansible_reports') }}/execution_report_{{ execution_report.execution_id | default(ansible_date_time.epoch) }}.json"
+
+- name: "Calcul de la durée d'exécution"
+  ansible.builtin.set_fact:
+    execution_duration: >-
+      {% if execution_report.start_time is defined and execution_report.end_time is defined %}
+      {% set start_timestamp = execution_report.start_time | to_datetime('%Y-%m-%dT%H:%M:%SZ') %}
+      {% set end_timestamp = execution_report.end_time | to_datetime('%Y-%m-%dT%H:%M:%SZ') %}
+      {% set duration_seconds = ((end_timestamp.timestamp()) - (start_timestamp.timestamp())) | int %}
+      {% if duration_seconds < 60 %}
+      {{ duration_seconds }}s
+      {% elif duration_seconds < 3600 %}
+      {{ (duration_seconds / 60) | int }}m {{ duration_seconds % 60 }}s
+      {% else %}
+      {{ (duration_seconds / 3600) | int }}h {{ ((duration_seconds % 3600) / 60) | int }}m
+      {% endif %}
+      {% else %}
+      N/A
+      {% endif %}
+  when: execution_report.start_time is defined
+
+- name: "Génération du résumé stdout selon l'environnement"
+  block:
+    - name: "Résumé stdout pour PRODUCTION"
+      ansible.builtin.debug:
+        msg: |
+          =========================================================
+          RÉSUMÉ D'EXÉCUTION - ENVIRONNEMENT PRODUCTION
+          =========================================================
+          Serveur cible    : {{ stdout_summary_data.hostname }}
+          Code AP          : {{ stdout_summary_data.code_ap }}
+          Code5car         : {{ stdout_summary_data.code5car }}
+          OS détecté       : {{ stdout_summary_data.os_detected }}
+          Middleware       : {{ stdout_summary_data.middleware_list }}
+          Filesystems créés: {{ stdout_summary_data.filesystems_created }}
+          Services configurés: {{ stdout_summary_data.services_configured }}
+          Durée d'exécution: {{ execution_duration | default('N/A') }}
+          Statut           : {{ stdout_summary_data.execution_status }}
+          Rapport JSON     : {{ stdout_summary_data.report_path }}
+          =========================================================
+      when: environment_type == "PROD"
+      
+    - name: "Résumé stdout pour ISO-PRODUCTION"
+      ansible.builtin.debug:
+        msg: |
+          =========================================================
+          RÉSUMÉ D'EXÉCUTION - ENVIRONNEMENT ISO-PRODUCTION
+          =========================================================
+          Serveur cible    : {{ stdout_summary_data.hostname }}
+          Code AP          : {{ stdout_summary_data.code_ap }}
+          Code5car         : {{ stdout_summary_data.code5car }}
+          OS détecté       : {{ stdout_summary_data.os_detected }}
+          Middleware       : {{ stdout_summary_data.middleware_list }}
+          Filesystems créés: {{ stdout_summary_data.filesystems_created }}
+          Services configurés: {{ stdout_summary_data.services_configured }}
+          Tests exécutés   : {{ execution_report.test_results | length | default(0) }}
+          Mode test        : Activé
+          Durée d'exécution: {{ execution_duration | default('N/A') }}
+          Statut           : {{ stdout_summary_data.execution_status }}
+          Rapport JSON     : {{ stdout_summary_data.report_path }}
+          =========================================================
+      when: environment_type == "ISOPROD"
+      
+    - name: "Résumé stdout pour HORS-PRODUCTION"
+      ansible.builtin.debug:
+        msg: |
+          =========================================================
+          RÉSUMÉ D'EXÉCUTION - ENVIRONNEMENT HORS-PRODUCTION
+          =========================================================
+          Serveur cible      : {{ stdout_summary_data.hostname }}
+          Code AP            : {{ stdout_summary_data.code_ap }}
+          Code5car           : {{ stdout_summary_data.code5car }}
+          OS détecté         : {{ stdout_summary_data.os_detected }}
+          Middleware         : {{ stdout_summary_data.middleware_list }}
+          Filesystems créés  : {{ stdout_summary_data.filesystems_created }}
+          Services configurés: {{ stdout_summary_data.services_configured }}
+          Tests exécutés     : {{ execution_report.test_results | length | default(0) }}
+          Features expérim.  : {{ execution_report.experimental_features | length | default(0) }}
+          Mode développement : Activé
+          Durée d'exécution  : {{ execution_duration | default('N/A') }}
+          Statut             : {{ stdout_summary_data.execution_status }}
+          Rapport JSON       : {{ stdout_summary_data.report_path }}
+          =========================================================
+      when: environment_type == "HORSPROD"
+
+- name: "Affichage des erreurs si présentes"
+  ansible.builtin.debug:
+    msg: |
+      ⚠️  ERREURS DÉTECTÉES ({{ execution_report.errors | length }}):
+      {% for error in execution_report.errors %}
+      - {{ error }}
+      {% endfor %}
+  when: execution_report.errors is defined and execution_report.errors | length > 0
+
+- name: "Affichage des avertissements si présents"
+  ansible.builtin.debug:
+    msg: |
+      ⚠️  AVERTISSEMENTS ({{ execution_report.warnings | length }}):
+      {% for warning in execution_report.warnings %}
+      - {{ warning }}
+      {% endfor %}
+  when: execution_report.warnings is defined and execution_report.warnings | length > 0
+
+- name: "Affichage des prochaines étapes recommandées"
+  ansible.builtin.debug:
+    msg: |
+      📋 PROCHAINES ÉTAPES RECOMMANDÉES:
+      {% if execution_report.success | default(true) %}
+      • Configurer les applications métiers dans l'arborescence créée
+      • Tester les scripts de démarrage/arrêt créés dans /etc/local
+      • Configurer la sauvegarde applicative via TSM
+      • Valider les permissions sur les répertoires applicatifs
+      • Vérifier la connectivité des middlewares détectés
+      {% else %}
+      • Analyser les erreurs dans le rapport JSON
+      • Corriger les problèmes identifiés
+      • Relancer le playbook après correction
+      • Vérifier les prérequis du serveur (SHA, vg_apps)
+      {% endif %}
+      {% if environment_type == "HORSPROD" %}
+      • Effectuer des tests fonctionnels complets
+      • Documenter les configurations de développement
+      {% endif %}
+
+- name: "Enregistrement des informations stdout générées"
+  ansible.builtin.set_fact:
+    stdout_generated: true
+    stdout_timestamp: "{{ ansible_date_time.iso8601 }}"
+    stdout_environment: "{{ environment_type }}"
