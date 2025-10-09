@@ -1,0 +1,225 @@
+# roles/app_environment_builder/tasks/rhel_setup.yml
+# Configuration spécifique RHEL pour l'environnement applicatif
+# Fichier manquant créé pour corriger l'erreur "Could not find specified file in role: tasks/rhel_setup"
+---
+- name: "Configuration spécifique RHEL - Initialisation"
+  ansible.builtin.debug:
+    msg: "Début de la configuration spécifique RHEL pour {{ environment_type | default('HORSPROD') }}"
+
+- name: "Vérification de la distribution RHEL"
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "RedHat"
+      - ansible_distribution == "RedHat"
+    fail_msg: "Ce script est spécifique à Red Hat Enterprise Linux"
+
+- name: "Configuration des variables RHEL"
+  ansible.builtin.set_fact:
+    rhel_version: "{{ ansible_distribution_version }}"
+    rhel_major_version: "{{ ansible_distribution_major_version }}"
+    enable_debug_tools: "{{ enable_debug_tools | default(false) }}"
+    install_dev_packages: "{{ install_dev_packages | default(false) }}"
+    environment_type: "{{ environment_type | default('HORSPROD') }}"
+
+- name: "Activation des dépôts RHEL pour les outils de développement"
+  block:
+    - name: "Vérification des dépôts disponibles"
+      ansible.builtin.shell: |
+        yum repolist enabled | grep -E "(rhel|epel|optional|extras)" || echo "Dépôts de base uniquement"
+      register: rhel_repos_check
+      changed_when: false
+      failed_when: false
+      
+    - name: "Activation du dépôt EPEL si nécessaire (environnement dev)"
+      ansible.builtin.yum:
+        name: epel-release
+        state: present
+      when: 
+        - environment_type == "HORSPROD"
+        - install_dev_packages
+        - "'epel' not in rhel_repos_check.stdout"
+      failed_when: false  # Non critique si EPEL n'est pas disponible
+      
+  when: install_dev_packages
+  tags: [repositories]
+
+- name: "Installation des outils de développement RHEL"
+  block:
+    - name: "Installation des packages de développement de base"
+      ansible.builtin.yum:
+        name:
+          - gcc
+          - make
+          - gdb
+          - strace
+          - ltrace
+          - lsof
+          - tcpdump
+          - net-tools
+          - bind-utils
+          - telnet
+          - wget
+          - curl
+          - vim-enhanced
+          - git
+        state: present
+      when: install_dev_packages and environment_type == "HORSPROD"
+      register: dev_packages_install
+      failed_when: false
+      
+    - name: "Installation des outils de monitoring système"
+      ansible.builtin.yum:
+        name:
+          - htop
+          - iotop
+          - nmon
+          - sysstat
+          - dstat
+        state: present
+      when: 
+        - install_dev_packages
+        - environment_type == "HORSPROD"
+        - dev_packages_install is succeeded
+      failed_when: false
+      
+  tags: [packages]
+
+- name: "Configuration des outils de debug RHEL"
+  block:
+    - name: "Activation de la collecte de statistiques système"
+      ansible.builtin.service:
+        name: sysstat
+        enabled: true
+        state: started
+      when: enable_debug_tools
+      failed_when: false
+      
+    - name: "Configuration du logging étendu pour debug"
+      ansible.builtin.lineinfile:
+        path: /etc/rsyslog.conf
+        line: "*.debug /var/log/debug.log"
+        create: false
+        backup: true
+      when: enable_debug_tools and environment_type == "HORSPROD"
+      notify: restart rsyslog
+      failed_when: false
+      
+    - name: "Configuration de la rotation des logs debug"
+      ansible.builtin.copy:
+        content: |
+          /var/log/debug.log {
+              daily
+              missingok
+              rotate 7
+              compress
+              delaycompress
+              notifempty
+              create 0640 root root
+          }
+        dest: /etc/logrotate.d/debug
+        owner: root
+        group: root
+        mode: '0644'
+      when: enable_debug_tools and environment_type == "HORSPROD"
+      failed_when: false
+      
+  tags: [debug]
+
+- name: "Configuration spécifique à l'environnement HORSPROD"
+  block:
+    - name: "Création d'un utilisateur de développement (si nécessaire)"
+      ansible.builtin.user:
+        name: "devuser"
+        comment: "Utilisateur de développement HORSPROD"
+        shell: /bin/bash
+        home: /home/devuser
+        create_home: true
+        groups: wheel
+        append: true
+      when: 
+        - environment_type == "HORSPROD"
+        - install_dev_packages
+        - create_dev_user | default(false)
+      failed_when: false
+      
+    - name: "Configuration des limites système étendues pour le développement"
+      ansible.builtin.blockinfile:
+        path: /etc/security/limits.conf
+        block: |
+          # Limites étendues pour environnement HORSPROD
+          * soft nofile 65536
+          * hard nofile 65536
+          * soft nproc 32768
+          * hard nproc 32768
+        marker: "# {mark} HORSPROD LIMITS"
+        backup: true
+      when: environment_type == "HORSPROD"
+      failed_when: false
+      
+  tags: [environment]
+
+- name: "Configuration des variables d'environnement RHEL"
+  block:
+    - name: "Configuration du profil système pour debug"
+      ansible.builtin.copy:
+        content: |
+          # Configuration RHEL pour environnement {{ environment_type }}
+          export HISTSIZE=10000
+          export HISTFILESIZE=20000
+          {% if enable_debug_tools %}
+          export DEBUG=1
+          export VERBOSE=1
+          {% endif %}
+          {% if environment_type == "HORSPROD" %}
+          export ENV_TYPE=HORSPROD
+          export PS1='\[\033[01;31m\][HORSPROD]\[\033[00m\] \u@\h:\w\$ '
+          {% endif %}
+        dest: /etc/profile.d/horsprod_rhel.sh
+        owner: root
+        group: root
+        mode: '0644'
+      when: environment_type == "HORSPROD"
+      
+  tags: [profile]
+
+- name: "Vérification de la configuration RHEL"
+  block:
+    - name: "Test des outils installés"
+      ansible.builtin.shell: |
+        echo "=== Vérification outils RHEL ==="
+        which gcc make gdb 2>/dev/null || echo "Outils de dev non installés"
+        which htop iotop 2>/dev/null || echo "Outils de monitoring non installés"
+        systemctl is-active sysstat 2>/dev/null || echo "sysstat non actif"
+      register: rhel_tools_check
+      changed_when: false
+      failed_when: false
+      
+    - name: "Vérification de la version du kernel"
+      ansible.builtin.shell: |
+        uname -r
+        cat /etc/redhat-release
+      register: rhel_kernel_check
+      changed_when: false
+      
+    - name: "Affichage du résumé de configuration RHEL"
+      ansible.builtin.debug:
+        msg: |
+          =========================================================
+          CONFIGURATION RHEL TERMINÉE
+          =========================================================
+          Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Kernel: {{ rhel_kernel_check.stdout_lines[0] | default('Unknown') }}
+          Environnement: {{ environment_type }}
+          Debug activé: {{ enable_debug_tools }}
+          Packages dev: {{ install_dev_packages }}
+          Outils installés: {{ 'OUI' if dev_packages_install is succeeded else 'PARTIEL' }}
+          =========================================================
+      
+  tags: [verification]
+
+# Handlers pour les services
+- name: restart rsyslog
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+  listen: restart rsyslog
