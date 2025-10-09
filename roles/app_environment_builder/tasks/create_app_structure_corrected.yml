@@ -1,0 +1,210 @@
+# roles/app_environment_builder/tasks/create_app_structure.yml
+# Création de l'arborescence applicative selon les normes BP21 - VERSION CORRIGÉE
+# Utilise les rôles SHA-Toolbox existants avec la nomenclature correcte
+---
+- name: "Validation des variables pour la création de structure"
+  ansible.builtin.assert:
+    that:
+      - target_codeap is defined
+      - target_code5car is defined
+      - target_codeap | length == 5
+      - target_code5car | length == 5
+    fail_msg: "Les variables target_codeap et target_code5car sont obligatoires (5 caractères chacune)"
+
+- name: "Définition des variables de structure applicative"
+  ansible.builtin.set_fact:
+    app_identifier: "{{ target_codeap }}-{{ target_code5car }}"
+    vg_apps_base: "/applis"
+    filesystem_list: []
+    created_directories: []
+    filesystem_modifications: []
+
+- name: "Vérification de l'existence du volume groupe vg_apps"
+  ansible.builtin.shell: |
+    {% if ansible_os_family == "AIX" %}
+    lsvg vg_apps
+    {% elif ansible_os_family == "RedHat" %}
+    vgs vg_apps
+    {% else %}
+    echo "Windows - volume check skipped"
+    {% endif %}
+  register: vg_apps_check
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Alerte si vg_apps n'existe pas"
+  ansible.builtin.debug:
+    msg: |
+      ATTENTION: Le volume groupe vg_apps n'a pas été trouvé.
+      Ceci peut indiquer que le SHA n'a pas été correctement installé.
+      Poursuite avec les répertoires standards.
+  when: ansible_os_family != "Windows" and vg_apps_check.rc != 0
+
+# ===== UTILISATION DU RÔLE IPS_TOOLBOX_SYSTEM POUR LA CRÉATION DE L'ARBORESCENCE =====
+- name: "Création de l'arborescence applicative via ips_toolbox_system"
+  block:
+    - name: "Création de l'arborescence applicative standard"
+      ansible.builtin.include_role:
+        name: ips_toolbox_system
+      vars:
+        system_operation: "create-directory"
+        system_codeAP: "{{ target_codeap }}"
+        system_code5car: "{{ target_code5car }}"
+        system_idappli: "{{ system_idappli | default('') }}"
+        system_vgName: "vg_apps"
+        system_lvSize: "{{ system_lvSize | default('1024') }}"
+        system_username: "{{ app_owner | default('') }}"
+        system_group: "{{ app_group | default('') }}"
+        system_NNN: "{{ app_permissions | default('') }}"
+        system_iis: false
+      register: arborescence_creation
+      tags: [filesystem]
+      
+    - name: "Enregistrement du résultat de création d'arborescence"
+      ansible.builtin.set_fact:
+        filesystem_modifications: "{{ filesystem_modifications + [{'operation': 'create_directory', 'codeap': target_codeap, 'code5car': target_code5car, 'status': 'completed', 'timestamp': ansible_date_time.iso8601}] }}"
+      when: arborescence_creation is succeeded
+      
+  when: ansible_os_family != "Windows"
+  tags: [filesystem]
+
+# ===== CRÉATION MANUELLE POUR WINDOWS =====
+- name: "Création de l'arborescence applicative Windows"
+  block:
+    - name: "Création des répertoires principaux Windows"
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "D:\\applis\\{{ app_identifier }}"
+        - "D:\\applis\\{{ app_identifier }}\\was"
+        - "D:\\applis\\{{ app_identifier }}\\ihs"
+        - "D:\\applis\\{{ app_identifier }}\\archives"
+        - "D:\\applis\\{{ app_identifier }}\\conf"
+        - "D:\\applis\\{{ app_identifier }}\\scripts"
+        - "D:\\applis\\{{ app_identifier }}\\shared"
+        - "D:\\applis\\{{ app_identifier }}\\tmp"
+        - "D:\\applis\\{{ app_identifier }}\\transfer"
+        - "D:\\applis\\{{ app_identifier }}\\transfer\\in"
+        - "D:\\applis\\{{ app_identifier }}\\transfer\\out"
+        - "D:\\applis\\logs\\{{ app_identifier }}"
+        - "D:\\applis\\logs\\{{ app_identifier }}\\was"
+        - "D:\\applis\\logs\\{{ app_identifier }}\\ihs"
+        - "D:\\applis\\logs\\{{ app_identifier }}\\delivery"
+        - "D:\\applis\\delivery\\{{ app_identifier }}"
+      register: directory_creation_win
+      
+    - name: "Enregistrement des répertoires créés Windows"
+      ansible.builtin.set_fact:
+        created_directories: "{{ created_directories + [item.path] }}"
+        filesystem_modifications: "{{ filesystem_modifications + [{'operation': 'create_directory_windows', 'path': item.path, 'status': 'created' if item.changed else 'exists', 'timestamp': ansible_date_time.iso8601}] }}"
+      loop: "{{ directory_creation_win.results }}"
+      when: directory_creation_win.results is defined
+      
+  when: ansible_os_family == "Windows"
+  tags: [directories]
+
+# ===== CRÉATION DES SCRIPTS APPLICATIFS (Unix/Linux uniquement) =====
+- name: "Création des scripts applicatifs"
+  block:
+    - name: "Création du répertoire /etc/local s'il n'existe pas"
+      ansible.builtin.file:
+        path: "/etc/local"
+        state: directory
+        mode: '0755'
+      when: ansible_os_family != "Windows"
+      
+    - name: "Création des scripts de base applicatifs"
+      ansible.builtin.template:
+        src: "app_script_template.j2"
+        dest: "/applis/{{ app_identifier }}/scripts/app_{{ target_code5car }}_{{ item }}"
+        mode: '0755'
+        owner: "{{ app_owner | default('root') }}"
+        group: "{{ app_group | default('root') }}"
+      loop:
+        - "start"
+        - "stop"
+        - "status"
+        - "restart"
+      when: ansible_os_family != "Windows"
+      register: script_creation
+      failed_when: false  # Continue même si le template n'existe pas encore
+      
+    - name: "Création des liens symboliques dans /etc/local"
+      ansible.builtin.file:
+        src: "/applis/{{ app_identifier }}/scripts/app_{{ target_code5car }}_{{ item }}"
+        dest: "/etc/local/app_{{ target_code5car }}_{{ item }}"
+        state: link
+        force: true
+      loop:
+        - "start"
+        - "stop"
+        - "status"
+        - "restart"
+      when: ansible_os_family != "Windows" and script_creation is not failed
+      failed_when: false
+      
+  tags: [scripts]
+
+# ===== CRÉATION DU LIEN SYMBOLIQUE CURRENT POUR DELIVERY =====
+- name: "Gestion des liens de delivery"
+  block:
+    - name: "Création du répertoire de version pour delivery"
+      ansible.builtin.file:
+        path: "/applis/delivery/{{ app_identifier }}/v1.0"
+        state: directory
+        mode: '0755'
+      when: ansible_os_family != "Windows"
+      
+    - name: "Création du lien symbolique current pour delivery"
+      ansible.builtin.file:
+        src: "/applis/delivery/{{ app_identifier }}/v1.0"
+        dest: "/applis/delivery/{{ app_identifier }}/current"
+        state: link
+        force: true
+      when: ansible_os_family != "Windows"
+      
+  tags: [delivery]
+
+# ===== VÉRIFICATIONS FINALES =====
+- name: "Vérification de la structure créée"
+  ansible.builtin.stat:
+    path: "/applis/{{ app_identifier }}"
+  register: final_structure_check
+  when: ansible_os_family != "Windows"
+
+- name: "Vérification de la structure créée - Windows"
+  ansible.windows.win_stat:
+    path: "D:\\applis\\{{ app_identifier }}"
+  register: final_structure_check_win
+  when: ansible_os_family == "Windows"
+
+- name: "Génération du rapport de création de structure"
+  ansible.builtin.set_fact:
+    structure_creation_report:
+      app_identifier: "{{ app_identifier }}"
+      target_codeap: "{{ target_codeap }}"
+      target_code5car: "{{ target_code5car }}"
+      filesystems_created: "{{ filesystem_modifications | length | default(0) }}"
+      directories_created: "{{ created_directories | length | default(0) }}"
+      structure_valid: "{{ final_structure_check.stat.exists | default(false) or final_structure_check_win.stat.exists | default(false) }}"
+      creation_timestamp: "{{ ansible_date_time.iso8601 }}"
+      os_family: "{{ ansible_os_family }}"
+      creation_method: "{{ 'ips_toolbox_system' if ansible_os_family != 'Windows' else 'manual_windows' }}"
+
+- name: "Affichage du rapport de création"
+  ansible.builtin.debug:
+    msg: |
+      =========================================================
+      CRÉATION DE L'ARBORESCENCE APPLICATIVE TERMINÉE
+      =========================================================
+      Application: {{ app_identifier }}
+      Code AP: {{ target_codeap }}
+      Code5car: {{ target_code5car }}
+      OS: {{ ansible_os_family }}
+      Méthode: {{ structure_creation_report.creation_method }}
+      Filesystems créés: {{ filesystem_modifications | length | default(0) }}
+      Répertoires créés: {{ created_directories | length | default(0) }}
+      Structure valide: {{ 'OUI' if structure_creation_report.structure_valid else 'NON' }}
+      =========================================================
