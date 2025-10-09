@@ -1,4 +1,4 @@
-PLAY [SHA Application Environment Builder - HORS-PRODUCTION] *******************
+Application Environment Builder - HORS-PRODUCTION] *******************
 
 TASK [Gathering Facts] *********************************************************
 ok: [s02vl9942814]
@@ -274,4 +274,3 @@ ok: [s02vl9942814]
 
 TASK [Génération du rapport d'erreur] ******************************************
 ERROR! Could not find specified file in role: tasks/generate_json
-
