@@ -1,0 +1,10 @@
+---
+
+# defaults file for ips_toolbox_launcher
+
+launcher_component: ""
+launcher_operation: ""
+launcher_file_name: "{{ launcher_component }}.yml"
+launcher_result_name: ""
+
+
