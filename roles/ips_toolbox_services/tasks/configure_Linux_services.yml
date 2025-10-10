@@ -1,0 +1,32 @@
+# Tâches de configuration des services applicatifs pour Linux
+---
+- name: "Vérification de la présence des services à configurer"
+  ansible.builtin.shell: |
+    for svc in {{ services_list | default([]) | join(' ') }}; do
+      systemctl status $svc || echo "$svc not installed";
+    done
+  register: services_presence
+  changed_when: false
+  failed_when: false
+
+- name: "Configuration et activation des services"
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop: "{{ services_list | default([]) }}"
+  register: service_start_results
+  failed_when: service_start_results is failed
+
+- name: "Configuration des paramètres de démarrage/arrêt"
+  ansible.builtin.lineinfile:
+    path: "/etc/systemd/system/{{ item }}.service.d/override.conf"
+    create: yes
+    line: "Restart=on-failure\nRestartSec=5s"
+  loop: "{{ services_list | default([]) }}"
+  notify: reload systemd
+  failed_when: false
+
+- name: "Affichage du résultat de configuration des services"
+  ansible.builtin.debug:
+    msg: "Services configurés: {{ services_list | join(', ') }}"
