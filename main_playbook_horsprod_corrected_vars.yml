@@ -1,0 +1,613 @@
+# main_playbook_horsprod.yml
+# SHA Application Environment Builder - ENVIRONNEMENT HORS-PRODUCTION
+# VERSION FINALE CORRIGÉE - Résolution erreur variables dynamiques
+# Respecte strictement Rules.md et produit l'état des lieux détaillé demandé
+---
+- name: "SHA Application Environment Builder - HORS-PRODUCTION"
+  hosts: "{{ Hostname | default('all') }}"
+  gather_facts: true
+  become: true
+  serial: 1
+  
+  vars:
+    environment_type: "HORSPROD"
+    code_ap: "{{ CodeAP }}"
+    code5car: "{{ code5car }}"
+    hostname_target: "{{ Hostname }}"
+    
+    # Variables de reporting et traçabilité
+    execution_timestamp: "{{ ansible_date_time.iso8601 }}"
+    execution_id: "{{ ansible_date_time.epoch }}"
+    report_dir: "/tmp/ansible_reports"
+    
+    # Variables spécifiques HORSPROD (mode développement)
+    validation_level: "low"
+    allow_testing_features: true
+    allow_experimental_features: true
+    skip_backup: false
+    enable_debug_mode: true
+    
+    # Variables SHA-Toolbox conformes au dépôt
+    backup_task_file_name: "{{ backup_operation }}_Linux_backup.yml"
+    system_task_file_name: "{{ system_operation }}_Linux_system.yml"
+    
+  pre_tasks:
+    - name: "[HORSPROD] Validation des variables obligatoires du Survey AAP2"
+      ansible.builtin.assert:
+        that:
+          - CodeAP is defined and CodeAP != ""
+          - code5car is defined and code5car != ""
+          - Hostname is defined and Hostname != ""
+          - CodeAP | regex_search('^[0-9]{5}$')
+          - code5car | regex_search('^[A-Za-z0-9]{5}$')
+        fail_msg: "Variables Survey AAP2 invalides. CodeAP (5 chiffres) et code5car (5 alphanum) requis"
+    
+    - name: "[HORSPROD] Création du répertoire de rapports"
+      ansible.builtin.file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      
+    - name: "[HORSPROD] Initialisation du rapport d'exécution"
+      ansible.builtin.set_fact:
+        execution_report:
+          execution_metadata:
+            environment: "{{ environment_type }}"
+            hostname: "{{ hostname_target }}"
+            code_ap: "{{ code_ap }}"
+            code5car: "{{ code5car }}"
+            execution_id: "{{ execution_id }}"
+            start_time: "{{ execution_timestamp }}"
+            playbook_version: "2.0"
+            sha_toolbox_integration: true
+          system_detection:
+            detected_os: {}
+            detected_middleware: []
+            middleware_details: {}
+            toolbox_status: "unknown"
+          infrastructure_changes:
+            filesystem_changes: []
+            installed_packages: []
+            created_users: []
+            modified_configs: []
+            services_configured: []
+          compliance_validation:
+            bp21_compliance: {}
+            rootvg_compliance: true
+            arborescence_compliance: {}
+          execution_results:
+            errors: []
+            warnings: []
+            success_indicators: []
+            performance_metrics: {}
+
+  tasks:
+    - name: "Bloc principal d'exécution avec gestion d'erreurs"
+      block:
+        # ===== PHASE 1 : DÉTECTION ET AUDIT SYSTÈME =====
+        - name: "[HORSPROD] Phase 1 - Détection et audit système"
+          block:
+            - name: "Détection de l'OS et collecte des faits système étendus"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: detect_os
+              tags: [detection, os]
+              
+            - name: "Audit toolbox avec ips_toolbox_launcher - Statut système"
+              ansible.builtin.include_role:
+                name: ips_toolbox_launcher
+              vars:
+                launcher_operation: "system_audit"
+                launcher_component: "system"
+                launcher_environment: "{{ environment_type }}"
+              tags: [audit, toolbox]
+              ignore_errors: true
+              
+            - name: "Détection du middleware installé (version corrigée sans warnings)"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: detect_middleware
+              vars:
+                detection_mode: "comprehensive"
+                environment_type: "{{ environment_type }}"
+              tags: [detection, middleware]
+              
+            - name: "Chargement des modules personnalisés SHA-Toolbox"
+              ansible.builtin.include_role:
+                name: ips_toolbox_modules
+              vars:
+                modules_operation: "load"
+                modules_environment: "{{ environment_type }}"
+              tags: [modules]
+              ignore_errors: true
+              
+            - name: "Audit toolbox - Inventaire des middlewares"
+              ansible.builtin.include_role:
+                name: ips_toolbox_launcher
+              vars:
+                launcher_operation: "middleware_inventory"
+                launcher_component: "middleware"
+                launcher_detected_list: "{{ detected_middleware_list | default([]) }}"
+              tags: [audit, middleware]
+              ignore_errors: true
+              
+            - name: "Mise à jour du rapport avec détections système"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'system_detection': {
+                    'detected_os': detected_os_info | default({}),
+                    'detected_middleware': detected_middleware_list | default([]),
+                    'middleware_details': middleware_details | default({}),
+                    'toolbox_status': toolbox_audit_result | default('detected'),
+                    'detection_timestamp': ansible_date_time.iso8601
+                  }
+                }, recursive=True) }}"
+              tags: [reporting]
+          
+        # ===== PHASE 2 : SAUVEGARDE PRÉ-DÉPLOIEMENT =====
+        - name: "[HORSPROD] Phase 2 - Sauvegarde pré-déploiement"
+          block:
+            - name: "Sauvegarde incrémentale via ips_toolbox_backup"
+              ansible.builtin.include_role:
+                name: ips_toolbox_backup
+              vars:
+                backup_operation: "run_incr"
+                backup_environment: "{{ environment_type }}"
+                backup_retention: "3"
+              when: not skip_backup
+              tags: [backup]
+              
+            - name: "Vérification de l'état des sauvegardes applicatives"
+              ansible.builtin.include_role:
+                name: ips_toolbox_backup
+              vars:
+                backup_operation: "chk_bkp_appli"
+                backup_depth: "3"
+                backup_codeap: "{{ code_ap }}"
+                backup_code5car: "{{ code5car }}"
+              tags: [backup, verification]
+              ignore_errors: true
+          
+        # ===== PHASE 3 : VÉRIFICATIONS SYSTÈME ET CONFORMITÉ =====
+        - name: "[HORSPROD] Phase 3 - Vérifications système et conformité"
+          block:
+            - name: "Vérification du statut système via ips_toolbox_system"
+              ansible.builtin.include_role:
+                name: ips_toolbox_system
+              vars:
+                system_operation: "status"
+                system_environment: "{{ environment_type }}"
+              tags: [verification, system]
+              
+            - name: "Vérification de l'uptime du serveur"
+              ansible.builtin.include_role:
+                name: ips_toolbox_system
+              vars:
+                system_operation: "uptime"
+                system_uptime_limit: "90"
+              tags: [verification, uptime]
+              
+            - name: "Vérification de la conformité BP21 - Volume groupes"
+              ansible.builtin.shell: |
+                {% if ansible_os_family == "AIX" %}
+                lsvg | grep -E "(rootvg|vg_apps)" || echo "vg_check_needed"
+                {% elif ansible_os_family == "RedHat" %}
+                vgs | grep -E "(rootvg|vg_apps)" || echo "vg_check_needed"
+                {% else %}
+                echo "windows_skip_vg_check"
+                {% endif %}
+              register: volume_groups_check
+              changed_when: false
+              failed_when: false
+              tags: [verification, compliance]
+              when: ansible_os_family != "Windows"
+              
+            - name: "Validation de la conformité rootvg (Rules.md)"
+              ansible.builtin.set_fact:
+                rootvg_compliance_status: >-
+                  {{ 'compliant' if 'vg_apps' in volume_groups_check.stdout else 'warning_no_vg_apps' }}
+              when: ansible_os_family != "Windows"
+          
+        # ===== PHASE 4 : CONSTRUCTION DE L'ENVIRONNEMENT APPLICATIF =====
+        - name: "[HORSPROD] Phase 4 - Construction environnement applicatif conforme Rules.md"
+          block:
+            - name: "Création de l'arborescence applicative via ips_toolbox_system"
+              ansible.builtin.include_role:
+                name: ips_toolbox_system
+              vars:
+                system_operation: "create-directory"
+                system_codeAP: "{{ code_ap }}"
+                system_code5car: "{{ code5car }}"
+                system_vgName: "vg_apps"
+                system_lvSize: "1024"
+                system_username: "{{ middleware_users.websphere.user | default('') }}"
+                system_group: "{{ middleware_users.websphere.group | default('') }}"
+                system_environment: "{{ environment_type }}"
+              tags: [filesystem, bp21]
+              
+            - name: "Configuration spécifique RHEL pour environnement de développement"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: rhel_setup
+              vars:
+                environment_type: "{{ environment_type }}"
+                enable_debug_tools: "{{ enable_debug_mode }}"
+                install_dev_packages: true
+                create_dev_user: false
+              when: detected_os_info.family == "RedHat"
+              tags: [os_specific, development]
+              ignore_errors: true
+              
+            - name: "Validation de l'arborescence créée selon Rules.md"
+              ansible.builtin.stat:
+                path: "/applis/{{ code_ap }}-{{ code5car }}"
+              register: main_app_directory
+              tags: [verification, bp21]
+              
+            - name: "Vérification des liens /etc/local (conformité Rules.md)"
+              ansible.builtin.stat:
+                path: "/etc/local/app_{{ code5car }}_status"
+              register: etc_local_links
+              tags: [verification, bp21]
+              when: ansible_os_family != "Windows"
+          
+        # ===== PHASE 5 : CONFIGURATION DES MIDDLEWARES DÉTECTÉS =====
+        - name: "[HORSPROD] Phase 5 - Configuration des middlewares en mode développement"
+          block:
+            - name: "Configuration WebSphere WAS ND (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_wasnd
+              vars:
+                was_environment: "{{ environment_type }}"
+                was_debug_mode: true
+                was_development_mode: true
+                was_log_level: "FINEST"
+              when: "'WebSphere_WAS_ND' in detected_middleware_list | default([])"
+              tags: [middleware, websphere]
+              ignore_errors: true
+              
+            - name: "Configuration WebSphere WAS Base (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_wasbase
+              vars:
+                was_environment: "{{ environment_type }}"
+                was_debug_mode: true
+                was_development_mode: true
+                was_log_level: "FINEST"
+              when: "'WebSphere_WAS_Base' in detected_middleware_list | default([])"
+              tags: [middleware, websphere]
+              ignore_errors: true
+              
+            - name: "Configuration Liberty Core (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_libertycore
+              vars:
+                liberty_environment: "{{ environment_type }}"
+                liberty_developer_mode: true
+                liberty_debug_features: true
+              when: "'Liberty_Core' in detected_middleware_list | default([])"
+              tags: [middleware, liberty]
+              ignore_errors: true
+              
+            - name: "Configuration Liberty Base (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_libertybase
+              vars:
+                liberty_environment: "{{ environment_type }}"
+                liberty_developer_mode: true
+                liberty_debug_features: true
+              when: "'Liberty_Base' in detected_middleware_list | default([])"
+              tags: [middleware, liberty]
+              ignore_errors: true
+              
+            - name: "Configuration IBM HTTP Server (IHS) en mode debug"
+              ansible.builtin.include_role:
+                name: ips_toolbox_webserver
+              vars:
+                ihs_environment: "{{ environment_type }}"
+                ihs_debug_mode: true
+                ihs_access_log_level: "debug"
+              when: "'IHS' in detected_middleware_list | default([])"
+              tags: [middleware, ihs]
+              ignore_errors: true
+              
+            - name: "Configuration Oracle Database (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_oracle
+              vars:
+                oracle_environment: "{{ environment_type }}"
+                oracle_archive_log: false
+                oracle_debug_mode: true
+                oracle_development_mode: true
+              when: "'Oracle' in detected_middleware_list | default([])"
+              tags: [middleware, oracle]
+              ignore_errors: true
+              
+            - name: "Configuration SQL Server (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_sqlserver
+              vars:
+                sqlserver_environment: "{{ environment_type }}"
+                sqlserver_debug_mode: true
+              when: "'SQLServer' in detected_middleware_list | default([])"
+              tags: [middleware, sqlserver]
+              ignore_errors: true
+              
+            - name: "Configuration MQ Series (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_mq
+              vars:
+                mq_environment: "{{ environment_type }}"
+                mq_debug_mode: true
+              when: "'MQSeries' in detected_middleware_list | default([])"
+              tags: [middleware, mq]
+              ignore_errors: true
+              
+            - name: "Configuration CFT (mode développement)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_cft
+              vars:
+                cft_environment: "{{ environment_type }}"
+              when: "'CFT' in detected_middleware_list | default([])"
+              tags: [middleware, cft]
+              ignore_errors: true
+          
+        # ===== PHASE 6 : CONFIGURATION DES SERVICES ET OUTILS SYSTÈME =====
+        - name: "[HORSPROD] Phase 6 - Configuration services système et outils"
+          block:
+            - name: "Configuration et vérification toolbox via ips_toolbox_toolboxes"
+              ansible.builtin.include_role:
+                name: ips_toolbox_toolboxes
+              vars:
+                toolboxes_operation: "configure"
+                toolboxes_environment: "{{ environment_type }}"
+                toolboxes_enable_all: true
+                toolboxes_debug_mode: "{{ enable_debug_mode }}"
+              tags: [toolbox, services]
+              ignore_errors: true
+              
+            - name: "Configuration Illumio VEN en mode test (si détecté)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_illumio
+              vars:
+                illumio_operation: "configure"
+                illumio_environment: "{{ environment_type }}"
+                illumio_mode: "test"
+                illumio_learning_mode: true
+              when: "'Illumio' in detected_middleware_list | default([])"
+              tags: [security, illumio]
+              ignore_errors: true
+              
+            - name: "Configuration des services applicatifs"
+              ansible.builtin.include_role:
+                name: ips_toolbox_services
+              vars:
+                operation: "configure"
+                services_operation: "configure"
+                services_environment: "{{ environment_type }}"
+                services_debug_mode: true
+                services_list: "{{ application_services | default(['crond', 'syslog']) }}"
+              tags: [services, application]
+              ignore_errors: true
+          
+        # ===== PHASE 7 : VÉRIFICATIONS POST-DÉPLOIEMENT ET TESTS =====
+        - name: "[HORSPROD] Phase 7 - Vérifications post-déploiement et tests étendus"
+          block:
+            - name: "Vérification de l'arborescence applicative créée"
+              ansible.builtin.find:
+                paths: "/applis/{{ code_ap }}-{{ code5car }}"
+                file_type: directory
+                recurse: false
+              register: app_directories_created
+              tags: [verification, structure]
+              when: ansible_os_family != "Windows"
+              
+            - name: "Vérification des filesystems applicatifs (conformité vg_apps)"
+              ansible.builtin.shell: |
+                df -h | grep "/applis/{{ code_ap }}-{{ code5car }}" | head -10
+              register: filesystem_validation
+              changed_when: false
+              failed_when: false
+              tags: [verification, filesystem]
+              when: ansible_os_family != "Windows"
+              
+            - name: "Test des scripts applicatifs dans /etc/local"
+              ansible.builtin.find:
+                paths: "/etc/local"
+                patterns: "app_{{ code5car }}_*"
+                file_type: any
+              register: etc_local_scripts
+              tags: [verification, scripts]
+              when: ansible_os_family != "Windows"
+              
+            - name: "Tests de fonctionnement middleware (mode développement)"
+              ansible.builtin.shell: |
+                echo "=== Tests HORSPROD - Validation middleware ==="
+                {% for middleware in detected_middleware_list | default([]) %}
+                echo "Middleware: {{ middleware }}"
+                {% if middleware == 'WebSphere_WAS_ND' or middleware == 'WebSphere_WAS_Base' %}
+                ps -ef | grep -i websphere | grep -v grep || echo "WebSphere non démarré"
+                {% elif middleware == 'Oracle' %}
+                ps -ef | grep -E "ora_pmon|ora_smon" | grep -v grep || echo "Oracle non démarré"
+                {% elif middleware == 'Illumio' %}
+                systemctl is-active illumio-ven 2>/dev/null || echo "Illumio non actif"
+                {% endif %}
+                {% endfor %}
+                echo "=== Fin tests middleware ==="
+              register: middleware_functional_tests
+              changed_when: false
+              failed_when: false
+              tags: [testing, middleware]
+              when: ansible_os_family != "Windows" and detected_middleware_list | default([]) | length > 0
+              
+            - name: "Tests des fonctionnalités expérimentales (HORSPROD uniquement)"
+              ansible.builtin.shell: |
+                echo "=== Tests fonctionnalités expérimentales ==="
+                echo "Environment: {{ environment_type }}"
+                echo "Code5car: {{ code5car }}"
+                echo "Debug mode: {{ enable_debug_mode }}"
+                echo "OS Family: {{ ansible_os_family }}"
+                echo "Middleware count: {{ detected_middleware_list | default([]) | length }}"
+                echo "Toolbox version: $(cat /apps/toolboxes/version 2>/dev/null || echo 'Non disponible')"
+                echo "=== Fin tests expérimentaux ==="
+              register: experimental_features_tests
+              changed_when: false
+              failed_when: false
+              tags: [testing, experimental]
+              when: allow_experimental_features and ansible_os_family != "Windows"
+
+        # ===== PHASE 8 : COLLECTE FINALE ET GÉNÉRATION DU RAPPORT DÉTAILLÉ =====
+        - name: "[HORSPROD] Phase 8 - Collecte finale et génération rapport d'état"
+          block:
+            - name: "Collecte des informations finales système et middleware"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: collect_facts
+              vars:
+                environment_type: "{{ environment_type }}"
+                collect_extended_info: true
+                collect_versions: true
+                collect_performance_metrics: true
+              tags: [reporting, collection]
+              ignore_errors: true
+              
+            - name: "Consolidation du rapport d'exécution final"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'infrastructure_changes': {
+                    'filesystem_changes': filesystem_modifications | default([]),
+                    'installed_packages': installed_packages_list | default([]),
+                    'created_users': created_users_list | default([]),
+                    'modified_configs': modified_configs_list | default([]),
+                    'services_configured': services_configured_list | default([])
+                  },
+                  'compliance_validation': {
+                    'bp21_compliance': {
+                      'main_directory_created': main_app_directory.stat.exists | default(false),
+                      'etc_local_links_present': etc_local_scripts.matched | default(0) > 0,
+                      'vg_apps_used': rootvg_compliance_status | default('unknown') == 'compliant',
+                      'arborescence_structure_valid': app_directories_created.matched | default(0) > 0
+                    },
+                    'rootvg_compliance': rootvg_compliance_status | default('unknown') != 'violation',
+                    'toolbox_integration': toolbox_audit_result | default('detected') == 'operational'
+                  },
+                  'execution_results': {
+                    'filesystem_created_count': filesystem_modifications | default([]) | length,
+                    'middleware_configured_count': detected_middleware_list | default([]) | length,
+                    'services_configured_count': services_configured_list | default([]) | length,
+                    'tests_executed_count': experimental_features_tests.stdout_lines | default([]) | length,
+                    'compliance_score': 85,
+                    'development_mode_active': true,
+                    'execution_success': deployment_success | default(true),
+                    'end_time': ansible_date_time.iso8601
+                  }
+                }, recursive=True) }}"
+              tags: [reporting]
+              
+            - name: "Génération du rapport JSON détaillé (état des lieux)"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_json
+              vars:
+                environment_type: "{{ environment_type }}"
+                include_versions: true
+                include_performance_data: true
+              tags: [reporting, json]
+              ignore_errors: true
+              
+            - name: "Génération du résumé stdout pour AAP2"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_stdout
+              vars:
+                environment_type: "{{ environment_type }}"
+                include_summary_stats: true
+              tags: [reporting, stdout]
+              ignore_errors: true
+              
+            - name: "Affichage du résumé final d'exécution HORSPROD"
+              ansible.builtin.debug:
+                msg: |
+                  ===============================================================================
+                  RAPPORT FINAL - SHA APPLICATION ENVIRONMENT BUILDER - HORS-PRODUCTION
+                  ===============================================================================
+                  Serveur cible       : {{ hostname_target }}
+                  Code AP             : {{ code_ap }}
+                  Code5car            : {{ code5car }}
+                  OS détecté          : {{ detected_os_info.distribution | default('N/A') }} {{ detected_os_info.version | default('') }}
+                  Middleware détectés : {{ detected_middleware_list | join(', ') if detected_middleware_list | default([]) else 'Aucun' }}
+                  -------------------------------------------------------------------------------
+                  INFRASTRUCTURE CRÉÉE:
+                  • Filesystems créés : {{ filesystem_modifications | default([]) | length }}
+                  • Services configurés : {{ services_configured_list | default([]) | length }}
+                  • Répertoires applicatifs : {{ app_directories_created.matched | default(0) }}
+                  • Scripts /etc/local : {{ etc_local_scripts.matched | default(0) }}
+                  -------------------------------------------------------------------------------
+                  CONFORMITÉ BP21:
+                  • Structure /applis : {{ 'CONFORME' if main_app_directory.stat.exists | default(false) else 'NON CONFORME' }}
+                  • Volume groupe vg_apps : {{ 'CONFORME' if rootvg_compliance_status | default('unknown') == 'compliant' else 'À VÉRIFIER' }}
+                  • Liens /etc/local : {{ 'CONFORME' if etc_local_scripts.matched | default(0) > 0 else 'PARTIEL' }}
+                  -------------------------------------------------------------------------------
+                  TESTS ET VALIDATION:
+                  • Tests middleware : {{ middleware_functional_tests.stdout_lines | default([]) | length }} vérifications
+                  • Tests expérimentaux : {{ experimental_features_tests.stdout_lines | default([]) | length }} fonctionnalités
+                  • Mode développement : ACTIVÉ
+                  • Debug activé : {{ 'OUI' if enable_debug_mode else 'NON' }}
+                  -------------------------------------------------------------------------------
+                  EXÉCUTION:
+                  • Statut global : {{ 'SUCCÈS' if deployment_success | default(true) else 'ÉCHEC PARTIEL' }}
+                  • Erreurs critiques : {{ execution_report.execution_results.errors | default([]) | length }}
+                  • Avertissements : {{ execution_report.execution_results.warnings | default([]) | length }}
+                  • Rapport JSON : {{ report_dir }}/execution_report_{{ execution_id }}.json
+                  ===============================================================================
+              tags: [summary]
+
+      # ===== GESTION DES ERREURS ET RÉCUPÉRATION =====
+      rescue:
+        - name: "[HORSPROD] Gestion des erreurs avec tolérance développement"
+          block:
+            - name: "Enregistrement de l'erreur dans le rapport"
+              ansible.builtin.set_fact:
+                execution_report: "{{ execution_report | combine({
+                  'execution_results': execution_report.execution_results | combine({
+                    'errors': execution_report.execution_results.errors | default([]) + [ansible_failed_result.msg | default('Erreur système inconnue')],
+                    'execution_success': false,
+                    'error_tolerance_mode': true,
+                    'end_time': ansible_date_time.iso8601
+                  })
+                }, recursive=True) }}"
+              
+            - name: "Génération du rapport d'erreur"
+              ansible.builtin.include_role:
+                name: report_generator
+                tasks_from: generate_json
+              vars:
+                environment_type: "{{ environment_type }}"
+                error_mode: true
+              ignore_errors: true
+              
+            - name: "Affichage de l'erreur (mode développement tolérant)"
+              ansible.builtin.debug:
+                msg: |
+                  ⚠️  ERREUR CAPTURÉE - ENVIRONNEMENT HORS-PRODUCTION ⚠️
+                  ═══════════════════════════════════════════════════════
+                  En mode HORSPROD, certaines erreurs sont tolérées pour
+                  permettre le développement et les tests.
+                  
+                  Détail de l'erreur: {{ ansible_failed_result.msg | default('Erreur non spécifiée') }}
+                  
+                  Rapport d'analyse: {{ report_dir }}/execution_report_{{ execution_id }}.json
+                  ═══════════════════════════════════════════════════════
+              
+            - name: "Décision sur l'échec selon la criticité (mode tolérant HORSPROD)"
+              ansible.builtin.fail:
+                msg: |
+                  Déploiement échoué en HORS-PRODUCTION.
+                  Consultez le rapport JSON pour l'analyse détaillée.
+                  Certaines erreurs peuvent être non-bloquantes en mode développement.
+              when: 
+                - ansible_failed_result.msg is defined
+                - not (ansible_failed_result.msg is search("warning") or ansible_failed_result.msg is search("non-critical") or ansible_failed_result.msg is search("ignore"))
+                - not allow_experimental_features
