@@ -1,0 +1,9 @@
+---
+
+
+- name: include role systemd
+  include_role:
+    name: ips_toolbox_systemd
+  vars:
+    systemd_operation: "{{ launcher_operation }}"
+
