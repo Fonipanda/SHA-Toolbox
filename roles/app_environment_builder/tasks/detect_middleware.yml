@@ -1,6 +1,4 @@
-# roles/app_environment_builder/tasks/detect_middleware.yml
-# Détection automatique des middlewares installés - VERSION CORRIGÉE
-# Corrige les erreurs de chemins inexistants en ajoutant des vérifications préalables
+# Détection automatique des middlewares installés
 ---
 - name: "Initialisation de la liste des middlewares détectés"
   ansible.builtin.set_fact:
