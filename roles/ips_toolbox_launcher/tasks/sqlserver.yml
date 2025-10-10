@@ -1,0 +1,9 @@
+---
+
+
+- name: include role sqlserver
+  include_role:
+    name: ips_toolbox_sqlserver
+  vars:
+    sqlserver_operation: "{{ launcher_operation }}"
+
