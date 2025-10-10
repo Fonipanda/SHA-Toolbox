@@ -216,10 +216,3 @@
           =========================================================
       
   tags: [verification]
-
-# Handlers pour les services
-- name: restart rsyslog
-  ansible.builtin.service:
-    name: rsyslog
-    state: restarted
-  listen: restart rsyslog
