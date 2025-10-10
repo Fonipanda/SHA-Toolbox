@@ -1,0 +1,21 @@
+# Tâches de configuration des toolboxes pour Linux
+---
+- name: "Vérification de l'installation des toolboxes"
+  ansible.builtin.shell: |
+    if [ -d "/apps/toolboxes" ]; then echo "Toolboxes directory exists"; else exit 1; fi
+  register: toolbox_dir_check
+  changed_when: false
+
+- name: "Configuration des toolboxes"
+  ansible.builtin.shell: |
+    /apps/toolboxes/exploit/bin/toolbox_config.sh --env {{ toolboxes_environment }} --modules all
+  register: toolbox_configure
+  failed_when: toolbox_configure.rc != 0
+
+- name: "Enregistrement du résultat de configuration des toolboxes"
+  ansible.builtin.set_fact:
+    toolbox_config_status: "{{ 'OK' if toolbox_configure.rc == 0 else 'FAIL' }}"
+
+- name: "Affichage du résultat de configuration des toolboxes"
+  ansible.builtin.debug:
+    msg: "Configuration toolboxes: {{ toolbox_config_status }}"
