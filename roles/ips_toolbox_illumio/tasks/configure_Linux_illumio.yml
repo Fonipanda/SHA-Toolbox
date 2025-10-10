@@ -1,0 +1,23 @@
+# Tâches de configuration de l'agent Illumio pour Linux
+---
+- name: "Vérification de l'installation de l'agent Illumio"
+  ansible.builtin.shell: |
+    systemctl status illumio-ven || exit 1
+  register: illumio_status_check
+  changed_when: false
+
+- name: "Configuration de l'agent Illumio en mode {{ illumio_mode }}"
+  ansible.builtin.shell: |
+    illumio-ven --mode {{ illumio_mode }} --enforce
+  register: illumio_configure
+  failed_when: illumio_configure.rc != 0
+
+- name: "Redémarrage du service Illumio"
+  ansible.builtin.service:
+    name: illumio-ven
+    state: restarted
+  when: illumio_configure.rc == 0
+
+- name: "Affichage du résultat de configuration Illumio"
+  ansible.builtin.debug:
+    msg: "Configuration Illumio: {{ 'OK' if illumio_configure.rc == 0 else 'FAIL' }}"
