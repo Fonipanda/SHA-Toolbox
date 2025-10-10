@@ -1,0 +1,9 @@
+---
+
+
+- name: include role vormetric
+  include_role:
+    name: ips_toolbox_vormetric
+  vars:
+    vormetric_operation: "{{ launcher_operation }}"
+
