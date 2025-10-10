@@ -1,0 +1,9 @@
+---
+
+
+- name: include role bigfix
+  include_role:
+    name: ips_toolbox_bigfix
+  vars:
+    bigfix_operation: "{{ launcher_operation }}"
+
