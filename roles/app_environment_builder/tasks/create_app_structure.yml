@@ -1,6 +1,4 @@
-# roles/app_environment_builder/tasks/create_app_structure.yml
-# Création de l'arborescence applicative selon les normes BP21 - VERSION CORRIGÉE
-# Utilise les rôles SHA-Toolbox existants avec la nomenclature correcte
+# Création de l'arborescence applicative selon les IT Rules
 ---
 - name: "Validation des variables pour la création de structure"
   ansible.builtin.assert:
