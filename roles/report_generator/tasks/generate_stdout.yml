@@ -1,6 +1,4 @@
-# roles/report_generator/tasks/generate_stdout.yml
 # Génération du résumé stdout d'exécution
-# Fichier manquant créé pour corriger l'erreur "Could not find specified file in role: tasks/generate_stdout"
 ---
 - name: "Validation des variables pour la génération stdout"
   ansible.builtin.assert:
