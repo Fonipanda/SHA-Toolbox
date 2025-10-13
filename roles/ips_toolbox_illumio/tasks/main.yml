@@ -4,14 +4,19 @@
     illumio_component: "illumio"
     illumio_role_name: "ips_toolbox_illumio"
 
-- name: "Définition de l'opération par défaut si non définie"
+- name: "Définition statique de l'opération Illumio (pas de template récursif)"
   ansible.builtin.set_fact:
-    illumio_operation: "configure"
+    illumio_current_operation: "configure"
   when: illumio_operation is not defined
 
-- name: "Construction du nom de fichier de tâche Illumio"
+- name: "Utilisation de l'opération définie si elle existe"
   ansible.builtin.set_fact:
-    illumio_task_file_name: "{{ illumio_operation }}_{{ ansible_system }}_illumio.yml"
+    illumio_current_operation: "{{ illumio_operation }}"
+  when: illumio_operation is defined
+
+- name: "Construction du nom de fichier de tâche Illumio (avec variable statique)"
+  ansible.builtin.set_fact:
+    illumio_task_file_name: "{{ illumio_current_operation }}_Linux_illumio.yml"
 
 - name: "Vérification de l'existence de la tâche Illumio demandée"
   ansible.builtin.stat:
@@ -19,7 +24,7 @@
   register: illumio_task_file_check
   delegate_to: localhost
 
-- name: "Exécution de la tâche Illumio"
+- name: "Exécution de la tâche Illumio avec gestion d'erreur"
   block:
     - name: "Inclusion de la tâche Illumio {{ illumio_task_file_name }}"
       ansible.builtin.include_tasks: "{{ illumio_task_file_name }}"
@@ -31,12 +36,14 @@
       vars:
         set_results_state: "KO"
         set_results_component: "{{ illumio_component }}"
-        set_results_operation: "{{ illumio_operation }}"
+        set_results_operation: "{{ illumio_current_operation }}"
         set_results_value: "Fichier {{ illumio_task_file_name }} introuvable ou erreur d'exécution"
+      ignore_errors: true
 
 - name: "Affichage du statut d'exécution de la tâche Illumio"
   ansible.builtin.debug:
     msg:
-      - "Tâche Illumio exécutée: {{ illumio_task_file_name }}"
-      - "Opération: {{ illumio_operation }}"
+      - "Rôle Illumio traité"
+      - "Fichier de tâche: {{ illumio_task_file_name }}"
+      - "Opération: {{ illumio_current_operation }}"
       - "Statut: {{ 'SUCCÈS' if illumio_task_file_check.stat.exists else 'FICHIER INTROUVABLE' }}"
