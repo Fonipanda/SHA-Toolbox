@@ -1,0 +1,8 @@
+---
+- name: Debug services_name
+  debug:
+    var: services_name
+
+- name: Tasks to include depending services_name variable
+  include_tasks: "{{ services_name }}/main.yml"
+  when: services_name is defined
