@@ -1,61 +1,163 @@
 ---
 - name: "Initialisation du rôle ips_toolbox_launcher"
   set_fact:
-    launcher_component: "{{ role_name.split('_')[-1] }}"
-    launcher_role_name: "{{ role_name }}"
+    launcher_component: "{{ launcher_component | default('launcher') }}"
+    launcher_role_name: "{{ role_name | default('ips_toolbox_launcher') }}"
 
+# ===== LANCEMENT DES MIDDLEWARES DÉTECTÉS =====
 - name: "Lancer la configuration WAS ND si détecté"
   include_tasks: wasnd.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'WebSphere_WAS_ND' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when: 
+    - detected_middleware_list is defined 
+    - "'WebSphere_WAS_ND' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration WAS Base si détecté"
-  include_tasks: wasebase.yml
+  include_tasks: wasbase.yml  # Nom correct selon le dépôt
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'WebSphere_WAS_Base' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'WebSphere_WAS_Base' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration Liberty Core si détecté"
   include_tasks: libertycore.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'Liberty_Core' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'Liberty_Core' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration Liberty Base si détecté"
   include_tasks: libertybase.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'Liberty_Base' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'Liberty_Base' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration IHS si détecté"
   include_tasks: webserver.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'IHS' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'IHS' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration Oracle si détecté"
   include_tasks: oracle.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'Oracle' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'Oracle' in detected_middleware_list"
+  ignore_errors: true
+
+- name: "Lancer la configuration SQL Server si détecté"
+  include_tasks: sqlserver.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'SQLServer' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration MQ si détecté"
   include_tasks: mq.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'MQSeries' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'MQSeries' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration CFT si détecté"
   include_tasks: cft.yml
   vars:
-    launcher_environment: "{{ environment_type }}"
-  when: "'CFT' in detected_middleware_list"
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_middleware_list is defined
+    - "'CFT' in detected_middleware_list"
   ignore_errors: true
+
+# ===== LANCEMENT DES SERVICES DÉTECTÉS =====
+- name: "Lancer la configuration Illumio (service sécurité) si détecté"
+  include_tasks: illumio.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_services_list is defined
+    - "'Illumio' in detected_services_list"
+  ignore_errors: true
+
+- name: "Lancer la configuration TSM (service sauvegarde) si détecté"
+  include_tasks: tsm.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when:
+    - detected_services_list is defined
+    - "'TSM' in detected_services_list"
+  ignore_errors: true
+
+# ===== LANCEMENT DES OUTILS SYSTÈME =====
+- name: "Lancer la configuration système"
+  include_tasks: system.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('status') }}"
+  when: launcher_component == "system"
+  ignore_errors: true
+
+- name: "Lancer la configuration des services applicatifs"
+  include_tasks: services.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when: launcher_component == "services"
+  ignore_errors: true
+
+- name: "Lancer la configuration des toolboxes"
+  include_tasks: toolboxes.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('configure') }}"
+  when: launcher_component == "toolboxes"
+  ignore_errors: true
+
+- name: "Lancer la configuration du backup"
+  include_tasks: backup.yml
+  vars:
+    launcher_environment: "{{ launcher_environment | default(environment_type) }}"
+    launcher_operation: "{{ launcher_operation | default('run_incr') }}"
+  when: launcher_component == "backup"
+  ignore_errors: true
+
+- name: "Affichage du résumé des lancements effectués"
+  debug:
+    msg:
+      - "========================================================="
+      - "RÉSUMÉ DES LANCEMENTS IPS_TOOLBOX_LAUNCHER"
+      - "========================================================="
+      - "Composant: {{ launcher_component }}"
+      - "Opération: {{ launcher_operation | default('configure') }}"
+      - "Environnement: {{ launcher_environment | default(environment_type) }}"
+      - "Middlewares traités: {{ detected_middleware_list | join(', ') if detected_middleware_list | default([]) else 'Aucun' }}"
+      - "Services traités: {{ detected_services_list | join(', ') if detected_services_list | default([]) else 'Aucun' }}"
+      - "========================================================="
