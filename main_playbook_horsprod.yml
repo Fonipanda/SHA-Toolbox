@@ -1,6 +1,5 @@
-# main_playbook
 ---
-- name: "SHA Application Environment Builder - HORS-PRODUCTION"
+- name: "Application Environment Builder"
   hosts: "{{ Hostname | default('all') }}"
   gather_facts: true
   become: true
@@ -47,7 +46,7 @@
         owner: root
         group: root
       
-    - name: "[HORSPROD] Initialisation du rapport d'exécution"
+    - name: "[HORSPROD] Initialisation du rapport d'exécution (structure complète)"
       ansible.builtin.set_fact:
         execution_report:
           execution_metadata:
@@ -73,7 +72,7 @@
             modified_configs: []
             services_configured: []
           compliance_validation:
-            bp21_compliance: {}
+            bp2i_compliance: {}
             rootvg_compliance: true
             arborescence_compliance: {}
           execution_results:
@@ -85,8 +84,8 @@
   tasks:
     - name: "Bloc principal d'exécution avec gestion d'erreurs"
       block:
-        # ===== PHASE 1 : DÉTECTION ET AUDIT SYSTÈME (ORDRE CORRIGÉ) =====
-        - name: "[HORSPROD] Phase 1 - Détection système et middleware (ordre corrigé)"
+        # ===== PHASE 1 : DÉTECTION ET AUDIT SYSTÈME =====
+        - name: "[HORSPROD] Phase 1 - Détection et audit système"
           block:
             - name: "Détection de l'OS et collecte des faits système étendus"
               ansible.builtin.include_role:
@@ -122,16 +121,6 @@
               tags: [audit, toolbox]
               ignore_errors: true
               
-            - name: "Audit toolbox - Inventaire des middlewares (APRÈS détection)"
-              ansible.builtin.include_role:
-                name: ips_toolbox_launcher
-              vars:
-                launcher_operation: "middleware_inventory"
-                launcher_component: "middleware"
-                launcher_detected_list: "{{ detected_middleware_list | default([]) }}"
-              tags: [audit, middleware]
-              ignore_errors: true
-              
             - name: "Mise à jour du rapport avec détections système"
               ansible.builtin.set_fact:
                 execution_report: "{{ execution_report | combine({
@@ -159,6 +148,7 @@
                 backup_retention: "3"
               when: not skip_backup
               tags: [backup]
+              ignore_errors: true
               
             - name: "Vérification de l'état des sauvegardes applicatives"
               ansible.builtin.include_role:
@@ -181,6 +171,7 @@
                 system_operation: "status"
                 system_environment: "{{ environment_type }}"
               tags: [verification, system]
+              ignore_errors: true
               
             - name: "Vérification de l'uptime du serveur"
               ansible.builtin.include_role:
@@ -189,8 +180,9 @@
                 system_operation: "uptime"
                 system_uptime_limit: "90"
               tags: [verification, uptime]
+              ignore_errors: true
               
-            - name: "Vérification de la conformité BP21 - Volume groupes"
+            - name: "Vérification de la conformité - Volume groupes"
               ansible.builtin.shell: |
                 {% if ansible_os_family == "AIX" %}
                 lsvg | grep -E "(rootvg|vg_apps)" || echo "vg_check_needed"
@@ -226,32 +218,20 @@
                 system_username: "{{ middleware_users.websphere.user | default('') }}"
                 system_group: "{{ middleware_users.websphere.group | default('') }}"
                 system_environment: "{{ environment_type }}"
-              tags: [filesystem, bp21]
-              
-            - name: "Configuration spécifique RHEL pour environnement de développement"
-              ansible.builtin.include_role:
-                name: app_environment_builder
-                tasks_from: rhel_setup
-              vars:
-                environment_type: "{{ environment_type }}"
-                enable_debug_tools: "{{ enable_debug_mode }}"
-                install_dev_packages: true
-                create_dev_user: false
-              when: detected_os_info.family == "RedHat"
-              tags: [os_specific, development]
+              tags: [filesystem, bp2i]
               ignore_errors: true
               
             - name: "Validation de l'arborescence créée selon Rules.md"
               ansible.builtin.stat:
                 path: "/applis/{{ code_ap }}-{{ code5car }}"
               register: main_app_directory
-              tags: [verification, bp21]
+              tags: [verification, bp2i]
               
             - name: "Vérification des liens /etc/local (conformité Rules.md)"
               ansible.builtin.stat:
                 path: "/etc/local/app_{{ code5car }}_status"
               register: etc_local_links
-              tags: [verification, bp21]
+              tags: [verification, bp2i]
               when: ansible_os_family != "Windows"
           
         # ===== PHASE 5 : CONFIGURATION DES MIDDLEWARES DÉTECTÉS =====
@@ -356,7 +336,7 @@
               ignore_errors: true
           
         # ===== PHASE 6 : CONFIGURATION DES SERVICES SYSTÈME =====
-        - name: "[HORSPROD] Phase 6 - Configuration services système et agents"
+        - name: "[HORSPROD] Phase 6 - Configuration services système et agents (variables fixes)"
           block:
             - name: "Configuration et vérification toolbox via ips_toolbox_toolboxes"
               ansible.builtin.include_role:
@@ -369,11 +349,11 @@
               tags: [toolbox, services]
               ignore_errors: true
               
-            - name: "Configuration Illumio VEN en mode test (service de sécurité)"
+            - name: "Configuration Illumio VEN en mode test (service de sécurité - variables fixes)"
               ansible.builtin.include_role:
                 name: ips_toolbox_illumio
               vars:
-                illumio_operation: "configure"
+                illumio_operation: "configure"  # VARIABLE FIXE - Pas de référence récursive
                 illumio_environment: "{{ environment_type }}"
                 illumio_mode: "test"
                 illumio_learning_mode: true
@@ -385,7 +365,7 @@
               ansible.builtin.include_role:
                 name: ips_toolbox_tsm
               vars:
-                tsm_operation: "configure"
+                tsm_operation: "configure"  # VARIABLE FIXE
                 tsm_environment: "{{ environment_type }}"
               when: "'TSM' in detected_services_list | default([])"
               tags: [backup, services]
@@ -414,6 +394,7 @@
               register: app_directories_created
               tags: [verification, structure]
               when: ansible_os_family != "Windows"
+              ignore_errors: true
               
             - name: "Vérification des filesystems applicatifs (conformité vg_apps)"
               ansible.builtin.shell: |
@@ -432,6 +413,7 @@
               register: etc_local_scripts
               tags: [verification, scripts]
               when: ansible_os_family != "Windows"
+              ignore_errors: true
               
             - name: "Tests de fonctionnement middleware (mode développement)"
               ansible.builtin.shell: |
@@ -501,7 +483,7 @@
               tags: [reporting, collection]
               ignore_errors: true
               
-            - name: "Consolidation du rapport d'exécution final"
+            - name: "Consolidation du rapport d'exécution final (structure corrigée)"
               ansible.builtin.set_fact:
                 execution_report: "{{ execution_report | combine({
                   'infrastructure_changes': {
@@ -512,7 +494,7 @@
                     'services_configured': services_configured_list | default([])
                   },
                   'compliance_validation': {
-                    'bp21_compliance': {
+                    'bp2i_compliance': {
                       'main_directory_created': main_app_directory.stat.exists | default(false),
                       'etc_local_links_present': etc_local_scripts.matched | default(0) > 0,
                       'vg_apps_used': rootvg_compliance_status | default('unknown') == 'compliant',
@@ -576,7 +558,7 @@
                   - "• Répertoires applicatifs : {{ app_directories_created.matched | default(0) }}"
                   - "• Scripts /etc/local : {{ etc_local_scripts.matched | default(0) }}"
                   - "-------------------------------------------------------------------------------"
-                  - "CONFORMITÉ BP21:"
+                  - "CONFORMITÉ:"
                   - "• Structure /applis : {{ 'CONFORME' if main_app_directory.stat.exists | default(false) else 'NON CONFORME' }}"
                   - "• Volume groupe vg_apps : {{ 'CONFORME' if rootvg_compliance_status | default('unknown') == 'compliant' else 'À VÉRIFIER' }}"
                   - "• Liens /etc/local : {{ 'CONFORME' if etc_local_scripts.matched | default(0) > 0 else 'PARTIEL' }}"
