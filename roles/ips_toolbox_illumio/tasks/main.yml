@@ -1,42 +1,42 @@
 ---
+- name: "Initialisation du rôle ips_toolbox_illumio"
+  ansible.builtin.set_fact:
+    illumio_component: "illumio"
+    illumio_role_name: "ips_toolbox_illumio"
 
-- set_fact:
-    illumio_component: "{{ role_name.split('_')[-1] }}"
-    illumio_role_name: "{{ role_name }}"
+- name: "Définition de l'opération par défaut si non définie"
+  ansible.builtin.set_fact:
+    illumio_operation: "configure"
+  when: illumio_operation is not defined
 
-- name: include tasks operation
+- name: "Construction du nom de fichier de tâche Illumio"
+  ansible.builtin.set_fact:
+    illumio_task_file_name: "{{ illumio_operation }}_{{ ansible_system }}_illumio.yml"
 
+- name: "Vérification de l'existence de la tâche Illumio demandée"
+  ansible.builtin.stat:
+    path: "{{ role_path }}/tasks/{{ illumio_task_file_name }}"
+  register: illumio_task_file_check
+  delegate_to: localhost
+
+- name: "Exécution de la tâche Illumio"
   block:
-
-  - local_action: stat path={{ role_path }}/tasks/{{ illumio_task_file_name }}
-    become: no
-    register: statResult
-    failed_when: statResult.stat.exists == false
-
-  - include_tasks: "{{ illumio_task_file_name }}"
-    when: statResult.stat.exists
-
+    - name: "Inclusion de la tâche Illumio {{ illumio_task_file_name }}"
+      ansible.builtin.include_tasks: "{{ illumio_task_file_name }}"
+      when: illumio_task_file_check.stat.exists
   rescue:
+    - name: "Gestion de l'erreur - Tâche Illumio introuvable"
+      ansible.builtin.include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "KO"
+        set_results_component: "{{ illumio_component }}"
+        set_results_operation: "{{ illumio_operation }}"
+        set_results_value: "Fichier {{ illumio_task_file_name }} introuvable ou erreur d'exécution"
 
-  - name: set result failed operation
-    include_role:
-      name: ips_toolbox_set_results
-    vars:
-     set_results_state: "info"
-     set_results_item: ""
-     set_results_component: "{{ illumio_component }}"
-     set_results_operation: "{{ illumio_operation }}"
-     set_results_role_name: "{{ illumio_role_name }}"
-     set_results_status: "KO"
-     set_results_value: "\
-
-       {% if statResult.stat.exists == false %}\
-
-          task {{ illumio_task_file_name }} does not exist\
-
-       {% else %}\
-
-          task execution error\
-
-       {% endif %}"
-
+- name: "Affichage du statut d'exécution de la tâche Illumio"
+  ansible.builtin.debug:
+    msg:
+      - "Tâche Illumio exécutée: {{ illumio_task_file_name }}"
+      - "Opération: {{ illumio_operation }}"
+      - "Statut: {{ 'SUCCÈS' if illumio_task_file_check.stat.exists else 'FICHIER INTROUVABLE' }}"
