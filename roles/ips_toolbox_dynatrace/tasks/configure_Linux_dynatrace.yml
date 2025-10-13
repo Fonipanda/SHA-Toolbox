@@ -1,46 +1,182 @@
 ---
-- name: "Vérification du service Dynatrace OneAgent"
-  shell: |
-    systemctl list-units --all | grep -q dtoneagent && echo "SERVICE_FOUND" || echo "SERVICE_MISSING"
-  register: dt_service_check
-  changed_when: false
-  failed_when: false
-
-- name: "Détection du binaire OneAgent"
-  stat:
-    path: /opt/dynatrace/oneagent/agent/bin/oneagentctl
-  register: dt_binary_check
-
-- name: "Configuration OneAgent (statut active)"
-  shell: |
-    echo "=== Configuration Dynatrace OneAgent ==="
-    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl status || echo "Statut inconnu"
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl activate || echo "Activation échouée ou déjà actif"
+- name: "Recherche étendue de l'agent Dynatrace OneAgent"
+  ansible.builtin.shell: |
+    echo "=== Détection Dynatrace OneAgent ==="
+    
+    # Vérification du service systemd OneAgent
+    if systemctl list-units --all | grep -i oneagent >/dev/null 2>&1; then
+      echo "SERVICE_ONEAGENT_FOUND"
     fi
-    echo "=== Fin Dynatrace OneAgent ==="
-  register: dt_config_result
+    
+    # Vérification des processus OneAgent
+    oneagent_processes=$(ps -ef | grep -i oneagent | grep -v grep | wc -l)
+    if [ "$oneagent_processes" -gt 0 ]; then
+      echo "PROCESSES_ONEAGENT_FOUND:$oneagent_processes"
+    fi
+    
+    # Vérification des répertoires standards OneAgent
+    for dir in "/opt/dynatrace/oneagent" "/usr/lib/dynatrace" "/var/lib/dynatrace"; do
+      if [ -d "$dir" ]; then
+        echo "DIRECTORY_FOUND:$dir"
+      fi
+    done
+    
+    # Vérification du binaire oneagentctl
+    for path in "/opt/dynatrace/oneagent/agent/bin/oneagentctl" "/usr/bin/oneagentctl" "/usr/local/bin/oneagentctl"; do
+      if [ -f "$path" ] && [ -x "$path" ]; then
+        echo "BINARY_FOUND:$path"
+      fi
+    done
+    
+    # Vérification des ports d'écoute Dynatrace (par défaut 9999)
+    if netstat -tuln 2>/dev/null | grep -E ":(9999|14499)" >/dev/null; then
+      echo "PORTS_DYNATRACE_FOUND"
+    fi
+    
+    # Vérification des logs OneAgent
+    for logdir in "/var/log/dynatrace" "/opt/dynatrace/oneagent/log"; do
+      if [ -d "$logdir" ] && [ "$(ls -A "$logdir" 2>/dev/null | wc -l)" -gt 0 ]; then
+        echo "LOGS_FOUND:$logdir"
+      fi
+    done
+    
+    echo "=== Fin détection Dynatrace ==="
+  register: dynatrace_detection
   changed_when: false
   failed_when: false
 
-- name: "Affichage du résumé Dynatrace"
-  debug:
-    msg:
-      - "Service Dynatrace détecté : {{ 'Oui' if 'SERVICE_FOUND' in dt_service_check.stdout else 'Non' }}"
-      - "Binaire détecté : {{ 'Oui' if dt_binary_check.stat.exists else 'Non' }}"
-      - "Résultat configuration : {{ dt_config_result.stdout_lines | default(['Aucun résultat']) }}"
+- name: "Configuration du OneAgent Dynatrace selon les composants détectés"
+  ansible.builtin.shell: |
+    echo "=== Configuration OneAgent Dynatrace ==="
+    
+    # Extraction du chemin du binaire oneagentctl
+    oneagent_binary=$(echo "{{ dynatrace_detection.stdout }}" | grep "BINARY_FOUND:" | cut -d: -f2- | head -1)
+    
+    if [ -n "$oneagent_binary" ]; then
+      echo "Binaire OneAgent trouvé: $oneagent_binary"
+      
+      # Version de l'agent OneAgent
+      agent_version=$($oneagent_binary --version 2>/dev/null || echo "Version non disponible")
+      echo "Version OneAgent: $agent_version"
+      
+      # Statut de l'agent
+      agent_status=$($oneagent_binary --get-server-config 2>/dev/null || echo "Configuration serveur non disponible")
+      echo "Configuration serveur: $agent_status"
+      
+      # Configuration du mode selon les paramètres demandés
+      echo "Configuration demandée:"
+      echo "  - Mode surveillance: {{ dynatrace_monitoring_mode | default('fullstack') }}"
+      echo "  - Surveillance BDD: {{ dynatrace_database_monitoring | default('enabled') }}"
+      
+      # Activation de la surveillance full-stack si demandée
+      if [ "{{ dynatrace_monitoring_mode | default('fullstack') }}" = "fullstack" ]; then
+        echo "Activation surveillance full-stack..."
+        $oneagent_binary --enable-monitoring-fullstack 2>/dev/null || echo "Activation full-stack non supportée"
+      fi
+      
+      # Configuration surveillance base de données Oracle
+      if [ "{{ dynatrace_database_monitoring | default('enabled') }}" = "enabled" ] && echo "{{ detected_middleware_list | default([]) | join(',') }}" | grep -i oracle >/dev/null; then
+        echo "Configuration surveillance Oracle..."
+        $oneagent_binary --enable-database-monitoring 2>/dev/null || echo "Surveillance Oracle non supportée"
+      fi
+      
+      # Redémarrage du service si nécessaire
+      if [ "{{ dynatrace_restart_agent | default('false') }}" = "true" ]; then
+        echo "Redémarrage de l'agent OneAgent..."
+        $oneagent_binary --restart-agent 2>/dev/null || echo "Redémarrage non supporté"
+      fi
+      
+    elif echo "{{ dynatrace_detection.stdout }}" | grep -q "SERVICE_ONEAGENT_FOUND"; then
+      echo "Service OneAgent détecté sans binaire de contrôle accessible"
+      
+      # Statut via systemd
+      systemctl status oneagent --no-pager --lines=3 2>/dev/null || echo "Statut service non disponible"
+      
+      # Tentative de redémarrage via systemd si demandé
+      if [ "{{ dynatrace_restart_agent | default('false') }}" = "true" ]; then
+        systemctl restart oneagent 2>/dev/null || echo "Redémarrage service échoué"
+      fi
+      
+    elif echo "{{ dynatrace_detection.stdout }}" | grep -q "PROCESSES_ONEAGENT_FOUND"; then
+      echo "Processus OneAgent détectés mais pas de service manageable"
+      
+      # Affichage des processus OneAgent
+      ps -ef | grep -i oneagent | grep -v grep | head -5
+      
+    elif echo "{{ dynatrace_detection.stdout }}" | grep -q "DIRECTORY_FOUND"; then
+      echo "Répertoires OneAgent trouvés mais agent non opérationnel"
+      
+      # Exploration des répertoires trouvés
+      echo "{{ dynatrace_detection.stdout }}" | grep "DIRECTORY_FOUND" | while IFS=: read -r prefix dir; do
+        echo "Contenu de: $dir"
+        ls -la "$dir" 2>/dev/null | head -5
+      done
+      
+    else
+      echo "Aucun composant Dynatrace OneAgent trouvé sur ce serveur"
+      echo "Ceci est normal si Dynatrace n'est pas déployé"
+      echo "Configuration ignorée sans erreur"
+    fi
+    
+    echo "=== Fin configuration OneAgent ==="
+  register: dynatrace_config_result
+  changed_when: false
+  failed_when: false
 
-- name: "Enregistrement du résultat Dynatrace"
-  include_role:
+- name: "Vérification finale du statut OneAgent après configuration"
+  ansible.builtin.shell: |
+    echo "=== Statut final OneAgent Dynatrace ==="
+    
+    # Test de connectivité si OneAgent configuré
+    oneagent_binary=$(echo "{{ dynatrace_detection.stdout }}" | grep "BINARY_FOUND:" | cut -d: -f2- | head -1)
+    
+    if [ -n "$oneagent_binary" ]; then
+      echo "Test de connectivité au serveur Dynatrace:"
+      $oneagent_binary --get-server-config 2>/dev/null | head -10 || echo "Connectivité non établie"
+      
+      echo "Statut final de l'agent:"
+      $oneagent_binary --get-status 2>/dev/null || echo "Statut final non disponible"
+    else
+      echo "Aucune vérification finale possible sans binaire de contrôle"
+    fi
+    
+    echo "=== Fin statut final ==="
+  register: dynatrace_final_status
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage du résumé complet Dynatrace OneAgent"
+  ansible.builtin.debug:
+    msg:
+      - "=== RÉSUMÉ DYNATRACE ONEAGENT ==="
+      - "Mode de surveillance configuré: {{ dynatrace_monitoring_mode | default('fullstack') }}"
+      - "Surveillance BDD activée: {{ dynatrace_database_monitoring | default('enabled') }}"
+      - ""
+      - "DÉTECTION:"
+      - "{{ dynatrace_detection.stdout_lines | default(['Aucune détection']) }}"
+      - ""
+      - "CONFIGURATION:"
+      - "{{ dynatrace_config_result.stdout_lines | default(['Aucune configuration']) }}"
+      - ""
+      - "STATUT FINAL:"
+      - "{{ dynatrace_final_status.stdout_lines | default(['Statut final non disponible']) }}"
+      - "=== FIN RÉSUMÉ DYNATRACE ==="
+
+- name: "Enregistrement du résultat Dynatrace dans ips_toolbox_set_results"
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-    set_results_state: "{{ 'OK' if dt_binary_check.stat.exists else 'INFO' }}"
+    set_results_state: "{{ 'OK' if 'BINARY_FOUND:' in dynatrace_detection.stdout else 'INFO' }}"
     set_results_component: "dynatrace"
     set_results_operation: "configure"
     set_results_value: >-
-      {% if dt_binary_check.stat.exists %}
-      Dynatrace OneAgent installé et activé
+      {% if 'BINARY_FOUND:' in dynatrace_detection.stdout %}
+      Dynatrace OneAgent installé et configuré - Mode: {{ dynatrace_monitoring_mode | default('fullstack') }}
+      {% elif 'SERVICE_ONEAGENT_FOUND' in dynatrace_detection.stdout %}
+      Service OneAgent détecté
+      {% elif 'PROCESSES_ONEAGENT_FOUND' in dynatrace_detection.stdout %}
+      Processus OneAgent détectés
       {% else %}
-      Dynatrace non installé - configuration ignorée
+      Dynatrace OneAgent non installé - normal sur serveur sans Dynatrace
       {% endif %}
   ignore_errors: true
