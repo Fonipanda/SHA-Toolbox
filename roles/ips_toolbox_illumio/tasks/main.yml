@@ -1,49 +1,40 @@
 ---
-- name: "Initialisation du rôle ips_toolbox_illumio"
+- name: "Initialisation du rôle ips_toolbox_illumio (variables complètement statiques)"
   ansible.builtin.set_fact:
     illumio_component: "illumio"
     illumio_role_name: "ips_toolbox_illumio"
+    illumio_operation_final: "configure"  # TOUJOURS configure - jamais de condition
 
-- name: "Définition statique de l'opération Illumio (pas de template récursif)"
+- name: "Construction du nom de fichier de tâche Illumio (statique fixe)"
   ansible.builtin.set_fact:
-    illumio_current_operation: "configure"
-  when: illumio_operation is not defined
+    illumio_task_file_name: "configure_Linux_illumio.yml"  # FICHIER FIXE - pas de variable
 
-- name: "Utilisation de l'opération définie si elle existe"
-  ansible.builtin.set_fact:
-    illumio_current_operation: "{{ illumio_operation }}"
-  when: illumio_operation is defined
-
-- name: "Construction du nom de fichier de tâche Illumio (avec variable statique)"
-  ansible.builtin.set_fact:
-    illumio_task_file_name: "{{ illumio_current_operation }}_Linux_illumio.yml"
-
-- name: "Vérification de l'existence de la tâche Illumio demandée"
+- name: "Vérification de l'existence de la tâche Illumio (fichier fixe)"
   ansible.builtin.stat:
-    path: "{{ role_path }}/tasks/{{ illumio_task_file_name }}"
+    path: "{{ role_path }}/tasks/configure_Linux_illumio.yml"  # CHEMIN FIXE
   register: illumio_task_file_check
   delegate_to: localhost
 
-- name: "Exécution de la tâche Illumio avec gestion d'erreur"
+- name: "Exécution de la tâche Illumio configure_Linux_illumio.yml"
   block:
-    - name: "Inclusion de la tâche Illumio {{ illumio_task_file_name }}"
-      ansible.builtin.include_tasks: "{{ illumio_task_file_name }}"
+    - name: "Inclusion directe du fichier configure_Linux_illumio.yml"
+      ansible.builtin.include_tasks: configure_Linux_illumio.yml  # FICHIER FIXE
       when: illumio_task_file_check.stat.exists
   rescue:
-    - name: "Gestion de l'erreur - Tâche Illumio introuvable"
+    - name: "Gestion de l'erreur - Fichier configure_Linux_illumio.yml introuvable"
       ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "KO"
-        set_results_component: "{{ illumio_component }}"
-        set_results_operation: "{{ illumio_current_operation }}"
-        set_results_value: "Fichier {{ illumio_task_file_name }} introuvable ou erreur d'exécution"
+        set_results_component: "illumio"  # STATIQUE
+        set_results_operation: "configure"  # STATIQUE
+        set_results_value: "Fichier configure_Linux_illumio.yml introuvable"  # STATIQUE
       ignore_errors: true
 
-- name: "Affichage du statut d'exécution de la tâche Illumio"
+- name: "Affichage du statut d'exécution Illumio (variables statiques)"
   ansible.builtin.debug:
     msg:
-      - "Rôle Illumio traité"
-      - "Fichier de tâche: {{ illumio_task_file_name }}"
-      - "Opération: {{ illumio_current_operation }}"
+      - "Rôle Illumio traité avec fichier fixe"
+      - "Fichier: configure_Linux_illumio.yml"
+      - "Opération: configure"
       - "Statut: {{ 'SUCCÈS' if illumio_task_file_check.stat.exists else 'FICHIER INTROUVABLE' }}"
