@@ -1,30 +1,31 @@
 ---
 - name: "Initialisation du rôle ips_toolbox_dynatrace"
-  set_fact:
+  ansible.builtin.set_fact:
     dynatrace_component: "dynatrace"
     dynatrace_role_name: "ips_toolbox_dynatrace"
 
-- name: "Construction du nom de fichier de tâche Dynatrace (par OS)"
-  set_fact:
+- name: "Construction du nom de fichier de tâche selon l'OS"
+  ansible.builtin.set_fact:
     dynatrace_task_file: "{{ dynatrace_operation | default('configure') }}_{{ ansible_system }}_dynatrace.yml"
 
 - name: "Vérification de l'existence du fichier de tâche Dynatrace"
-  stat:
+  ansible.builtin.stat:
     path: "{{ role_path }}/tasks/{{ dynatrace_task_file }}"
-  register: dt_task_exists
+  register: dynatrace_task_exists
   delegate_to: localhost
 
 - name: "Exécution de la tâche Dynatrace spécifique à l'OS"
-  include_tasks: "{{ dynatrace_task_file }}"
-  when: dt_task_exists.stat.exists
+  ansible.builtin.include_tasks: "{{ dynatrace_task_file }}"
+  when: dynatrace_task_exists.stat.exists
 
-- name: "Fallback - tâche générique Dynatrace si spécifique introuvable"
-  include_tasks: configure_generic_dynatrace.yml
-  when: not dt_task_exists.stat.exists
+- name: "Fallback - Tâche générique si fichier spécifique introuvable"
+  ansible.builtin.include_tasks: "configure_generic_dynatrace.yml"
+  when: not dynatrace_task_exists.stat.exists
 
 - name: "Affichage du statut d'exécution Dynatrace"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Rôle Dynatrace exécuté"
-      - "Fichier: {{ dynatrace_task_file if dt_task_exists.stat.exists else 'configure_generic_dynatrace.yml' }}"
+      - "Fichier: {{ dynatrace_task_file if dynatrace_task_exists.stat.exists else 'configure_generic_dynatrace.yml' }}"
+      - "OS: {{ ansible_system }}"
       - "Opération: {{ dynatrace_operation | default('configure') }}"
