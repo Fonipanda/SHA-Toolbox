@@ -1,0 +1,30 @@
+---
+- name: "Initialisation du rôle ips_toolbox_rear"
+  set_fact:
+    rear_component: "rear"
+    rear_role_name: "ips_toolbox_rear"
+
+- name: "Construction du nom de fichier de tâche ReaR (par OS)"
+  set_fact:
+    rear_task_file: "{{ rear_operation | default('backup') }}_{{ ansible_system }}_rear.yml"
+
+- name: "Vérification de l'existence du fichier de tâche ReaR"
+  stat:
+    path: "{{ role_path }}/tasks/{{ rear_task_file }}"
+  register: rear_task_exists
+  delegate_to: localhost
+
+- name: "Exécution de la tâche ReaR spécifique à l'OS"
+  include_tasks: "{{ rear_task_file }}"
+  when: rear_task_exists.stat.exists
+
+- name: "Fallback - tâche générique ReaR si spécifique introuvable"
+  include_tasks: configure_generic_rear.yml
+  when: not rear_task_exists.stat.exists
+
+- name: "Affichage du statut d'exécution ReaR"
+  debug:
+    msg:
+      - "Rôle ReaR exécuté"
+      - "Fichier: {{ rear_task_file if rear_task_exists.stat.exists else 'configure_generic_rear.yml' }}"
+      - "Opération: {{ rear_operation | default('backup') }}"
