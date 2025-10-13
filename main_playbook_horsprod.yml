@@ -1,7 +1,4 @@
-# main_playbook_horsprod.yml
-# SHA Application Environment Builder - ENVIRONNEMENT HORS-PRODUCTION
-# VERSION FINALE CORRIGÉE - Résolution erreur variables dynamiques
-# Respecte strictement Rules.md et produit l'état des lieux détaillé demandé
+# main_playbook
 ---
 - name: "SHA Application Environment Builder - HORS-PRODUCTION"
   hosts: "{{ Hostname | default('all') }}"
@@ -60,12 +57,14 @@
             code5car: "{{ code5car }}"
             execution_id: "{{ execution_id }}"
             start_time: "{{ execution_timestamp }}"
-            playbook_version: "2.0"
+            playbook_version: "2.1"
             sha_toolbox_integration: true
           system_detection:
             detected_os: {}
             detected_middleware: []
+            detected_services: []
             middleware_details: {}
+            services_details: {}
             toolbox_status: "unknown"
           infrastructure_changes:
             filesystem_changes: []
@@ -86,8 +85,8 @@
   tasks:
     - name: "Bloc principal d'exécution avec gestion d'erreurs"
       block:
-        # ===== PHASE 1 : DÉTECTION ET AUDIT SYSTÈME =====
-        - name: "[HORSPROD] Phase 1 - Détection et audit système"
+        # ===== PHASE 1 : DÉTECTION ET AUDIT SYSTÈME (ORDRE CORRIGÉ) =====
+        - name: "[HORSPROD] Phase 1 - Détection système et middleware (ordre corrigé)"
           block:
             - name: "Détection de l'OS et collecte des faits système étendus"
               ansible.builtin.include_role:
@@ -95,17 +94,7 @@
                 tasks_from: detect_os
               tags: [detection, os]
               
-            - name: "Audit toolbox avec ips_toolbox_launcher - Statut système"
-              ansible.builtin.include_role:
-                name: ips_toolbox_launcher
-              vars:
-                launcher_operation: "system_audit"
-                launcher_component: "system"
-                launcher_environment: "{{ environment_type }}"
-              tags: [audit, toolbox]
-              ignore_errors: true
-              
-            - name: "Détection du middleware installé (version corrigée sans warnings)"
+            - name: "Détection du middleware installé (AVANT launcher - ordre corrigé)"
               ansible.builtin.include_role:
                 name: app_environment_builder
                 tasks_from: detect_middleware
@@ -123,7 +112,17 @@
               tags: [modules]
               ignore_errors: true
               
-            - name: "Audit toolbox - Inventaire des middlewares"
+            - name: "Audit toolbox avec ips_toolbox_launcher - Statut système (APRÈS détection)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_launcher
+              vars:
+                launcher_operation: "system_audit"
+                launcher_component: "system"
+                launcher_environment: "{{ environment_type }}"
+              tags: [audit, toolbox]
+              ignore_errors: true
+              
+            - name: "Audit toolbox - Inventaire des middlewares (APRÈS détection)"
               ansible.builtin.include_role:
                 name: ips_toolbox_launcher
               vars:
@@ -139,7 +138,9 @@
                   'system_detection': {
                     'detected_os': detected_os_info | default({}),
                     'detected_middleware': detected_middleware_list | default([]),
+                    'detected_services': detected_services_list | default([]),
                     'middleware_details': middleware_details | default({}),
+                    'services_details': services_details | default({}),
                     'toolbox_status': toolbox_audit_result | default('detected'),
                     'detection_timestamp': ansible_date_time.iso8601
                   }
@@ -354,8 +355,8 @@
               tags: [middleware, cft]
               ignore_errors: true
           
-        # ===== PHASE 6 : CONFIGURATION DES SERVICES ET OUTILS SYSTÈME =====
-        - name: "[HORSPROD] Phase 6 - Configuration services système et outils"
+        # ===== PHASE 6 : CONFIGURATION DES SERVICES SYSTÈME =====
+        - name: "[HORSPROD] Phase 6 - Configuration services système et agents"
           block:
             - name: "Configuration et vérification toolbox via ips_toolbox_toolboxes"
               ansible.builtin.include_role:
@@ -368,7 +369,7 @@
               tags: [toolbox, services]
               ignore_errors: true
               
-            - name: "Configuration Illumio VEN en mode test (si détecté)"
+            - name: "Configuration Illumio VEN en mode test (service de sécurité)"
               ansible.builtin.include_role:
                 name: ips_toolbox_illumio
               vars:
@@ -376,8 +377,18 @@
                 illumio_environment: "{{ environment_type }}"
                 illumio_mode: "test"
                 illumio_learning_mode: true
-              when: "'Illumio' in detected_middleware_list | default([])"
-              tags: [security, illumio]
+              when: "'Illumio' in detected_services_list | default([])"
+              tags: [security, services]
+              ignore_errors: true
+              
+            - name: "Configuration TSM Agent (service de sauvegarde)"
+              ansible.builtin.include_role:
+                name: ips_toolbox_tsm
+              vars:
+                tsm_operation: "configure"
+                tsm_environment: "{{ environment_type }}"
+              when: "'TSM' in detected_services_list | default([])"
+              tags: [backup, services]
               ignore_errors: true
               
             - name: "Configuration des services applicatifs"
@@ -431,8 +442,6 @@
                 ps -ef | grep -i websphere | grep -v grep || echo "WebSphere non démarré"
                 {% elif middleware == 'Oracle' %}
                 ps -ef | grep -E "ora_pmon|ora_smon" | grep -v grep || echo "Oracle non démarré"
-                {% elif middleware == 'Illumio' %}
-                systemctl is-active illumio-ven 2>/dev/null || echo "Illumio non actif"
                 {% endif %}
                 {% endfor %}
                 echo "=== Fin tests middleware ==="
@@ -442,6 +451,24 @@
               tags: [testing, middleware]
               when: ansible_os_family != "Windows" and detected_middleware_list | default([]) | length > 0
               
+            - name: "Tests de fonctionnement services (TSM, Illumio, etc.)"
+              ansible.builtin.shell: |
+                echo "=== Tests HORSPROD - Validation services ==="
+                {% for service in detected_services_list | default([]) %}
+                echo "Service: {{ service }}"
+                {% if service == 'TSM' %}
+                systemctl is-active dsmsvc 2>/dev/null || echo "TSM non actif"
+                {% elif service == 'Illumio' %}
+                systemctl is-active illumio-ven 2>/dev/null || echo "Illumio non actif"
+                {% endif %}
+                {% endfor %}
+                echo "=== Fin tests services ==="
+              register: services_functional_tests
+              changed_when: false
+              failed_when: false
+              tags: [testing, services]
+              when: ansible_os_family != "Windows" and detected_services_list | default([]) | length > 0
+              
             - name: "Tests des fonctionnalités expérimentales (HORSPROD uniquement)"
               ansible.builtin.shell: |
                 echo "=== Tests fonctionnalités expérimentales ==="
@@ -450,6 +477,7 @@
                 echo "Debug mode: {{ enable_debug_mode }}"
                 echo "OS Family: {{ ansible_os_family }}"
                 echo "Middleware count: {{ detected_middleware_list | default([]) | length }}"
+                echo "Services count: {{ detected_services_list | default([]) | length }}"
                 echo "Toolbox version: $(cat /apps/toolboxes/version 2>/dev/null || echo 'Non disponible')"
                 echo "=== Fin tests expérimentaux ==="
               register: experimental_features_tests
@@ -496,8 +524,10 @@
                   'execution_results': {
                     'filesystem_created_count': filesystem_modifications | default([]) | length,
                     'middleware_configured_count': detected_middleware_list | default([]) | length,
-                    'services_configured_count': services_configured_list | default([]) | length,
-                    'tests_executed_count': experimental_features_tests.stdout_lines | default([]) | length,
+                    'services_configured_count': detected_services_list | default([]) | length,
+                    'tests_middleware_count': middleware_functional_tests.stdout_lines | default([]) | length,
+                    'tests_services_count': services_functional_tests.stdout_lines | default([]) | length,
+                    'tests_experimental_count': experimental_features_tests.stdout_lines | default([]) | length,
                     'compliance_score': 85,
                     'development_mode_active': true,
                     'execution_success': deployment_success | default(true),
@@ -529,39 +559,41 @@
               
             - name: "Affichage du résumé final d'exécution HORSPROD"
               ansible.builtin.debug:
-                msg: |
-                  ===============================================================================
-                  RAPPORT FINAL - SHA APPLICATION ENVIRONMENT BUILDER - HORS-PRODUCTION
-                  ===============================================================================
-                  Serveur cible       : {{ hostname_target }}
-                  Code AP             : {{ code_ap }}
-                  Code5car            : {{ code5car }}
-                  OS détecté          : {{ detected_os_info.distribution | default('N/A') }} {{ detected_os_info.version | default('') }}
-                  Middleware détectés : {{ detected_middleware_list | join(', ') if detected_middleware_list | default([]) else 'Aucun' }}
-                  -------------------------------------------------------------------------------
-                  INFRASTRUCTURE CRÉÉE:
-                  • Filesystems créés : {{ filesystem_modifications | default([]) | length }}
-                  • Services configurés : {{ services_configured_list | default([]) | length }}
-                  • Répertoires applicatifs : {{ app_directories_created.matched | default(0) }}
-                  • Scripts /etc/local : {{ etc_local_scripts.matched | default(0) }}
-                  -------------------------------------------------------------------------------
-                  CONFORMITÉ BP21:
-                  • Structure /applis : {{ 'CONFORME' if main_app_directory.stat.exists | default(false) else 'NON CONFORME' }}
-                  • Volume groupe vg_apps : {{ 'CONFORME' if rootvg_compliance_status | default('unknown') == 'compliant' else 'À VÉRIFIER' }}
-                  • Liens /etc/local : {{ 'CONFORME' if etc_local_scripts.matched | default(0) > 0 else 'PARTIEL' }}
-                  -------------------------------------------------------------------------------
-                  TESTS ET VALIDATION:
-                  • Tests middleware : {{ middleware_functional_tests.stdout_lines | default([]) | length }} vérifications
-                  • Tests expérimentaux : {{ experimental_features_tests.stdout_lines | default([]) | length }} fonctionnalités
-                  • Mode développement : ACTIVÉ
-                  • Debug activé : {{ 'OUI' if enable_debug_mode else 'NON' }}
-                  -------------------------------------------------------------------------------
-                  EXÉCUTION:
-                  • Statut global : {{ 'SUCCÈS' if deployment_success | default(true) else 'ÉCHEC PARTIEL' }}
-                  • Erreurs critiques : {{ execution_report.execution_results.errors | default([]) | length }}
-                  • Avertissements : {{ execution_report.execution_results.warnings | default([]) | length }}
-                  • Rapport JSON : {{ report_dir }}/execution_report_{{ execution_id }}.json
-                  ===============================================================================
+                msg:
+                  - "==============================================================================="
+                  - "RAPPORT FINAL - SHA APPLICATION ENVIRONMENT BUILDER - HORS-PRODUCTION"
+                  - "==============================================================================="
+                  - "Serveur cible       : {{ hostname_target }}"
+                  - "Code AP             : {{ code_ap }}"
+                  - "Code5car            : {{ code5car }}"
+                  - "OS détecté          : {{ detected_os_info.distribution | default('N/A') }} {{ detected_os_info.version | default('') }}"
+                  - "Middleware détectés : {{ detected_middleware_list | join(', ') if detected_middleware_list | default([]) else 'Aucun' }}"
+                  - "Services détectés   : {{ detected_services_list | join(', ') if detected_services_list | default([]) else 'Aucun' }}"
+                  - "-------------------------------------------------------------------------------"
+                  - "INFRASTRUCTURE CRÉÉE:"
+                  - "• Filesystems créés : {{ filesystem_modifications | default([]) | length }}"
+                  - "• Services configurés : {{ services_configured_list | default([]) | length }}"
+                  - "• Répertoires applicatifs : {{ app_directories_created.matched | default(0) }}"
+                  - "• Scripts /etc/local : {{ etc_local_scripts.matched | default(0) }}"
+                  - "-------------------------------------------------------------------------------"
+                  - "CONFORMITÉ BP21:"
+                  - "• Structure /applis : {{ 'CONFORME' if main_app_directory.stat.exists | default(false) else 'NON CONFORME' }}"
+                  - "• Volume groupe vg_apps : {{ 'CONFORME' if rootvg_compliance_status | default('unknown') == 'compliant' else 'À VÉRIFIER' }}"
+                  - "• Liens /etc/local : {{ 'CONFORME' if etc_local_scripts.matched | default(0) > 0 else 'PARTIEL' }}"
+                  - "-------------------------------------------------------------------------------"
+                  - "TESTS ET VALIDATION:"
+                  - "• Tests middleware : {{ middleware_functional_tests.stdout_lines | default([]) | length }} vérifications"
+                  - "• Tests services : {{ services_functional_tests.stdout_lines | default([]) | length }} vérifications"
+                  - "• Tests expérimentaux : {{ experimental_features_tests.stdout_lines | default([]) | length }} fonctionnalités"
+                  - "• Mode développement : ACTIVÉ"
+                  - "• Debug activé : {{ 'OUI' if enable_debug_mode else 'NON' }}"
+                  - "-------------------------------------------------------------------------------"
+                  - "EXÉCUTION:"
+                  - "• Statut global : {{ 'SUCCÈS' if deployment_success | default(true) else 'ÉCHEC PARTIEL' }}"
+                  - "• Erreurs critiques : {{ execution_report.execution_results.errors | default([]) | length }}"
+                  - "• Avertissements : {{ execution_report.execution_results.warnings | default([]) | length }}"
+                  - "• Rapport JSON : {{ report_dir }}/execution_report_{{ execution_id }}.json"
+                  - "==============================================================================="
               tags: [summary]
 
       # ===== GESTION DES ERREURS ET RÉCUPÉRATION =====
@@ -590,23 +622,23 @@
               
             - name: "Affichage de l'erreur (mode développement tolérant)"
               ansible.builtin.debug:
-                msg: |
-                  ⚠️  ERREUR CAPTURÉE - ENVIRONNEMENT HORS-PRODUCTION ⚠️
-                  ═══════════════════════════════════════════════════════
-                  En mode HORSPROD, certaines erreurs sont tolérées pour
-                  permettre le développement et les tests.
-                  
-                  Détail de l'erreur: {{ ansible_failed_result.msg | default('Erreur non spécifiée') }}
-                  
-                  Rapport d'analyse: {{ report_dir }}/execution_report_{{ execution_id }}.json
-                  ═══════════════════════════════════════════════════════
+                msg:
+                  - "⚠️  ERREUR CAPTURÉE - ENVIRONNEMENT HORS-PRODUCTION ⚠️"
+                  - "═══════════════════════════════════════════════════════"
+                  - "En mode HORSPROD, certaines erreurs sont tolérées pour"
+                  - "permettre le développement et les tests."
+                  - ""
+                  - "Détail de l'erreur: {{ ansible_failed_result.msg | default('Erreur non spécifiée') }}"
+                  - ""
+                  - "Rapport d'analyse: {{ report_dir }}/execution_report_{{ execution_id }}.json"
+                  - "═══════════════════════════════════════════════════════"
               
             - name: "Décision sur l'échec selon la criticité (mode tolérant HORSPROD)"
               ansible.builtin.fail:
-                msg: |
-                  Déploiement échoué en HORS-PRODUCTION.
-                  Consultez le rapport JSON pour l'analyse détaillée.
-                  Certaines erreurs peuvent être non-bloquantes en mode développement.
+                msg:
+                  - "Déploiement échoué en HORS-PRODUCTION."
+                  - "Consultez le rapport JSON pour l'analyse détaillée."
+                  - "Certaines erreurs peuvent être non-bloquantes en mode développement."
               when: 
                 - ansible_failed_result.msg is defined
                 - not (ansible_failed_result.msg is search("warning") or ansible_failed_result.msg is search("non-critical") or ansible_failed_result.msg is search("ignore"))
