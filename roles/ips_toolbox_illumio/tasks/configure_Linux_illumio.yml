@@ -8,12 +8,12 @@
 
 - name: "Vérification de l'installation des binaires Illumio VEN"
   ansible.builtin.stat:
-    path: /opt/illumio_ven/illumio-ven-ctl
+    path: "{{ illumio_ctl_binary }}"
   register: illumio_binary_check
 
 - name: "Vérification alternative de l'installation VEN (répertoire standard)"
   ansible.builtin.stat:
-    path: /opt/illumio_ven
+    path: "{{ illumio_install_dir }}"
   register: illumio_dir_check
 
 - name: "Vérification des processus Illumio VEN actifs"
@@ -23,63 +23,146 @@
   changed_when: false
   failed_when: false
 
-- name: "Configuration de l'agent Illumio VEN (mode {{ illumio_mode | default('test') }})"
+- name: "Obtention du statut actuel de l'agent VEN (si installé)"
   ansible.builtin.shell: |
-    if [ -f "/opt/illumio_ven/illumio-ven-ctl" ]; then
-      echo "=== Configuration Illumio VEN Agent ==="
-      echo "Binaire illumio-ven-ctl trouvé"
-      /opt/illumio_ven/illumio-ven-ctl status 2>/dev/null || echo "Statut VEN non disponible"
-      echo "Mode configuré: {{ illumio_mode | default('test') }}"
-      echo "=== Fin configuration VEN ==="
-    elif systemctl is-active illumio-ven >/dev/null 2>&1; then
-      echo "=== Service Illumio VEN actif ==="
-      systemctl status illumio-ven --no-pager --lines=3 2>/dev/null || echo "Détails service non disponibles"
-      echo "=== Fin vérification service ==="
-    elif [ -d "/opt/illumio_ven" ]; then
-      echo "=== Répertoire Illumio VEN détecté ==="
-      ls -la /opt/illumio_ven/ | head -5 2>/dev/null || echo "Contenu répertoire non accessible"
-      echo "=== Agent installé mais non configuré ==="
+    if [ -f "{{ illumio_ctl_binary }}" ]; then
+      echo "=== Statut actuel de l'agent Illumio VEN ==="
+      {{ illumio_ctl_binary }} status 2>/dev/null || echo "Impossible d'obtenir le statut VEN"
+      echo "=== Fin statut actuel ==="
     else
-      echo "=== Agent Illumio VEN non installé ==="
-      echo "Aucun composant Illumio VEN trouvé sur ce serveur"
-      echo "Configuration ignorée"
+      echo "Binaire illumio-ven-ctl non trouvé"
     fi
-  register: illumio_config_result
+  register: illumio_current_status
   changed_when: false
   failed_when: false
 
-- name: "Tentative de démarrage du service Illumio VEN (si installé et mode actif)"
+- name: "Configuration du mode de statut VEN : {{ illumio_ven_status }} (si installé)"
+  ansible.builtin.shell: |
+    if [ -f "{{ illumio_ctl_binary }}" ]; then
+      echo "=== Configuration statut VEN : {{ illumio_ven_status }} ==="
+      
+      # Vérifier le statut actuel
+      current_status=$({{ illumio_ctl_binary }} status 2>/dev/null | grep -i "status" || echo "unknown")
+      echo "Statut actuel: $current_status"
+      
+      # Configuration du statut selon la valeur demandée
+      case "{{ illumio_ven_status }}" in
+        "active")
+          echo "Activation de l'agent VEN..."
+          {{ illumio_ctl_binary }} activate 2>/dev/null || echo "Activation VEN échoué ou déjà actif"
+          ;;
+        "stopped")
+          echo "Arrêt de l'agent VEN..."
+          {{ illumio_ctl_binary }} stop 2>/dev/null || echo "Arrêt VEN échoué ou déjà arrêté"
+          ;;
+        "suspended")
+          echo "Suspension de l'agent VEN..."
+          {{ illumio_ctl_binary }} suspend 2>/dev/null || echo "Suspension VEN échoué ou non supporté"
+          ;;
+        "unmanaged")
+          echo "Passage en mode non-managé..."
+          {{ illumio_ctl_binary }} unmanage 2>/dev/null || echo "Mode unmanaged échoué ou non supporté"
+          ;;
+      esac
+      
+      echo "=== Fin configuration statut VEN ==="
+    else
+      echo "Agent Illumio VEN non installé - configuration statut ignorée"
+    fi
+  register: illumio_status_config
+  changed_when: false
+  failed_when: false
+
+- name: "Configuration du mode d'enforcement VEN : {{ illumio_ven_enforcement }} (si installé)"
+  ansible.builtin.shell: |
+    if [ -f "{{ illumio_ctl_binary }}" ]; then
+      echo "=== Configuration enforcement VEN : {{ illumio_ven_enforcement }} ==="
+      
+      # Vérifier le mode d'enforcement actuel
+      current_enforcement=$({{ illumio_ctl_binary }} status 2>/dev/null | grep -i "enforcement" || echo "unknown")
+      echo "Mode enforcement actuel: $current_enforcement"
+      
+      # Configuration de l'enforcement selon la valeur demandée
+      case "{{ illumio_ven_enforcement }}" in
+        "enforced")
+          echo "Activation du mode enforced..."
+          {{ illumio_ctl_binary }} set-mode enforced 2>/dev/null || echo "Mode enforced échoué ou non supporté"
+          ;;
+        "visibility_only")
+          echo "Activation du mode visibility only..."
+          {{ illumio_ctl_binary }} set-mode visibility_only 2>/dev/null || echo "Mode visibility_only échoué ou non supporté"
+          ;;
+        "idle")
+          echo "Activation du mode idle..."
+          {{ illumio_ctl_binary }} set-mode idle 2>/dev/null || echo "Mode idle échoué ou non supporté"
+          ;;
+      esac
+      
+      echo "=== Fin configuration enforcement VEN ==="
+    else
+      echo "Agent Illumio VEN non installé - configuration enforcement ignorée"
+    fi
+  register: illumio_enforcement_config
+  changed_when: false
+  failed_when: false
+
+- name: "Vérification finale du statut de l'agent VEN après configuration"
+  ansible.builtin.shell: |
+    if [ -f "{{ illumio_ctl_binary }}" ]; then
+      echo "=== Statut final de l'agent Illumio VEN ==="
+      {{ illumio_ctl_binary }} status 2>/dev/null || echo "Statut final non disponible"
+      {{ illumio_ctl_binary }} version 2>/dev/null || echo "Version VEN non disponible"
+      echo "=== Fin statut final ==="
+    else
+      echo "Agent Illumio VEN non installé sur ce serveur"
+    fi
+  register: illumio_final_status
+  changed_when: false
+  failed_when: false
+
+- name: "Tentative de démarrage du service Illumio VEN (si configuré pour être actif)"
   ansible.builtin.service:
-    name: illumio-ven
+    name: "{{ illumio_service_name }}"
     state: started
     enabled: yes
   when: 
     - "'illumio-ven' in illumio_service_check.stdout"
-    - illumio_mode | default('test') == 'active'
-    - illumio_environment | default('HORSPROD') == 'PROD'
+    - illumio_ven_status == "active"
   ignore_errors: true
 
-- name: "Affichage du résumé de configuration Illumio VEN"
+- name: "Affichage du résumé complet de configuration Illumio VEN"
   ansible.builtin.debug:
     msg:
       - "=== RÉSUMÉ CONFIGURATION ILLUMIO VEN ==="
-      - "Mode demandé: {{ illumio_mode | default('test') }}"
-      - "Environnement: {{ illumio_environment | default('HORSPROD') }}"
+      - "Mode de statut configuré: {{ illumio_ven_status }}"
+      - "Mode d'enforcement configuré: {{ illumio_ven_enforcement }}"
       - "Service détecté: {{ 'Oui' if 'illumio-ven' in illumio_service_check.stdout else 'Non' }}"
       - "Binaire VEN présent: {{ 'Oui' if illumio_binary_check.stat.exists else 'Non' }}"
       - "Répertoire VEN présent: {{ 'Oui' if illumio_dir_check.stat.exists else 'Non' }}"
       - "Processus actifs: {{ illumio_processes.stdout_lines | length }} processus"
-      - "Résultat configuration:"
-      - "{{ illumio_config_result.stdout_lines | default(['Aucun résultat']) }}"
+      - ""
+      - "STATUT INITIAL:"
+      - "{{ illumio_current_status.stdout_lines | default(['Statut initial non disponible']) }}"
+      - ""
+      - "CONFIGURATION STATUT:"
+      - "{{ illumio_status_config.stdout_lines | default(['Configuration statut non exécutée']) }}"
+      - ""
+      - "CONFIGURATION ENFORCEMENT:"
+      - "{{ illumio_enforcement_config.stdout_lines | default(['Configuration enforcement non exécutée']) }}"
+      - ""
+      - "STATUT FINAL:"
+      - "{{ illumio_final_status.stdout_lines | default(['Statut final non disponible']) }}"
       - "=== FIN RÉSUMÉ ILLUMIO VEN ==="
 
-- name: "Enregistrement du résultat dans ips_toolbox_set_results"
+- name: "Enregistrement du résultat final dans ips_toolbox_set_results"
   ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: >-
-      {% if illumio_binary_check.stat.exists or 'illumio-ven' in illumio_service_check.stdout %}
+      {% if illumio_binary_check.stat.exists %}
       OK
+      {% elif 'illumio-ven' in illumio_service_check.stdout %}
+      INFO
       {% else %}
       INFO
       {% endif %}
@@ -87,9 +170,9 @@
     set_results_operation: "configure"
     set_results_value: >-
       {% if illumio_binary_check.stat.exists %}
-      Agent Illumio VEN installé et configuré en mode {{ illumio_mode | default('test') }}
+      Agent Illumio VEN configuré - Statut: {{ illumio_ven_status }}, Enforcement: {{ illumio_ven_enforcement }}
       {% elif 'illumio-ven' in illumio_service_check.stdout %}
-      Service Illumio VEN détecté et configuré
+      Service Illumio VEN détecté mais binaires de contrôle non trouvés
       {% else %}
       Agent Illumio VEN non installé - configuration ignorée (normal pour serveur sans Illumio)
       {% endif %}
