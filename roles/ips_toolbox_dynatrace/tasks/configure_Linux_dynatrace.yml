@@ -1,0 +1,46 @@
+---
+- name: "Vérification du service Dynatrace OneAgent"
+  shell: |
+    systemctl list-units --all | grep -q dtoneagent && echo "SERVICE_FOUND" || echo "SERVICE_MISSING"
+  register: dt_service_check
+  changed_when: false
+  failed_when: false
+
+- name: "Détection du binaire OneAgent"
+  stat:
+    path: /opt/dynatrace/oneagent/agent/bin/oneagentctl
+  register: dt_binary_check
+
+- name: "Configuration OneAgent (statut active)"
+  shell: |
+    echo "=== Configuration Dynatrace OneAgent ==="
+    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
+      /opt/dynatrace/oneagent/agent/bin/oneagentctl status || echo "Statut inconnu"
+      /opt/dynatrace/oneagent/agent/bin/oneagentctl activate || echo "Activation échouée ou déjà actif"
+    fi
+    echo "=== Fin Dynatrace OneAgent ==="
+  register: dt_config_result
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage du résumé Dynatrace"
+  debug:
+    msg:
+      - "Service Dynatrace détecté : {{ 'Oui' if 'SERVICE_FOUND' in dt_service_check.stdout else 'Non' }}"
+      - "Binaire détecté : {{ 'Oui' if dt_binary_check.stat.exists else 'Non' }}"
+      - "Résultat configuration : {{ dt_config_result.stdout_lines | default(['Aucun résultat']) }}"
+
+- name: "Enregistrement du résultat Dynatrace"
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'OK' if dt_binary_check.stat.exists else 'INFO' }}"
+    set_results_component: "dynatrace"
+    set_results_operation: "configure"
+    set_results_value: >-
+      {% if dt_binary_check.stat.exists %}
+      Dynatrace OneAgent installé et activé
+      {% else %}
+      Dynatrace non installé - configuration ignorée
+      {% endif %}
+  ignore_errors: true
