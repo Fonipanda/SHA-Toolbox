@@ -1,162 +1,168 @@
 ---
-- name: "Initialisation du rôle ips_toolbox_launcher"
-  set_fact:
-    launcher_component: "{{ launcher_component | default('launcher') }}"
-    launcher_role_name: "{{ role_name | default('ips_toolbox_launcher') }}"
+- name: "Initialisation du rôle ips_toolbox_launcher (variables fixes)"
+  ansible.builtin.set_fact:
+    launcher_component_final: "{{ launcher_component | default('system') }}"
+    launcher_role_name: "ips_toolbox_launcher"
 
-# ===== LANCEMENT DES MIDDLEWARES DÉTECTÉS =====
+- name: "Affichage des composants détectés pour debug"
+  ansible.builtin.debug:
+    msg:
+      - "Middlewares détectés: {{ detected_middleware_list | default([]) | join(', ') }}"
+      - "Services détectés: {{ detected_services_list | default([]) | join(', ') }}"
+      - "Composant launcher: {{ launcher_component_final }}"
+
+# ===== LANCEMENT DES MIDDLEWARES DÉTECTÉS (noms de fichiers fixes) =====
 - name: "Lancer la configuration WAS ND si détecté"
-  include_tasks: wasnd.yml
+  ansible.builtin.include_tasks: wasnd.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    was_operation: "configure"  # STATIQUE
   when: 
     - detected_middleware_list is defined 
     - "'WebSphere_WAS_ND' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration WAS Base si détecté"
-  include_tasks: wasbase.yml  # Nom correct selon le dépôt
+  ansible.builtin.include_tasks: wasbase.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    was_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'WebSphere_WAS_Base' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration Liberty Core si détecté"
-  include_tasks: libertycore.yml
+  ansible.builtin.include_tasks: libertycore.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    liberty_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'Liberty_Core' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration Liberty Base si détecté"
-  include_tasks: libertybase.yml
+  ansible.builtin.include_tasks: libertybase.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    liberty_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'Liberty_Base' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration IHS si détecté"
-  include_tasks: webserver.yml
+  ansible.builtin.include_tasks: webserver.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    ihs_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'IHS' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration Oracle si détecté"
-  include_tasks: oracle.yml
+  ansible.builtin.include_tasks: oracle.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    oracle_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'Oracle' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration SQL Server si détecté"
-  include_tasks: sqlserver.yml
+  ansible.builtin.include_tasks: sqlserver.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    sqlserver_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'SQLServer' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration MQ si détecté"
-  include_tasks: mq.yml
+  ansible.builtin.include_tasks: mq.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    mq_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'MQSeries' in detected_middleware_list"
   ignore_errors: true
 
 - name: "Lancer la configuration CFT si détecté"
-  include_tasks: cft.yml
+  ansible.builtin.include_tasks: cft.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    cft_operation: "configure"  # STATIQUE
   when:
     - detected_middleware_list is defined
     - "'CFT' in detected_middleware_list"
   ignore_errors: true
 
-# ===== LANCEMENT DES SERVICES DÉTECTÉS =====
+# ===== LANCEMENT DES SERVICES DÉTECTÉS (fichiers fixes) =====
 - name: "Lancer la configuration Illumio (service sécurité) si détecté"
-  include_tasks: illumio.yml
+  ansible.builtin.include_tasks: illumio.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    illumio_operation_fixed: "configure"  # STATIQUE
   when:
     - detected_services_list is defined
     - "'Illumio' in detected_services_list"
   ignore_errors: true
 
 - name: "Lancer la configuration TSM (service sauvegarde) si détecté"
-  include_tasks: tsm.yml
+  ansible.builtin.include_tasks: tsm.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
+    tsm_operation_fixed: "configure"  # STATIQUE
   when:
     - detected_services_list is defined
     - "'TSM' in detected_services_list"
   ignore_errors: true
 
-# ===== LANCEMENT DES OUTILS SYSTÈME =====
+# ===== LANCEMENT DES OUTILS SYSTÈME (actions fixes) =====
 - name: "Lancer la configuration système"
-  include_tasks: system.yml
+  ansible.builtin.include_tasks: system.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('status') }}"
-  when: launcher_component == "system"
+    system_operation_fixed: "status"  # STATIQUE
+  when: launcher_component_final == "system"
   ignore_errors: true
 
 - name: "Lancer la configuration des services applicatifs"
-  include_tasks: services.yml
+  ansible.builtin.include_tasks: services.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
-  when: launcher_component == "services"
+    services_operation_fixed: "configure"  # STATIQUE
+  when: launcher_component_final == "services"
   ignore_errors: true
 
 - name: "Lancer la configuration des toolboxes"
-  include_tasks: toolboxes.yml
+  ansible.builtin.include_tasks: toolboxes.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('configure') }}"
-  when: launcher_component == "toolboxes"
+    toolboxes_operation_fixed: "configure"  # STATIQUE
+  when: launcher_component_final == "toolboxes"
   ignore_errors: true
 
 - name: "Lancer la configuration du backup"
-  include_tasks: backup.yml
+  ansible.builtin.include_tasks: backup.yml
   vars:
     launcher_environment: "{{ launcher_environment | default(environment_type) }}"
-    launcher_operation: "{{ launcher_operation | default('run_incr') }}"
-  when: launcher_component == "backup"
+    backup_operation_fixed: "run_incr"  # STATIQUE
+  when: launcher_component_final == "backup"
   ignore_errors: true
 
-- name: "Affichage du résumé des lancements effectués"
-  debug:
+- name: "Affichage du résumé des lancements effectués (variables statiques)"
+  ansible.builtin.debug:
     msg:
       - "========================================================="
       - "RÉSUMÉ DES LANCEMENTS IPS_TOOLBOX_LAUNCHER"
       - "========================================================="
-      - "Composant: {{ launcher_component }}"
-      - "Opération: {{ launcher_operation | default('configure') }}"
+      - "Composant: {{ launcher_component_final }}"
       - "Environnement: {{ launcher_environment | default(environment_type) }}"
       - "Middlewares traités: {{ detected_middleware_list | join(', ') if detected_middleware_list | default([]) else 'Aucun' }}"
       - "Services traités: {{ detected_services_list | join(', ') if detected_services_list | default([]) else 'Aucun' }}"
