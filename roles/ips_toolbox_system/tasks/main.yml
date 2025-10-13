@@ -1,26 +1,38 @@
 ---
 - name: "Initialisation du rôle ips_toolbox_system"
   set_fact:
-    system_component: "{{ role_name.split('_')[-1] }}"
-    system_role_name: "{{ role_name }}"
+    system_component: "{{ role_name.split('_')[-1] | default('system') }}"
+    system_role_name: "{{ role_name | default('ips_toolbox_system') }}"
 
-- name: "Inclure la tâche système demandée"
+- name: "Construction du nom de fichier de tâche système"
+  set_fact:
+    system_task_file_name: "{{ system_operation }}_{{ ansible_os_family }}_system.yml"
+  when: system_task_file_name is not defined
+
+- name: "Vérification de l'existence de la tâche système demandée"
+  stat:
+    path: "{{ role_path }}/tasks/{{ system_task_file_name }}"
+  register: system_task_file_check
+  delegate_to: localhost
+
+- name: "Exécution de la tâche système"
   block:
-    - name: "Vérification de l'existence de la tâche {{ system_task_file_name }}"
-      stat:
-        path: "{{ role_path }}/tasks/{{ system_task_file_name }}"
-      register: statResult
-
-    - name: "Exécution de la tâche système {{ system_task_file_name }}"
+    - name: "Inclusion de la tâche système {{ system_task_file_name }}"
       include_tasks: "{{ system_task_file_name }}"
-      when: statResult.stat.exists
+      when: system_task_file_check.stat.exists
   rescue:
-    - name:  
-        - "Le fichier de tâche système {{ system_task_file_name }} est introuvable"
+    - name: "Gestion de l'erreur - Tâche système introuvable"
       include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "KO"
         set_results_component: "{{ system_component }}"
         set_results_operation: "{{ system_operation }}"
-        set_results_value: "Fichier {{ system_task_file_name }} introuvable"
+        set_results_value: "Fichier {{ system_task_file_name }} introuvable ou erreur d'exécution"
+
+- name: "Affichage du statut d'exécution de la tâche système"
+  debug:
+    msg:
+      - "Tâche système exécutée: {{ system_task_file_name }}"
+      - "Opération: {{ system_operation }}"
+      - "Statut: {{ 'SUCCÈS' if system_task_file_check.stat.exists else 'FICHIER INTROUVABLE' }}"
