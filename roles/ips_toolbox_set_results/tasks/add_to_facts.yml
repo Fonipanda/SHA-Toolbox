@@ -1,0 +1,15 @@
+---
+- name: "Calcul de l'uptime en jours"
+  shell: "awk '{print int($1/86400)}' < /proc/uptime"
+  register: uptime_days
+  changed_when: false
+
+- name: "Initialisation des faits uptime"
+  set_fact:
+    uptime_summary: >-
+      {% set days = (uptime_days.stdout | default('0')) | int %}
+      {% if days < 1 %}
+      0 day
+      {% else %}
+      {{ days }} days
+      {% endif %}
