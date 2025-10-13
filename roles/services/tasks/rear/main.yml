@@ -1,0 +1,46 @@
+---
+- name: Execute REAR backup script
+  ansible.builtin.command:
+    cmd: "{{ services.rear.paths.script }}"
+  become: true
+  register: rear_backup
+  changed_when: rear_backup.rc == 0
+
+- name: Create backup archive
+  ansible.builtin.command:
+    cmd: "tar -cvf {{ services.rear.paths.backup }} /"
+  become: true
+  register: rear_tar
+  changed_when: rear_tar.rc == 0
+
+- name: Create mksysb backup
+  ansible.builtin.command:
+    cmd: "{{ services.rear.paths.mksysb }}"
+  become: true
+  register: rear_mksysb
+  changed_when: rear_mksysb.rc == 0
+
+- name: Check if backup system is present
+  stat:
+    path: /apps/sys/back/rear-{{ inventory_hostname | lower }}.tar
+  register: rear_backup
+
+- name: Start a backup if not exist
+  command: /apps/sys/admin/rear-bp2i.sh
+  when: not rear_backup.stat.exists
+
+- name: Set succes REAR output var if backup is already exist
+  set_fact:
+    services_rear:
+      output: "REAR backup for {{ inventory_hostname }} already exist"
+      created: false
+      present: true
+  when: rear_backup.stat.exists
+
+- name: Set succes REAR output var if backup is just created
+  set_fact:
+    services_rear:
+      output: "REAR backup for {{ inventory_hostname }} successfully created"
+      created: true
+      present: true
+  when: not rear_backup.stat.exists
