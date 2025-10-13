@@ -1,0 +1,56 @@
+---
+- name: "Configuration TSM générique (fallback)"
+  ansible.builtin.shell: |
+    echo "=== Configuration TSM générique ==="
+    echo "OS: {{ ansible_system }} ({{ ansible_distribution | default('Unknown') }})"
+    echo "Architecture: {{ ansible_architecture }}"
+    echo ""
+    echo "Recherche de composants TSM/IBM Spectrum Protect..."
+    
+    # Recherche générique de processus TSM
+    tsm_processes=$(ps -ef 2>/dev/null | grep -E "(dsmc|tsm|spectrum)" | grep -v grep | wc -l)
+    echo "Processus TSM trouvés: $tsm_processes"
+    
+    # Recherche de répertoires standards (multiplateforme)
+    for dir in "/opt/tivoli" "/usr/tivoli" "/opt/ibm" "/Program Files/Tivoli" "/Applications/TSM"; do
+      if [ -d "$dir" ]; then
+        echo "Répertoire trouvé: $dir"
+        ls -la "$dir" 2>/dev/null | head -3
+      fi
+    done
+    
+    # Recherche de binaires TSM (multiplateforme)
+    for binary in "dsmc" "dsm" "dsmcad" "spectrum"; do
+      binary_path=$(which "$binary" 2>/dev/null || echo "")
+      if [ -n "$binary_path" ]; then
+        echo "Binaire trouvé: $binary_path"
+      fi
+    done
+    
+    # Message final
+    if [ "$tsm_processes" -gt 0 ]; then
+      echo "Composants TSM détectés mais configuration automatique non supportée pour cet OS"
+      echo "Configuration manuelle recommandée"
+    else
+      echo "Aucun composant TSM détecté sur ce serveur"
+      echo "Configuration ignorée - comportement normal"
+    fi
+    
+    echo "=== Fin configuration générique ==="
+  register: tsm_generic_config
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage de la configuration générique TSM"
+  ansible.builtin.debug:
+    msg: "{{ tsm_generic_config.stdout_lines | default(['Configuration générique TSM échouée']) }}"
+
+- name: "Enregistrement du résultat générique TSM"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "INFO"
+    set_results_component: "tsm"
+    set_results_operation: "configure"
+    set_results_value: "Configuration générique TSM - OS {{ ansible_system }}"
+  ignore_errors: true
