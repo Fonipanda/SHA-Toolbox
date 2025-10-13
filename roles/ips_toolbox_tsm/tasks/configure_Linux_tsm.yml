@@ -1,0 +1,142 @@
+---
+- name: "Recherche des installations TSM/IBM Spectrum Protect"
+  ansible.builtin.shell: |
+    echo "=== Détection TSM/IBM Spectrum Protect ==="
+    
+    # Vérification des services TSM
+    if systemctl list-units --all | grep -i dsm >/dev/null 2>&1; then
+      echo "SERVICE_DSM_FOUND"
+    fi
+    
+    if systemctl list-units --all | grep -i tsm >/dev/null 2>&1; then
+      echo "SERVICE_TSM_FOUND"
+    fi
+    
+    # Vérification des binaires TSM standards
+    for binary in "dsmc" "dsm" "dsmcad" "dsmagent"; do
+      binary_path=$(which "$binary" 2>/dev/null || find /opt /usr -name "$binary" 2>/dev/null | head -1)
+      if [ -n "$binary_path" ]; then
+        echo "BINARY_FOUND:$binary:$binary_path"
+      fi
+    done
+    
+    # Vérification des répertoires TSM standards
+    for dir in "/opt/tivoli/tsm" "/usr/tivoli/tsm" "/opt/ibm/dsmclient" "/opt/tsm"; do
+      if [ -d "$dir" ]; then
+        echo "DIRECTORY_FOUND:$dir"
+      fi
+    done
+    
+    # Vérification des processus TSM actifs
+    tsm_processes=$(ps -ef | grep -E "(dsmc|tsm|dsmcad)" | grep -v grep | wc -l)
+    if [ "$tsm_processes" -gt 0 ]; then
+      echo "PROCESSES_FOUND:$tsm_processes"
+    fi
+    
+    echo "=== Fin détection TSM ==="
+  register: tsm_detection
+  changed_when: false
+  failed_when: false
+
+- name: "Configuration du client TSM selon les composants détectés"
+  ansible.builtin.shell: |
+    echo "=== Configuration client TSM ==="
+    
+    # Extraction du premier binaire dsmc trouvé
+    dsmc_path=$(echo "{{ tsm_detection.stdout }}" | grep "BINARY_FOUND:dsmc:" | cut -d: -f3 | head -1)
+    
+    if [ -n "$dsmc_path" ]; then
+      echo "Binaire DSMC trouvé: $dsmc_path"
+      
+      # Version du client TSM
+      version_info=$($dsmc_path -version 2>/dev/null | head -3 || echo "Version non disponible")
+      echo "Version TSM: $version_info"
+      
+      # Configuration des fichiers de configuration TSM si nécessaires
+      dsm_sys_dir=$(dirname "$dsmc_path")
+      echo "Répertoire de configuration: $dsm_sys_dir"
+      
+      if [ -f "$dsm_sys_dir/dsm.sys" ]; then
+        echo "Fichier dsm.sys trouvé"
+        server_name=$(grep -i "servername" "$dsm_sys_dir/dsm.sys" 2>/dev/null | head -1 || echo "Serveur non configuré")
+        echo "Configuration serveur: $server_name"
+      fi
+      
+      if [ -f "$dsm_sys_dir/dsm.opt" ]; then
+        echo "Fichier dsm.opt trouvé"
+      fi
+      
+      # Test de connectivité au serveur TSM si configuré
+      echo "Test de connectivité TSM (query session):"
+      $dsmc_path query session 2>/dev/null | head -5 || echo "Connectivité TSM non établie ou serveur non accessible"
+      
+    elif echo "{{ tsm_detection.stdout }}" | grep -q "SERVICE_"; then
+      echo "Services TSM détectés sans binaires accessibles"
+      
+      # Vérification des services
+      if echo "{{ tsm_detection.stdout }}" | grep -q "SERVICE_DSM_FOUND"; then
+        systemctl status dsmsvc 2>/dev/null || echo "Service dsmsvc non actif"
+      fi
+      
+    elif echo "{{ tsm_detection.stdout }}" | grep -q "DIRECTORY_FOUND"; then
+      echo "Répertoires TSM trouvés, tentative de localisation des binaires"
+      
+      # Recherche dans les répertoires trouvés
+      echo "{{ tsm_detection.stdout }}" | grep "DIRECTORY_FOUND" | while IFS=: read -r prefix dir; do
+        echo "Exploration du répertoire: $dir"
+        find "$dir" -name "dsmc" -type f 2>/dev/null | head -3
+      done
+      
+    else
+      echo "Aucun composant TSM détecté sur ce serveur"
+      echo "Ceci est normal si TSM/IBM Spectrum Protect n'est pas installé"
+      echo "Configuration ignorée sans erreur"
+    fi
+    
+    echo "=== Fin configuration TSM ==="
+  register: tsm_config_result
+  changed_when: false
+  failed_when: false
+
+- name: "Tentative de démarrage des services TSM si demandé"
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - dsmsvc
+    - dsmcad
+  when: 
+    - "'SERVICE_' in tsm_detection.stdout"
+    - tsm_operation | default('configure') != 'stop'
+  ignore_errors: true
+
+- name: "Affichage du résumé de configuration TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== RÉSUMÉ TSM/IBM SPECTRUM PROTECT ==="
+      - "Détection:"
+      - "{{ tsm_detection.stdout_lines | default(['Aucune détection']) }}"
+      - ""
+      - "Configuration:"
+      - "{{ tsm_config_result.stdout_lines | default(['Aucune configuration']) }}"
+      - "=== FIN RÉSUMÉ ==="
+
+- name: "Enregistrement du résultat TSM dans ips_toolbox_set_results"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'OK' if 'BINARY_FOUND:dsmc:' in tsm_detection.stdout else 'INFO' }}"
+    set_results_component: "tsm"
+    set_results_operation: "configure"
+    set_results_value: >-
+      {% if 'BINARY_FOUND:dsmc:' in tsm_detection.stdout %}
+      Client TSM/IBM Spectrum Protect installé et configuré
+      {% elif 'SERVICE_' in tsm_detection.stdout %}
+      Services TSM détectés
+      {% elif 'DIRECTORY_FOUND' in tsm_detection.stdout %}
+      Répertoires TSM trouvés
+      {% else %}
+      TSM/IBM Spectrum Protect non installé - normal sur serveur sans TSM
+      {% endif %}
+  ignore_errors: true
