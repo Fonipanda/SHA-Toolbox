@@ -1,423 +1,45 @@
 ---
-- name: "Initialisation de la liste des middlewares et services détectés"
+- name: "Init lists"
   ansible.builtin.set_fact:
     detected_middleware_list: []
     detected_services_list: []
-    middleware_details: {}
-    services_details: {}
 
-# ===== DÉTECTION WEBSPHERE =====
-- name: "Vérification préalable de l'existence des répertoires WebSphere"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: websphere_dir_check
-  loop:
-    - "/opt/IBM/WebSphere"
-    - "/usr/IBM/WebSphere"
-    - "/apps/IBM/WebSphere"
-
-- name: "Recherche des installations WebSphere (répertoires existants uniquement)"
-  ansible.builtin.find:
-    paths: "{{ websphere_existing_paths }}"
-    file_type: directory
-    patterns: "*"
-    recurse: false
-  register: websphere_installations
-  vars:
-    websphere_existing_paths: "{{ websphere_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
-  when: websphere_existing_paths | length > 0
-
-- name: "Recherche WebSphere sur Windows"
-  ansible.windows.win_find:
-    paths: 
-      - "C:\\Program Files\\IBM\\WebSphere"
-      - "C:\\IBM\\WebSphere"
-    file_type: directory
-  register: websphere_installations_win
-  when: ansible_os_family == "Windows"
-
-- name: "Détection du type WebSphere"
+- name: "Detect WebSphere"
   ansible.builtin.shell: |
-    if [ -f "{{ item.path }}/bin/wsadmin.sh" ]; then
-      if [ -d "{{ item.path }}/profiles/Dmgr01" ] || [ -d "{{ item.path }}/profiles/dmgr01" ]; then
-        echo "WAS_ND"
-      else
-        echo "WAS_Base"
-      fi
-    fi
-  register: websphere_type_check
-  loop: "{{ websphere_installations.files | default([]) }}"
-  when: 
-    - websphere_installations is defined 
-    - websphere_installations.files is defined
-    - ansible_os_family != "Windows"
+    if [ -d /opt/IBM/WebSphere ]; then echo "WebSphere_WAS_ND"; fi
+  register: ws_detect
   changed_when: false
-  failed_when: false
-
-- name: "Ajout de WebSphere WAS ND à la liste"
+- name: "Add WebSphere"
   ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['WebSphere_WAS_ND'] }}"
-    middleware_details: "{{ middleware_details | combine({'WebSphere_WAS_ND': {'path': item.item.path, 'type': 'Network Deployment'}}) }}"
-  loop: "{{ websphere_type_check.results | default([]) }}"
-  when: 
-    - item.stdout is defined 
-    - item.stdout == "WAS_ND"
+    detected_middleware_list: "{{ detected_middleware_list + [ws_detect.stdout] }}"
+  when: ws_detect.stdout != ""
 
-- name: "Ajout de WebSphere WAS Base à la liste"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['WebSphere_WAS_Base'] }}"
-    middleware_details: "{{ middleware_details | combine({'WebSphere_WAS_Base': {'path': item.item.path, 'type': 'Base Edition'}}) }}"
-  loop: "{{ websphere_type_check.results | default([]) }}"
-  when: 
-    - item.stdout is defined 
-    - item.stdout == "WAS_Base"
-
-# ===== DÉTECTION LIBERTY =====
-- name: "Vérification préalable de l'existence des répertoires Liberty"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: liberty_dir_check
-  loop:
-    - "/opt/IBM/WebSphere/Liberty"
-    - "/usr/IBM/WebSphere/Liberty"
-    - "/apps/IBM/WebSphere/Liberty"
-
-- name: "Recherche des installations Liberty (répertoires existants uniquement)"
-  ansible.builtin.find:
-    paths: "{{ liberty_existing_paths }}"
-    file_type: directory
-    patterns: "*"
-    recurse: false
-  register: liberty_installations
-  vars:
-    liberty_existing_paths: "{{ liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
-  when: liberty_existing_paths | length > 0
-
-- name: "Vérification du type Liberty"
+- name: "Detect Illumio service"
   ansible.builtin.shell: |
-    if [ -f "{{ item.path }}/bin/server" ]; then
-      if [ -f "{{ item.path }}/lib/features/com.ibm.websphere.appserver.core_1.0.mf" ]; then
-        echo "Liberty_Base"
-      else
-        echo "Liberty_Core"
-      fi
-    fi
-  register: liberty_type_check
-  loop: "{{ liberty_installations.files | default([]) }}"
-  when: 
-    - liberty_installations is defined 
-    - liberty_installations.files is defined
-    - ansible_os_family != "Windows"
+    systemctl list-units --all | grep -q illumio-ven && echo "Illumio"
+  register: ill_detect
   changed_when: false
-  failed_when: false
-
-- name: "Ajout de Liberty Core à la liste"
+- name: "Add Illumio"
   ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['Liberty_Core'] }}"
-    middleware_details: "{{ middleware_details | combine({'Liberty_Core': {'path': item.item.path, 'type': 'Core Edition'}}) }}"
-  loop: "{{ liberty_type_check.results | default([]) }}"
-  when: 
-    - item.stdout is defined 
-    - item.stdout == "Liberty_Core"
+    detected_services_list: "{{ detected_services_list + [ill_detect.stdout] }}"
+  when: ill_detect.stdout != ""
 
-- name: "Ajout de Liberty Base à la liste"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['Liberty_Base'] }}"
-    middleware_details: "{{ middleware_details | combine({'Liberty_Base': {'path': item.item.path, 'type': 'Base Edition'}}) }}"
-  loop: "{{ liberty_type_check.results | default([]) }}"
-  when: 
-    - item.stdout is defined 
-    - item.stdout == "Liberty_Base"
-
-# ===== DÉTECTION IHS =====
-- name: "Vérification préalable de l'existence des répertoires IHS"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: ihs_dir_check
-  loop:
-    - "/opt/IBM/HTTPServer"
-    - "/usr/IBM/HTTPServer"
-    - "/apps/IBM/HTTPServer"
-
-- name: "Recherche des installations IHS (répertoires existants uniquement)"
-  ansible.builtin.find:
-    paths: "{{ ihs_existing_paths }}"
-    file_type: directory
-    patterns: "*"
-    recurse: false
-  register: ihs_installations
-  vars:
-    ihs_existing_paths: "{{ ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
-  when: ihs_existing_paths | length > 0
-
-- name: "Vérification de la version IHS"
+- name: "Detect TSM"
   ansible.builtin.shell: |
-    if [ -f "{{ item.path }}/bin/httpd" ]; then
-      {{ item.path }}/bin/httpd -v 2>/dev/null | head -1 || echo "Version inconnue"
-    fi
-  register: ihs_version_check
-  loop: "{{ ihs_installations.files | default([]) }}"
-  when: 
-    - ihs_installations is defined 
-    - ihs_installations.files is defined
-    - ansible_os_family != "Windows"
+    systemctl list-units --all | grep -q dsmsvc && echo "TSM"
+  register: tsm_detect
   changed_when: false
-  failed_when: false
-
-- name: "Ajout d'IHS à la liste"
+- name: "Add TSM"
   ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['IHS'] }}"
-    middleware_details: "{{ middleware_details | combine({'IHS': {'path': item.item.path, 'version': item.stdout}}) }}"
-  loop: "{{ ihs_version_check.results | default([]) }}"
-  when: 
-    - item.stdout is defined 
-    - item.stdout != ""
+    detected_services_list: "{{ detected_services_list + [tsm_detect.stdout] }}"
+  when: tsm_detect.stdout != ""
 
-# ===== DÉTECTION ORACLE =====
-- name: "Recherche du fichier oratab"
-  ansible.builtin.stat:
-    path: /etc/oratab
-  register: oratab_check
-
-- name: "Lecture des instances Oracle"
+- name: "Detect Dynatrace"
   ansible.builtin.shell: |
-    grep -v "^#" /etc/oratab | grep -v "^$" | cut -d: -f1,2
-  register: oracle_instances
-  when: oratab_check.stat.exists
+    ps -ef | grep -q oneagent && echo "Dynatrace"
+  register: dt_detect
   changed_when: false
-  failed_when: false
-
-- name: "Vérification des versions Oracle"
-  ansible.builtin.shell: |
-    oracle_home="{{ item.split(':')[1] }}"
-    if [ -d "$oracle_home" ] && [ -f "$oracle_home/bin/sqlplus" ]; then
-      $oracle_home/bin/sqlplus -version 2>/dev/null | head -1 || echo "Version inconnue"
-    else
-      echo "Version inconnue"
-    fi
-  register: oracle_version_check
-  loop: "{{ oracle_instances.stdout_lines | default([]) }}"
-  changed_when: false
-  failed_when: false
-
-- name: "Ajout d'Oracle à la liste"
+- name: "Add Dynatrace"
   ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['Oracle'] }}"
-    middleware_details: "{{ middleware_details | combine({'Oracle': {'instances': oracle_instances.stdout_lines | default([]), 'version': oracle_version_check.results[0].stdout | default('Inconnue')}}) }}"
-  when: 
-    - oracle_instances is defined 
-    - oracle_instances.stdout_lines is defined 
-    - oracle_instances.stdout_lines | length > 0
-
-# ===== DÉTECTION SQL SERVER =====
-- name: "Recherche SQL Server sur Linux"
-  ansible.builtin.shell: |
-    systemctl list-units --type=service | grep -i "mssql-server" || echo "Non installé"
-  register: sqlserver_linux_check
-  when: ansible_os_family == "RedHat"
-  changed_when: false
-  failed_when: false
-
-- name: "Recherche SQL Server sur Windows"
-  ansible.windows.win_service_info:
-    name: "MSSQLSERVER"
-  register: sqlserver_windows_check
-  when: ansible_os_family == "Windows"
-
-- name: "Ajout de SQL Server à la liste"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['SQLServer'] }}"
-    middleware_details: "{{ middleware_details | combine({'SQLServer': {'status': 'Détecté', 'platform': ansible_os_family}}) }}"
-  when: >
-    (ansible_os_family == "RedHat" and sqlserver_linux_check.stdout is defined and "mssql-server" in sqlserver_linux_check.stdout) or
-    (ansible_os_family == "Windows" and sqlserver_windows_check.services is defined and sqlserver_windows_check.services | length > 0)
-
-# ===== DÉTECTION MQ SERIES =====
-- name: "Vérification préalable de l'existence des répertoires MQ"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: mq_dir_check
-  loop:
-    - "/opt/mqm"
-    - "/usr/mqm"
-
-- name: "Recherche des installations MQ (répertoires existants uniquement)"
-  ansible.builtin.find:
-    paths: "{{ mq_existing_paths }}"
-    file_type: directory
-    patterns: "*"
-    recurse: false
-  register: mq_installations
-  vars:
-    mq_existing_paths: "{{ mq_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
-  when: mq_existing_paths | length > 0
-
-- name: "Vérification de la version MQ"
-  ansible.builtin.shell: |
-    if [ -f "{{ item.path }}/bin/dspmqver" ]; then
-      {{ item.path }}/bin/dspmqver 2>/dev/null | head -1 || echo "Version inconnue"
-    fi
-  register: mq_version_check
-  loop: "{{ mq_installations.files | default([]) }}"
-  when: 
-    - mq_installations is defined 
-    - mq_installations.files is defined
-    - ansible_os_family != "Windows"
-  changed_when: false
-  failed_when: false
-
-- name: "Recherche des Queue Managers"
-  ansible.builtin.shell: |
-    if [ -f "/opt/mqm/bin/dspmq" ]; then
-      /opt/mqm/bin/dspmq 2>/dev/null || echo "Aucun QM"
-    fi
-  register: mq_qmanagers
-  when: 
-    - mq_installations is defined 
-    - mq_installations.files is defined 
-    - mq_installations.files | length > 0
-    - ansible_os_family != "Windows"
-  changed_when: false
-  failed_when: false
-
-- name: "Ajout de MQ Series à la liste"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['MQSeries'] }}"
-    middleware_details: "{{ middleware_details | combine({'MQSeries': {'version': mq_version_check.results[0].stdout | default('Inconnue'), 'queue_managers': mq_qmanagers.stdout_lines | default([])}}) }}"
-  when: 
-    - mq_installations is defined 
-    - mq_installations.files is defined 
-    - mq_installations.files | length > 0
-
-# ===== DÉTECTION CFT =====
-- name: "Vérification préalable de l'existence des répertoires CFT"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: cft_dir_check
-  loop:
-    - "/opt/axway"
-    - "/usr/cft"
-    - "/apps/cft"
-
-- name: "Recherche des installations CFT (répertoires existants uniquement)"
-  ansible.builtin.find:
-    paths: "{{ cft_existing_paths }}"
-    file_type: directory
-    patterns: "*"
-    recurse: false
-  register: cft_installations
-  vars:
-    cft_existing_paths: "{{ cft_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
-  when: cft_existing_paths | length > 0
-
-- name: "Vérification des processus CFT"
-  ansible.builtin.shell: |
-    ps -ef | grep -i cft | grep -v grep || echo "Aucun processus CFT"
-  register: cft_processes
-  when: ansible_os_family != "Windows"
-  changed_when: false
-  failed_when: false
-
-- name: "Ajout de CFT à la liste"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + ['CFT'] }}"
-    middleware_details: "{{ middleware_details | combine({'CFT': {'processes': cft_processes.stdout_lines | length}}) }}"
-  when: 
-    - cft_installations is defined 
-    - cft_installations.files is defined 
-    - cft_installations.files | length > 0
-
-# ===== DÉTECTION ILLUMIO (SERVICE DE SÉCURITÉ) =====
-- name: "Recherche des services Illumio"
-  ansible.builtin.shell: |
-    systemctl list-units --type=service | grep -i "illumio" || echo "Non installé"
-  register: illumio_service_check
-  when: ansible_os_family != "Windows"
-  changed_when: false
-  failed_when: false
-
-- name: "Vérification des processus Illumio"
-  ansible.builtin.shell: |
-    ps -ef | grep -i illumio | grep -v grep || echo "Aucun processus Illumio"
-  register: illumio_processes
-  when: ansible_os_family != "Windows"
-  changed_when: false
-  failed_when: false
-
-- name: "Ajout d'Illumio à la liste des SERVICES (syntaxe when corrigée)"
-  ansible.builtin.set_fact:
-    detected_services_list: "{{ detected_services_list + ['Illumio'] }}"
-    services_details: "{{ services_details | combine({'Illumio': {'type': 'Agent de sécurité VEN', 'status': illumio_service_check.stdout | default('Non vérifié')}}) }}"
-  when: 
-    - ansible_os_family != "Windows"
-    - illumio_service_check.stdout is defined
-    - '"illumio" in illumio_service_check.stdout'
-
-# ===== DÉTECTION TSM (SERVICE DE SAUVEGARDE) =====
-- name: "Vérification préalable de l'existence des répertoires TSM"
-  ansible.builtin.stat:
-    path: "{{ item }}"
-  register: tsm_dir_check
-  loop:
-    - "/opt/tivoli/tsm/client"
-    - "/usr/tivoli/tsm/client"
-
-- name: "Recherche des clients TSM (répertoires existants uniquement)"
-  ansible.builtin.find:
-    paths: "{{ tsm_existing_paths }}"
-    file_type: file
-    patterns: "dsmc"
-    recurse: true
-  register: tsm_installations
-  vars:
-    tsm_existing_paths: "{{ tsm_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
-  when: tsm_existing_paths | length > 0
-
-- name: "Vérification de la version TSM"
-  ansible.builtin.shell: |
-    if [ -f "{{ item.path }}" ]; then
-      {{ item.path }} -version 2>/dev/null | head -1 || echo "Version inconnue"
-    fi
-  register: tsm_version_check
-  loop: "{{ tsm_installations.files | default([]) }}"
-  when: 
-    - tsm_installations is defined 
-    - tsm_installations.files is defined
-    - ansible_os_family != "Windows"
-  changed_when: false
-  failed_when: false
-
-- name: "Ajout de TSM à la liste des SERVICES"
-  ansible.builtin.set_fact:
-    detected_services_list: "{{ detected_services_list + ['TSM'] }}"
-    services_details: "{{ services_details | combine({'TSM': {'type': 'Agent de sauvegarde', 'version': tsm_version_check.results[0].stdout | default('Inconnue'), 'path': tsm_installations.files[0].path | default('N/A')}}) }}"
-  when: 
-    - tsm_installations is defined 
-    - tsm_installations.files is defined 
-    - tsm_installations.files | length > 0
-
-# ===== CONSOLIDATION FINALE =====
-- name: "Consolidation finale des middlewares et services détectés"
-  ansible.builtin.set_fact:
-    total_components_detected: "{{ (detected_middleware_list | length) + (detected_services_list | length) }}"
-
-- name: "Affichage du résumé de détection des middlewares et services"
-  ansible.builtin.debug:
-    msg:
-      - "========================================================="
-      - "DÉTECTION DES COMPOSANTS TERMINÉE"
-      - "========================================================="
-      - "Serveur: {{ inventory_hostname }}"
-      - "Nombre de middlewares détectés: {{ detected_middleware_list | length }}"
-      - "Liste middlewares: {{ detected_middleware_list | join(', ') if detected_middleware_list else 'Aucun' }}"
-      - "Nombre de services détectés: {{ detected_services_list | length }}"
-      - "Liste services: {{ detected_services_list | join(', ') if detected_services_list else 'Aucun' }}"
-      - "Total composants: {{ total_components_detected }}"
-      - "========================================================="
-
-- name: "Enregistrement des facts middleware et services pour les autres rôles"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list }}"
-    detected_services_list: "{{ detected_services_list }}"
-    middleware_details: "{{ middleware_details }}"
-    services_details: "{{ services_details }}"
+    detected_services_list: "{{ detected_services_list + [dt_detect.stdout] }}"
+  when: dt_detect.stdout != ""
