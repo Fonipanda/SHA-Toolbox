@@ -1,0 +1,56 @@
+---
+- name: "Configuration Illumio générique (fallback)"
+  ansible.builtin.shell: |
+    echo "=== Configuration Illumio générique ==="
+    echo "OS: {{ ansible_system }} ({{ ansible_distribution | default('Unknown') }})"
+    echo "Architecture: {{ ansible_architecture }}"
+    echo ""
+    echo "Recherche de composants Illumio..."
+    
+    # Recherche générique de processus
+    illumio_processes=$(ps -ef 2>/dev/null | grep -i illumio | grep -v grep | wc -l)
+    echo "Processus Illumio trouvés: $illumio_processes"
+    
+    # Recherche de répertoires standards
+    for dir in "/opt/illumio_ven" "/usr/local/illumio" "/var/lib/illumio"; do
+      if [ -d "$dir" ]; then
+        echo "Répertoire trouvé: $dir"
+        ls -la "$dir" 2>/dev/null | head -3
+      fi
+    done
+    
+    # Recherche de binaires
+    for binary in "illumio-ven-ctl" "illumio" "ven"; do
+      binary_path=$(which "$binary" 2>/dev/null || echo "")
+      if [ -n "$binary_path" ]; then
+        echo "Binaire trouvé: $binary_path"
+      fi
+    done
+    
+    # Message final
+    if [ "$illumio_processes" -gt 0 ]; then
+      echo "Agent Illumio détecté mais configuration automatique non supportée"
+      echo "Configuration manuelle recommandée"
+    else
+      echo "Aucun agent Illumio détecté sur ce serveur"
+      echo "Configuration ignorée - comportement normal"
+    fi
+    
+    echo "=== Fin configuration générique ==="
+  register: illumio_generic_config
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage de la configuration générique"
+  ansible.builtin.debug:
+    msg: "{{ illumio_generic_config.stdout_lines | default(['Configuration générique échouée']) }}"
+
+- name: "Enregistrement du résultat générique"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "INFO"
+    set_results_component: "illumio"
+    set_results_operation: "configure"
+    set_results_value: "Configuration générique Illumio - OS {{ ansible_system }}"
+  ignore_errors: true
