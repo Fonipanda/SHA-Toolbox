@@ -1,0 +1,20 @@
+name: Push to GitLab
+
+on:
+  push:
+    branches:
+      - main  # branche que tu veux synchroniser
+
+jobs:
+  push-to-gitlab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Add GitLab remote
+        run: |
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab-docgen.group.echonet/Production-mutualisee/IPS/upm-frb/transformation-upm/create_socle/-/settings/access_tokens?page=1
+
+      - name: Push to GitLab
+        run: git push gitlab main --force
