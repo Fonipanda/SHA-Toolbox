@@ -1,31 +1,33 @@
 ---
-- name: "Initialisation du rôle ips_toolbox_tsm"
-  ansible.builtin.set_fact:
+- name: "Initialisation du rôle maître ips_toolbox_tsm"
+  set_fact:
     tsm_component: "tsm"
     tsm_role_name: "ips_toolbox_tsm"
 
-- name: "Construction du nom de fichier de tâche selon l'OS"
-  ansible.builtin.set_fact:
-    tsm_task_file: "{{ tsm_operation | default('configure') }}_{{ ansible_system }}_tsm.yml"
+- name: "Construction du nom de fichier de tâche TSM selon l'OS"
+  set_fact:
+    tsm_task_file: "{{ tsm_operation | default('detect') }}_{{ ansible_system }}_tsm.yml"
 
-- name: "Vérification de l'existence du fichier de tâche"
-  ansible.builtin.stat:
+- name: "Vérification de l'existence du fichier de tâche TSM"
+  stat:
     path: "{{ role_path }}/tasks/{{ tsm_task_file }}"
   register: tsm_task_exists
   delegate_to: localhost
 
 - name: "Exécution de la tâche TSM spécifique à l'OS"
-  ansible.builtin.include_tasks: "{{ tsm_task_file }}"
+  include_tasks: "{{ tsm_task_file }}"
   when: tsm_task_exists.stat.exists
+  ignore_errors: true
 
-- name: "Fallback - Tâche générique si fichier spécifique introuvable"
-  ansible.builtin.include_tasks: "configure_generic_tsm.yml"
+- name: "Fallback - Tâche générique TSM si spécifique introuvable"
+  include_tasks: "detect_generic_tsm.yml"
   when: not tsm_task_exists.stat.exists
+  ignore_errors: true
 
 - name: "Affichage du statut d'exécution TSM"
-  ansible.builtin.debug:
+  debug:
     msg:
-      - "Rôle TSM exécuté"
-      - "Fichier: {{ tsm_task_file if tsm_task_exists.stat.exists else 'configure_generic_tsm.yml' }}"
+      - "Rôle TSM maître exécuté"
+      - "Fichier: {{ tsm_task_file if tsm_task_exists.stat.exists else 'detect_generic_tsm.yml' }}"
       - "OS: {{ ansible_system }}"
-      - "Opération: {{ tsm_operation | default('configure') }}"
+      - "Opération: {{ tsm_operation | default('detect') }}"
