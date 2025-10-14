@@ -1,0 +1,147 @@
+---
+# roles/ips_toolbox_banner/tasks/create_Linux_banner.yml
+# Création de la bannière de connexion pour systèmes Linux
+- name: "Vérification de l'existence du fichier /etc/motd"
+  ansible.builtin.stat:
+    path: /etc/motd
+  register: motd_file_check
+
+- name: "Vérification de l'existence du fichier /etc/issue"
+  ansible.builtin.stat:
+    path: /etc/issue
+  register: issue_file_check
+
+- name: "Collecte des informations système pour la bannière"
+  ansible.builtin.set_fact:
+    banner_hostname: "{{ ansible_hostname }}"
+    banner_fqdn: "{{ ansible_fqdn }}"
+    banner_os: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+    banner_kernel: "{{ ansible_kernel }}"
+    banner_date: "{{ ansible_date_time.iso8601 }}"
+
+- name: "Création du contenu de la bannière"
+  ansible.builtin.set_fact:
+    banner_content: |
+      ================================================================================
+                        SYSTÈME D'HÉBERGEMENT APPLICATIF (SHA)
+      ================================================================================
+      
+      Serveur       : {{ banner_hostname }}
+      FQDN          : {{ banner_fqdn }}
+      Système       : {{ banner_os }}
+      Kernel        : {{ banner_kernel }}
+      Date          : {{ banner_date }}
+      
+      ================================================================================
+      AVERTISSEMENT - ACCÈS RESTREINT
+      ================================================================================
+      
+      Ce système est réservé aux utilisateurs autorisés uniquement.
+      Toute tentative d'accès non autorisé sera enregistrée et poursuivie.
+      
+      L'utilisation de ce système implique l'acceptation des politiques de sécurité
+      et des conditions d'utilisation en vigueur.
+      
+      ================================================================================
+
+- name: "Sauvegarde du fichier /etc/motd existant"
+  ansible.builtin.copy:
+    src: /etc/motd
+    dest: /etc/motd.backup.{{ ansible_date_time.epoch }}
+    remote_src: yes
+    mode: '0644'
+    owner: root
+    group: root
+  when: motd_file_check.stat.exists
+  changed_when: false
+
+- name: "Création de la bannière /etc/motd"
+  ansible.builtin.copy:
+    content: "{{ banner_content }}"
+    dest: /etc/motd
+    mode: '0644'
+    owner: root
+    group: root
+    backup: yes
+
+- name: "Sauvegarde du fichier /etc/issue existant"
+  ansible.builtin.copy:
+    src: /etc/issue
+    dest: /etc/issue.backup.{{ ansible_date_time.epoch }}
+    remote_src: yes
+    mode: '0644'
+    owner: root
+    group: root
+  when: issue_file_check.stat.exists
+  changed_when: false
+
+- name: "Création de la bannière /etc/issue (pré-login)"
+  ansible.builtin.copy:
+    content: |
+      ================================================================================
+      ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
+      ================================================================================
+      Serveur: {{ banner_hostname }}
+      Système: {{ banner_os }}
+      ================================================================================
+      
+    dest: /etc/issue
+    mode: '0644'
+    owner: root
+    group: root
+    backup: yes
+
+- name: "Création de la bannière /etc/issue.net (SSH)"
+  ansible.builtin.copy:
+    content: |
+      ================================================================================
+      ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
+      ================================================================================
+      Serveur: {{ banner_hostname }}
+      Système: {{ banner_os }}
+      ================================================================================
+      
+    dest: /etc/issue.net
+    mode: '0644'
+    owner: root
+    group: root
+    backup: yes
+
+- name: "Configuration SSH pour afficher la bannière"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/issue.net'
+    state: present
+    backup: yes
+  notify: "Redémarrer sshd"
+
+- name: "Vérification de la création des bannières"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/motd
+    - /etc/issue
+    - /etc/issue.net
+  register: banner_files_check
+
+- name: "Affichage du résumé de création des bannières"
+  ansible.builtin.debug:
+    msg:
+      - "=== RÉSUMÉ CRÉATION BANNIÈRES ==="
+      - "Bannière /etc/motd: {{ 'CRÉÉE' if banner_files_check.results[0].stat.exists else 'ÉCHEC' }}"
+      - "Bannière /etc/issue: {{ 'CRÉÉE' if banner_files_check.results[1].stat.exists else 'ÉCHEC' }}"
+      - "Bannière /etc/issue.net: {{ 'CRÉÉE' if banner_files_check.results[2].stat.exists else 'ÉCHEC' }}"
+      - "Configuration SSH: MISE À JOUR"
+      - "=== FIN RÉSUMÉ ==="
+
+- name: "Enregistrement du résultat création bannières"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "OK"
+    set_results_component: "banner"
+    set_results_operation: "create"
+    set_results_value: "Bannières de connexion créées avec succès (/etc/motd, /etc/issue, /etc/issue.net)"
+  ignore_errors: true
+

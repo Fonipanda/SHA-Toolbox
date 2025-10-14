@@ -1,0 +1,40 @@
+---
+# roles/ips_toolbox_banner/tasks/create_generic_banner.yml
+# Tâche générique de création de bannière (fallback)
+- name: "Avertissement - Tâche générique utilisée"
+  ansible.builtin.debug:
+    msg:
+      - "AVERTISSEMENT: Fichier de tâche spécifique à l'OS introuvable"
+      - "Utilisation de la tâche générique de création de bannière"
+      - "OS détecté: {{ ansible_system }}"
+
+- name: "Création de bannière générique simple"
+  ansible.builtin.copy:
+    content: |
+      ================================================================================
+      SYSTÈME D'HÉBERGEMENT APPLICATIF (SHA)
+      ================================================================================
+      
+      Serveur: {{ ansible_hostname }}
+      Système: {{ ansible_distribution | default('Unknown') }} {{ ansible_distribution_version | default('') }}
+      
+      ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
+      
+      ================================================================================
+    dest: /etc/motd
+    mode: '0644'
+    owner: root
+    group: root
+    backup: yes
+  when: ansible_os_family != "Windows"
+
+- name: "Enregistrement du résultat bannière générique"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "INFO"
+    set_results_component: "banner"
+    set_results_operation: "create"
+    set_results_value: "Bannière générique créée (tâche spécifique OS non trouvée)"
+  ignore_errors: true
+

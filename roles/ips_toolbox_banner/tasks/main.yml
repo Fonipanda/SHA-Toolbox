@@ -1,12 +1,15 @@
 ---
+# roles/ips_toolbox_banner/tasks/main.yml
+# Rôle principal pour la création de bannières de connexion
 - name: "Initialisation du rôle ips_toolbox_banner"
   ansible.builtin.set_fact:
     banner_component: "banner"
     banner_role_name: "ips_toolbox_banner"
+    banner_operation: "{{ banner_operation | default('create') }}"
 
 - name: "Construction du nom de fichier de tâche banner"
   ansible.builtin.set_fact:
-    banner_task_file: "create_{{ ansible_system }}_banner.yml"
+    banner_task_file: "{{ banner_operation }}_{{ ansible_system }}_banner.yml"
 
 - name: "Vérification de l'existence du fichier de tâche banner"
   ansible.builtin.stat:
@@ -27,3 +30,6 @@
     msg:
       - "Rôle banner exécuté"
       - "Fichier: {{ banner_task_file if banner_task_exists.stat.exists else 'create_generic_banner.yml' }}"
+      - "Opération: {{ banner_operation }}"
+      - "OS: {{ ansible_system }}"
+
