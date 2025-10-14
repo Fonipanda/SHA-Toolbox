@@ -14,7 +14,7 @@ jobs:
 
       - name: Add GitLab remote
         run: |
-          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab-docgen.group.echonet/Production-mutualisee/IPS/upm-frb/transformation-upm/create_socle/-/settings/access_tokens?page=1
+          git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab-docgen.group.echonet/Production-mutualisee/IPS/upm-frb/transformation-upm/create_socle/-/tree/Test.git
 
       - name: Push to GitLab
-        run: git push gitlab main --force
+        run: git push gitlab Test --force
