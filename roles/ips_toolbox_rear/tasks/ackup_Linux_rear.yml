@@ -1,0 +1,143 @@
+---
+- name: "Vérification de l'installation de ReaR"
+  ansible.builtin.shell: |
+    echo "=== Détection ReaR (Relax-and-Recover) ==="
+    
+    # Vérification du binaire ReaR
+    if [ -f "/usr/sbin/rear" ]; then
+      echo "BINARY_REAR_FOUND"
+      /usr/sbin/rear -V 2>/dev/null || echo "Version ReaR inconnue"
+    fi
+    
+    # Vérification de la configuration ReaR
+    if [ -f "/etc/rear/local.conf" ]; then
+      echo "CONFIG_REAR_FOUND"
+    fi
+    
+    # Vérification du binaire TSM pour intégration
+    if [ -f "/usr/bin/dsmc" ] || [ -f "/opt/tivoli/tsm/client/ba/bin/dsmc" ]; then
+      echo "TSM_CLIENT_FOUND"
+    fi
+    
+    # Vérification du daemon TSM
+    if systemctl is-active dsmcad >/dev/null 2>&1; then
+      echo "TSM_DAEMON_ACTIVE"
+    fi
+    
+    echo "=== Fin détection ReaR ==="
+  register: rear_detection
+  changed_when: false
+  failed_when: false
+
+- name: "Configuration ReaR avec intégration TSM (si composants présents)"
+  ansible.builtin.shell: |
+    echo "=== Configuration ReaR avec TSM ==="
+    
+    if echo "{{ rear_detection.stdout }}" | grep -q "BINARY_REAR_FOUND"; then
+      echo "ReaR détecté, vérification de la configuration..."
+      
+      # Vérification de la configuration ReaR existante
+      if [ -f "/etc/rear/local.conf" ]; then
+        echo "Configuration ReaR existante trouvée:"
+        grep -v "^#" /etc/rear/local.conf | grep -v "^$" | head -5 2>/dev/null || echo "Configuration vide ou commentée"
+        
+        # Vérification de l'intégration TSM dans la config
+        if grep -q "TSM" /etc/rear/local.conf 2>/dev/null; then
+          echo "Intégration TSM détectée dans la configuration ReaR"
+        else
+          echo "Aucune intégration TSM trouvée dans la configuration"
+        fi
+      else
+        echo "Aucun fichier de configuration ReaR trouvé"
+      fi
+      
+      # Test de la configuration ReaR
+      echo "Test de validation de la configuration ReaR..."
+      /usr/sbin/rear validate 2>/dev/null && echo "Configuration ReaR valide" || echo "Configuration ReaR invalide ou incomplète"
+      
+      # Préparation du backup ReaR
+      echo "Préparation du backup système ReaR..."
+      /usr/sbin/rear format -- --help >/dev/null 2>&1 && echo "Format ReaR disponible" || echo "Format ReaR non supporté"
+      
+      # Exécution du backup ReaR si TSM disponible
+      if echo "{{ rear_detection.stdout }}" | grep -q "TSM_CLIENT_FOUND"; then
+        echo "Client TSM détecté, lancement backup ReaR avec intégration TSM..."
+        
+        # Backup ReaR avec sortie TSM (si configuré)
+        /usr/sbin/rear -v mkbackup 2>/dev/null && echo "Backup ReaR avec TSM terminé avec succès" || echo "Backup ReaR avec TSM échoué"
+        
+        # Vérification des fichiers de sauvegarde
+        if [ -d "/var/lib/rear" ]; then
+          echo "Fichiers ReaR générés:"
+          ls -la /var/lib/rear/ | head -5 2>/dev/null || echo "Répertoire ReaR vide"
+        fi
+        
+      else
+        echo "Client TSM non détecté, backup ReaR local uniquement..."
+        /usr/sbin/rear -v mkrescue 2>/dev/null && echo "Image de récupération ReaR créée" || echo "Création image de récupération échouée"
+      fi
+      
+    else
+      echo "ReaR non installé sur ce serveur"
+      echo "Installation ReaR recommandée pour sauvegarde système"
+    fi
+    
+    echo "=== Fin configuration ReaR ==="
+  register: rear_config_result
+  changed_when: false
+  failed_when: false
+
+- name: "Vérification de l'intégration ReaR-TSM (si configurée)"
+  ansible.builtin.shell: |
+    if echo "{{ rear_detection.stdout }}" | grep -q "BINARY_REAR_FOUND" && echo "{{ rear_detection.stdout }}" | grep -q "TSM_CLIENT_FOUND"; then
+      echo "=== Vérification intégration ReaR-TSM ==="
+      
+      # Vérification de la sauvegarde TSM système
+      if [ -f "/usr/bin/dsmc" ]; then
+        /usr/bin/dsmc query backup /var/lib/rear/ 2>/dev/null | head -3 || echo "Aucune sauvegarde ReaR trouvée dans TSM"
+      fi
+      
+      # Test de connectivité TSM
+      if echo "{{ rear_detection.stdout }}" | grep -q "TSM_DAEMON_ACTIVE"; then
+        echo "Daemon TSM actif - intégration ReaR possible"
+      else
+        echo "Daemon TSM non actif - vérifier configuration TSM"
+      fi
+      
+      echo "=== Fin vérification intégration ==="
+    fi
+  register: rear_tsm_integration
+  changed_when: false
+  failed_when: false
+  when: "'TSM_CLIENT_FOUND' in rear_detection.stdout"
+
+- name: "Affichage du résumé complet ReaR + TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== RÉSUMÉ REAR (RELAX-AND-RECOVER) + TSM ==="
+      - "Détection:"
+      - "{{ rear_detection.stdout_lines | default(['Aucune détection']) }}"
+      - ""
+      - "Configuration et backup:"
+      - "{{ rear_config_result.stdout_lines | default(['Aucune configuration']) }}"
+      - ""
+      - "Intégration TSM:"
+      - "{{ rear_tsm_integration.stdout_lines | default(['Non testée']) }}"
+      - "=== FIN RÉSUMÉ REAR ==="
+
+- name: "Enregistrement du résultat ReaR dans ips_toolbox_set_results"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'OK' if 'BINARY_REAR_FOUND' in rear_detection.stdout and 'CONFIG_REAR_FOUND' in rear_detection.stdout else 'INFO' }}"
+    set_results_component: "rear"
+    set_results_operation: "backup"
+    set_results_value: >-
+      {% if 'BINARY_REAR_FOUND' in rear_detection.stdout and 'TSM_CLIENT_FOUND' in rear_detection.stdout %}
+      ReaR installé avec intégration TSM - Backup système disponible
+      {% elif 'BINARY_REAR_FOUND' in rear_detection.stdout %}
+      ReaR installé - Backup système local disponible
+      {% else %}
+      ReaR non installé - Backup système non disponible
+      {% endif %}
+  ignore_errors: true
