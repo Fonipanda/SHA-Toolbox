@@ -1,0 +1,29 @@
+---
+- name: "Initialisation du rôle ips_toolbox_banner"
+  ansible.builtin.set_fact:
+    banner_component: "banner"
+    banner_role_name: "ips_toolbox_banner"
+
+- name: "Construction du nom de fichier de tâche banner"
+  ansible.builtin.set_fact:
+    banner_task_file: "create_{{ ansible_system }}_banner.yml"
+
+- name: "Vérification de l'existence du fichier de tâche banner"
+  ansible.builtin.stat:
+    path: "{{ role_path }}/tasks/{{ banner_task_file }}"
+  register: banner_task_exists
+  delegate_to: localhost
+
+- name: "Exécution de la tâche banner spécifique à l'OS"
+  ansible.builtin.include_tasks: "{{ banner_task_file }}"
+  when: banner_task_exists.stat.exists
+
+- name: "Fallback - Tâche générique banner"
+  ansible.builtin.include_tasks: "create_generic_banner.yml"
+  when: not banner_task_exists.stat.exists
+
+- name: "Affichage du statut d'exécution banner"
+  ansible.builtin.debug:
+    msg:
+      - "Rôle banner exécuté"
+      - "Fichier: {{ banner_task_file if banner_task_exists.stat.exists else 'create_generic_banner.yml' }}"
