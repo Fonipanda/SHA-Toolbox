@@ -1,0 +1,41 @@
+---
+- name: "Vérification générique des toolboxes"
+  ansible.builtin.shell: |
+    echo "=== Vérification générique toolboxes ==="
+    echo "OS: {{ ansible_system }} ({{ ansible_distribution | default('Unknown') }})"
+    
+    # Recherche de répertoires toolboxes standards
+    for dir in "/apps/toolboxes" "/opt/toolboxes" "/usr/local/toolboxes"; do
+      if [ -d "$dir" ]; then
+        echo "TOOLBOXES_DIR_FOUND:$dir"
+        ls -la "$dir" 2>/dev/null | head -5
+      fi
+    done
+    
+    # Recherche de scripts toolboxes
+    toolbox_scripts=$(find /apps /opt /usr/local -name "*toolbox*" -type f 2>/dev/null | head -5)
+    if [ -n "$toolbox_scripts" ]; then
+      echo "TOOLBOX_SCRIPTS_FOUND"
+      echo "$toolbox_scripts"
+    else
+      echo "TOOLBOX_SCRIPTS_MISSING"
+    fi
+    
+    echo "=== Fin vérification générique ==="
+  register: toolboxes_generic_check
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage de la vérification générique"
+  ansible.builtin.debug:
+    msg: "{{ toolboxes_generic_check.stdout_lines | default(['Vérification générique échouée']) }}"
+
+- name: "Enregistrement du résultat générique toolboxes"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "INFO"
+    set_results_component: "toolboxes" 
+    set_results_operation: "verify"
+    set_results_value: "Vérification générique toolboxes - OS {{ ansible_system }}"
+  ignore_errors: true
