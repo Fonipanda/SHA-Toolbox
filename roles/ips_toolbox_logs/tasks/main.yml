@@ -155,8 +155,3 @@
     set_results_operation: "configure"
     set_results_value: "Purge automatique des logs configurée - service et timer systemd actifs"
   ignore_errors: true
-
-handlers:
-  - name: "Recharger systemd"
-    ansible.builtin.systemd:
-      daemon_reload: yes
