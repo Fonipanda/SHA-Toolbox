@@ -1,35 +1,30 @@
 ---
+- name: "Initialisation du rôle ips_toolbox_toolboxes"
+  ansible.builtin.set_fact:
+    toolboxes_component: "toolboxes"
+    toolboxes_role_name: "ips_toolbox_toolboxes"
 
-- set_fact:
-    toolboxes_component: "{{ role_name.split('_')[-1] }}"
-    toolboxes_role_name: "{{ role_name }}"
+- name: "Construction du nom de fichier de tâche toolboxes"
+  ansible.builtin.set_fact:
+    toolboxes_task_file: "{{ toolboxes_operation | default('verify') }}_{{ ansible_system }}_toolboxes.yml"
 
-- name: include tasks operation
-  block:
-    - name: Check if task file exists
-      local_action: stat path={{ role_path }}/tasks/{{ toolboxes_task_file_name }}
-      become: no
-      register: statResult
-      failed_when: statResult.stat.exists == false
+- name: "Vérification de l'existence du fichier de tâche toolboxes"
+  ansible.builtin.stat:
+    path: "{{ role_path }}/tasks/{{ toolboxes_task_file }}"
+  register: toolboxes_task_exists
+  delegate_to: localhost
 
-    - name: Include tasks if file exists
-      include_tasks: "{{ toolboxes_task_file_name }}"
-      when: statResult.stat.exists
+- name: "Exécution de la tâche toolboxes spécifique à l'OS"
+  ansible.builtin.include_tasks: "{{ toolboxes_task_file }}"
+  when: toolboxes_task_exists.stat.exists
 
-  rescue:
-    - name: Set result as failed operation
-      include_role:
-        name: ips_toolbox_set_results
-      vars:
-        set_results_state: "info"
-        set_results_item: ""
-        set_results_component: "{{ toolboxes_component }}"
-        set_results_operation: "{{ toolboxes_operation }}"
-        set_results_role_name: "{{ toolboxes_role_name }}"
-        set_results_status: "KO"
-        set_results_value: >
-          {% if statResult.stat.exists == false %}
-            task {{ toolboxes_task_file_name }} does not exist
-          {% else %}
-            task execution error
-          {% endif %}
+- name: "Fallback - Tâche générique toolboxes si spécifique introuvable"
+  ansible.builtin.include_tasks: "verify_generic_toolboxes.yml"
+  when: not toolboxes_task_exists.stat.exists
+
+- name: "Affichage du statut d'exécution toolboxes"
+  ansible.builtin.debug:
+    msg:
+      - "Rôle toolboxes exécuté"
+      - "Fichier: {{ toolboxes_task_file if toolboxes_task_exists.stat.exists else 'verify_generic_toolboxes.yml' }}"
+      - "Opération: {{ toolboxes_operation | default('verify') }}"
