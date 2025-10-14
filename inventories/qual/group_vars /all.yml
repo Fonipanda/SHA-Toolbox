@@ -1,3 +1,0 @@
-env: "ISOPROD"
-ansible_become_method: sesu
-ansible_become_flags: '-'
