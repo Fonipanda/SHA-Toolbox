@@ -1,0 +1,50 @@
+---
+
+- name: check WASND installation
+  shell: test -f /apps/WebSphere85*/profiles/dmgr/bin/versionInfo.sh
+  register: wasnd_install
+  changed_when: false
+  failed_when: false
+
+- name: check WASND version step 1
+  shell: |
+         . ~was/.profile
+         /apps/WebSphere85*/profiles/dmgr/bin/versionInfo.sh > /tmp/Wasnd_info.txt
+  become: true
+  become_user: was
+  become_method: su
+  changed_when: false
+  failed_when: false
+  when: wasnd_install.rc == 0
+
+- name: Check WASND version step 2
+  script: grep_AIX.ksh A 2 'Network Deployment' /tmp/Wasnd_info.txt | grep Version | awk "{print \$2}" 
+  register: wasVersion
+  changed_when: false
+  failed_when: false
+  when: wasnd_install.rc == 0
+
+- name: Format to Json when was nd is installed
+  set_fact:
+    tmp_json: "{ \"installed\": \"yes\" ,\"version\": \"{{ wasVersion.stdout_lines[0] }}\" }"
+  when: wasnd_install.rc == 0
+
+- name: Format to Json when was nd is not installed
+  set_fact:
+    tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
+  when: wasnd_install.rc != 0
+
+- name: set result output for was nd check
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "info"
+    set_results_item: ""
+    set_results_value: "{{ tmp_json | to_json | from_json }}" 
+    set_results_component: "{{ wasnd_component }}"
+    set_results_operation: "{{ wasnd_operation }}"
+    set_results_role_name: "{{ wasnd_role_name }}"
+    set_results_result_name: "{{ wasnd_result_name }}"
+    set_results_status: "OK"
+
+

@@ -1,0 +1,9 @@
+---
+
+
+- name: include role webserver
+  include_role:
+    name: ips_toolbox_webserver
+  vars:
+    webserver_operation: "{{ launcher_operation }}"
+

@@ -1,0 +1,9 @@
+---
+
+
+- name: include role cft
+  include_role:
+    name: ips_toolbox_cft
+  vars:
+    cft_operation: "{{ launcher_operation }}"
+

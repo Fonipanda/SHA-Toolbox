@@ -1,0 +1,115 @@
+---
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/web/version && cat /apps/toolboxes/web/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: "Listing application"
+  command: chdir=/apps/toolboxes/web/WasOperating/wasstartstop ./wasstartstop.ksh list app "{{ wasbase_was_vi | default('85S') }}"
+  register: wasopr_result
+  changed_when: false
+  when: tbxversion.stdout_lines[0]|int >= (17240|int)
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_item: ""
+     set_results_component: "{{ wasbase_component }}"
+     set_results_operation: "{{ wasbase_operation }}"
+     set_results_role_name: "{{ wasbase_role_name }}"
+     set_results_result_name: "{{ wasbase_result_name }}"
+     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+
+                           listed\
+
+                         {% else %}\
+
+                           toolboxes under required version\
+
+                         {% endif %}"
+     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+
+                            {% if wasopr_result.rc == 0 %}\
+
+                               OK\
+
+                            {% else %}\
+
+                               KO\
+
+                            {% endif %}\
+
+                          {% else %}\
+
+                            KO\
+
+                          {% endif %}"
+     set_results_value: "{% set JVM_NAME = '' %}\
+
+                             {% set KEYS_LIST = [] %}\
+
+                             {% set APP_LIST = [] %}\
+
+                             {% set DICT_JVM = {'JVM_NAME':'JVM'} %}\
+
+                             {% set DICT_APP = {} %}\
+
+                             {% for line in wasopr_result.stdout_lines %}\
+
+                             {% set new_line = line.split('\\u001b[92m') %}\
+
+                             {% for line_new in new_line %}\
+
+                             {% set new_line = line_new.split('\\u001b[0m') %}\
+
+                             {% set lines_state = new_line %}\
+
+                             {% for line_new in new_line %}\
+
+                             {% set line_new = line_new | string %}\
+
+                             {% if 'sa-' in line_new or '> clt' in line_new and not 'WebSphere' in line_new and not 'bp2i-perfservlet_server' in line_new %}\
+
+                             {% set JVM_NAME = line_new.split('>')[1] %}\
+
+                             {% if DICT_JVM.update({'JVM_NAME':JVM_NAME}) %} {% endif %}\
+
+                             {% elif '>' in line_new and not 'Application' in line_new and not 'sa-' in line_new and not 'WebSphere' in line_new and not 'clt' in line_new and not 'bp2i-' in line_new %}\
+
+                             {% set APP_NAME = line_new.split('>')[1] %}\
+
+                             {% if APP_LIST.append(APP_NAME) %} {% endif %}\
+
+                             {% set JVM_NAME = DICT_JVM['JVM_NAME'] %}\
+
+                             {% if DICT_APP.update({'APP_LIST': APP_LIST}) %} {% endif %}\
+
+                             {% endif %}\
+
+                             {% endfor %}\
+
+                             {% endfor %}\
+
+                             {% endfor %}\
+
+                             {% if DICT_APP %}
+                             {% set KEYS_LIST = DICT_APP.keys() %}\
+
+                             {% set NAME_KEY = KEYS_LIST[0] %}\
+
+                             {% if NAME_KEY %}\
+
+                             {{ DICT_APP }}
+                             {% else %}\
+
+                               Not found application\
+
+                             {% endif %}\
+
+                             {% else %}
+                               Not found application\
+
+                             {% endif %}"
+

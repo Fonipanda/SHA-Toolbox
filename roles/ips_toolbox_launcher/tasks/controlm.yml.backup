@@ -1,0 +1,9 @@
+---
+
+
+- name: include role controlm
+  include_role:
+    name: ips_toolbox_controlm
+  vars:
+    controlm_operation: "{{ launcher_operation }}"
+

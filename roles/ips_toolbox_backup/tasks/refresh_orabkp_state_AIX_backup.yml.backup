@@ -1,0 +1,70 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - backup_instance != ""
+   msg: "backup_instance variable is missing"
+
+- name: copy script to check oracle backup
+  copy:
+    src: verif_backup.ksh
+    dest: /apps/toolboxes/backup_restore/scripts/verif_backup.ksh
+    mode: 0755
+    owner: root
+
+- name: Launch refresh scripts
+  script: refresh_bkp_oracle_state.ksh
+  register: refresh_backup_all_oracle
+  changed_when: false
+  failed_when: false
+  when:
+   - backup_instance == "all"
+
+- name: Launch refresh scripts
+  script: refresh_bkp_oracle_state.ksh {{ backup_instance }}
+  register: refresh_backup_oracle
+  changed_when: false
+  failed_when: false
+  when:
+   - backup_instance != "all"
+
+- name: set results output for refresh
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "\
+
+          {% if backup_instance != 'all' %}\
+
+             {% if refresh_backup_oracle.rc == 0 %}\
+
+                refreshed\
+
+             {% else %}\
+
+                not refreshed\
+
+             {% endif %}\
+
+          {% else %}\
+
+             {% if refresh_backup_all_oracle.rc == 0 %}\
+
+                refreshed\
+
+             {% else %}\
+
+                not refreshed\
+
+             {% endif %}\
+
+          {% endif %}"
+    set_results_item: ""
+    set_results_value: ""
+    set_results_component: "{{ backup_component }}"
+    set_results_operation: "{{ backup_operation }}"
+    set_results_role_name: "{{ backup_role_name }}"
+    set_results_result_name: "{{ backup_result_name }}"
+    set_results_status: "OK"
+

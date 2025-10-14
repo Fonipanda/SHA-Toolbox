@@ -1,0 +1,9 @@
+---
+
+
+- name: include role wasnd
+  include_role:
+    name: ips_toolbox_wasnd
+  vars:
+    wasnd_operation: "{{ launcher_operation }}"
+

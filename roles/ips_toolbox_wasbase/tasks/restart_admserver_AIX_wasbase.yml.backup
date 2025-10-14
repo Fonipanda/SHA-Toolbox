@@ -1,0 +1,39 @@
+---
+
+- name: copy Manage script
+  copy:
+    src: WAS_Manage.ksh 
+    dest: "/applis/"
+    mode: '0755'
+  changed_when: false
+
+- name: "restarting admserver"
+  shell: "/applis/WAS_Manage.ksh restart admserver quiet"
+  register: restart_lib_result
+  changed_when: "'successfully' in restart_lib_result.stdout"
+  failed_when: false
+
+- set_fact:
+     final_state: "restarted"
+     state_value_json: ""
+     final_status: "OK"
+
+- set_fact:
+    final_status: "KO"
+    final_state: "unknown"
+  when:
+   - restart_lib_result.rc != 0
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_component: "{{ wasbase_component }}"
+     set_results_operation: "{{ wasbase_operation }}"
+     set_results_role_name: "{{ wasbase_role_name }}"
+     set_results_result_name: "{{ wasbase_result_name }}"
+     set_results_item: "admserver"
+     set_results_state: "{{ final_state }}"
+     set_results_status: "{{ final_status }}"
+     set_results_value: "{{ state_value_json }}"
+

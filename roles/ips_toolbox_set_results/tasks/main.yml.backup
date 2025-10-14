@@ -1,0 +1,45 @@
+---
+
+- name: initialize results tab
+  set_fact:
+    results: []
+  when:
+   - results is undefined
+   - not set_results_script_mode
+
+- name: initialize set_results_result_name
+  set_fact:
+    temp_result_name: "temp"
+  when: set_results_result_name == ""
+
+- name: initialize set_results_result_name
+  set_fact:
+    temp_result_name: "{{ set_results_result_name }}"
+  when: set_results_result_name != ""
+
+- name: initialize {{ temp_result_name }}
+  set_fact:
+    "{{ temp_result_name }}":
+      - State: "{{ set_results_state }}"
+        Item: "{{ set_results_item }}"
+        Value: >-
+          {%- if (uptime_days is defined and (uptime_days.stdout | default('0') | int < 1)) -%}
+            0 days
+          {%- elif uptime_days is defined -%}
+            {{ uptime_days.stdout | default('0') | int }} days
+          {%- else -%}
+            No uptime info
+          {%- endif -%}
+        Component: "{{ set_results_component }}"
+        Status: "{{ set_results_status }}"
+        User: "{{ ansible_user_id }}"
+        Date: "{{ lookup('pipe', 'date +%Y-%m-%d') }} {{ lookup('pipe', 'date +%H:%M:%S') }}"
+        Operation: "{{ set_results_operation }}"
+        Role_name: "{{ set_results_role_name }}"
+        Target: "{{ inventory_hostname }}"
+
+- name: add to facts  
+  set_fact:
+    results: "{{ results + hostvars[inventory_hostname][temp_result_name] }}"
+  when: not set_results_script_mode  
+

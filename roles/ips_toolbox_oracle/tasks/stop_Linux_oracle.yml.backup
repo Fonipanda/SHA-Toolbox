@@ -1,0 +1,167 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - oracle_item != ""
+   msg: "oracle_item variable is missing"
+
+- name: check instance exists
+  shell: cat /etc/oratab | grep -w ^{{ oracle_item }}
+  register: checkExists
+  failed_when: false
+  changed_when: false
+  when: 
+    - oracle_item != "all"
+
+- name: check presence instance
+  shell: 'egrep -v "^#|^$|^\*" /etc/oratab | cut -d: -f1'
+  register: checkPresence
+  failed_when: false
+  changed_when: false
+  when: 
+    - oracle_item == "all"
+
+- name: stop instance
+  shell: /apps/toolboxes/sgbd/oracle/exploitation/start_stop/stop_db.ksh -s {{ oracle_item }}
+  become: true
+  become_user: oracle
+  become_method: su
+  become_flags: "-l"
+  register: stopRes
+  changed_when: 
+    - "'stopped' in stopRes.stdout"
+    - "'already' not in stopRes.stdout"
+  when:
+    - oracle_item != "all"
+    - checkExists.rc == 0
+
+- name: stop all instance
+  shell: /apps/toolboxes/sgbd/oracle/exploitation/start_stop/stop_db.ksh -a
+  become: true
+  become_user: oracle
+  become_method: su
+  become_flags: "-l"
+  register: stopResAll
+  changed_when:
+    - "'has been stopped' in stopResAll.stdout"
+  when:
+    - oracle_item == "all"
+    - checkPresence.rc == 0
+    - checkPresence.stdout != ""
+
+- name: set result output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "\
+
+       {% if checkExists.rc is defined %}\
+
+          {% if checkExists.rc == 0 %}\
+
+             {% if 'stopped' in stopRes.stdout %}\
+
+                stopped\
+
+             {% else %}\
+
+                not stopped\
+
+             {% endif %}\
+
+          {% else %}\
+
+             instance not found\
+
+          {% endif %}\
+
+       {% elif checkPresence.rc is defined %}\
+
+          {% if checkPresence.stdout != \"\" %}\
+
+             {% if 'Error' in stopResAll.stdout %}\
+
+                not stopped\
+
+             {% else %}\
+
+                stopped\
+
+             {% endif %}\
+
+          {% else %}\
+
+             no instance found\
+
+          {% endif %}\
+
+       {% endif %}"
+    set_results_item: "\
+
+      {% if oracle_item != 'all' %}\
+
+         {{ oracle_item }}\
+
+      {% else %}\
+
+         {% if checkPresence.stdout != \"\" %}\
+
+            {{ checkPresence.stdout_lines | list }}\
+
+         {% endif %}\
+
+      {% endif %}"
+    set_results_value: ""
+    set_results_component: "{{ oracle_component }}"
+    set_results_operation: "{{ oracle_operation }}"
+    set_results_role_name: "{{ oracle_role_name }}"
+    set_results_result_name: "{{ oracle_result_name }}"
+    set_results_status: "\
+
+       {% if checkExists.rc is defined %}\
+
+          {% if checkExists.rc == 0 %}\
+
+             {% if 'stopped' not in stopRes.stdout %}\
+
+                KO\
+
+             {% elif stopRes.rc != 0 %}\
+
+                KO\
+
+             {% else %}\
+
+                OK\
+
+             {% endif %}\
+
+          {% else %}\
+
+             OK\
+
+          {% endif %}\
+
+       {% elif checkPresence.rc is defined %}\
+
+          {% if checkPresence.stdout != \"\" %}\
+
+             {% if 'Error' in stopResAll.stdout %}\
+
+                KO\
+
+             {% else %}\
+
+                OK\
+
+             {% endif %}\
+
+          {% else %}\
+
+             OK\
+
+          {% endif %}\
+
+       {% endif %}"
+

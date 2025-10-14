@@ -1,0 +1,32 @@
+---
+
+
+- name: Get check information
+  win_cft:
+    action: status
+  ignore_errors: yes
+  register: result
+
+- name: set result output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state: "info"
+    set_results_item: ""
+    set_results_value: "{{ result.status }}"
+    set_results_component: "{{ cft_component }}"
+    set_results_operation: "{{ cft_operation }}"
+    set_results_role_name: "{{ cft_role_name }}"
+    set_results_result_name: "{{ cft_result_name }}"
+    set_results_status:
+      "{% if result.failed == False %}\
+
+        OK\
+
+       {% else %}\
+
+        KO\
+
+       {% endif %}"
+

@@ -1,0 +1,76 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - wasbase_item != ""
+   msg: "wasbase_item variable is missing"
+
+- name: copy Manage script
+  copy:
+    src: WAS_Manage.ksh 
+    dest: "/applis/"
+    mode: '0755'
+  changed_when: false
+
+- name: "restarting {{ wasbase_item }}"
+  shell: "/applis/WAS_Manage.ksh restart {{ wasbase_item }} wba quiet"
+  register: restart_lib_result
+  changed_when: "'successfully' in restart_lib_result.stdout"
+  failed_when: false
+
+- set_fact:
+     state_value_json: ""
+     final_state: "unknown"
+     final_status: "OK"
+
+- set_fact:
+     final_state: "not restarted"
+  when:
+   - "'not found' in restart_lib_result.stdout"
+
+- set_fact:
+     state_value_json: "{% if line_json.split(' ')[4] != \"RESTARTED\" %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"not restarted\" }{% else %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"restarted\" }{% endif %}"
+  loop: "{{ restart_lib_result.stdout_lines }}"
+  loop_control:
+    loop_var: line_json
+  when:
+   - restart_lib_result.rc == 0
+   - "'not found' not in restart_lib_result.stdout"
+
+- set_fact:
+    final_state: "restarted"
+  when: "'not restarted' not in state_value_json"
+
+- set_fact:
+    final_state: "not restarted"
+    final_status: "KO"
+  when: "'not restarted' in state_value_json"
+
+- set_fact:
+    final_status: "KO"
+  when:
+   - restart_lib_result.rc != 0
+   - "'not found' not in restart_lib_result.stdout"
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_component: "{{ wasbase_component }}"
+     set_results_operation: "{{ wasbase_operation }}"
+     set_results_role_name: "{{ wasbase_role_name }}"
+     set_results_result_name: "{{ wasbase_result_name }}"
+     set_results_item: "{{ wasbase_item }}"
+     set_results_state: "{{ final_state }}"
+     set_results_status: "{{ final_status }}"
+     set_results_value: "{% if 'not found' in restart_lib_result.stdout %}\
+
+                           application server not found\
+
+                         {% else %}\
+
+                           [ {{ state_value_json[1:] }} ]\
+
+                         {% endif %}"
+

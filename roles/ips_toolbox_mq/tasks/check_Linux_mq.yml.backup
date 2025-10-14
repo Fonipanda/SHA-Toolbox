@@ -1,0 +1,75 @@
+---
+
+- name: Begin check MQ
+  block:
+
+    - name: check mq installation
+      shell: grep "^mqm" /etc/passwd >/dev/null || echo "No MQ on this server" >&1
+      register: checkMQ
+      failed_when: false
+      changed_when: false
+        
+    - name: check mq version
+      shell: . ~mqm/.profile 1>/dev/null 2>&1;dspmqinst | grep ^Version | awk '{print $NF}'
+      become: true
+      become_user: mqm
+      become_method: su
+      register: VersionMQ
+      changed_when: false
+      failed_when:
+       - VersionMQ.stderr != ""
+      when: 
+       - checkMQ.stdout == ""
+    
+    - set_fact:
+        tmp_json_versions: ""
+      when:
+       - VersionMQ.stdout is defined
+       - VersionMQ.stdout != ""
+    
+    - set_fact:
+        tmp_json_versions: "{{ tmp_json_versions }}, \"{{ mq_version }}\""
+      loop: "{{ VersionMQ.stdout_lines }}"
+      loop_control:
+        loop_var: mq_version
+      when:
+       - VersionMQ.stdout is defined
+       - VersionMQ.stdout != ""
+    
+    - name: Format to Json when mq is installed
+      set_fact:
+        tmp_json: "{ \"installed\": \"yes\" ,\"version\": [ {{ tmp_json_versions[1:] }} ] }"
+      when:
+       - VersionMQ.stdout is defined
+       - VersionMQ.stdout != ""
+    
+    - name: Format to Json when mq is not installed
+      set_fact:
+        tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
+      when: '"No MQ on this server" in checkMQ.stdout'
+
+    - name: working configuration
+      set_fact:
+        mq_status: "OK"
+        mq_value: "{% if tmp_json is defined %}{{ tmp_json | to_json | from_json }}{% endif %}"
+
+  rescue:
+    - name: ansible failure
+      set_fact:
+        mq_status: "KO"
+        mq_value: "{% if VersionMQ.stderr is defined %}{{ VersionMQ.stderr }}{% endif %}"
+    
+  always:
+    - name: set result output for mq check
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "info" 
+        set_results_item: ""
+        set_results_value: "{{ mq_value }}" 
+        set_results_component: "{{ mq_component }}"
+        set_results_operation: "{{ mq_operation }}"
+        set_results_role_name: "{{ mq_role_name }}"
+        set_results_result_name: "{{ mq_result_name }}"
+        set_results_status: "{{ mq_status }}"
+

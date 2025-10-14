@@ -1,0 +1,76 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - webserver_url != ""
+     - webserver_kdb_pwd != ""
+     - webserver_ou != ""
+   msg: "At least one variable is missing beyond webserver_url, webserver_kdb_pwd or webserver_ou"
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: "generate CSR"
+  shell: /apps/toolboxes/web/ManageCertificates/tools/Create_Certif_Kdb_Csr.ksh cmd {{ webserver_url }} {{ webserver_kdb_pwd }} {{ webserver_ou }} {{ webserver_force }}
+  register: csr_generation
+  changed_when: "'has been generated' in csr_generation.stdout"
+  failed_when: false
+  when: tbxversion.stdout_lines[0]|int >= (1922|int)
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_item: "{{ webserver_url }}"
+     set_results_component: "{{ webserver_component }}"
+     set_results_operation: "{{ webserver_operation }}"
+     set_results_role_name: "{{ webserver_role_name }}"
+     set_results_result_name: "{{ webserver_result_name }}"
+     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (1922|int) %}\
+
+                           {% if csr_generation.rc == 0 %}\
+
+                             OK\
+
+                           {% else %}\
+
+                             KO\
+
+                           {% endif %}\
+
+                         {% else %}\
+
+                           KO\
+
+                         {% endif %}"
+     set_results_status: "OK"
+     set_results_value: "{% if tbxversion.stdout_lines[0]|int >= (1922|int) %}\
+
+                           {% if csr_generation.rc == 0 %}\
+
+                             CSR file generated in /apps/toolboxes/web/ManageCertificates/generatecert/{{ webserver_url }}\
+
+                           {% else %}\
+
+                             {% if 'must be deleted' in csr_generation.stdout %}\
+
+                               csr and kdb already exist. Use force option to overwrite\
+
+                             {% else %}\
+
+                               Error encountered. Check csr_generation.stdout for details\
+
+                             {% endif %}\
+
+                           {% endif %}\
+
+                         {% else %}\
+
+                           toolboxes under required version\
+
+                         {% endif %}"
+
+

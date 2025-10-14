@@ -1,0 +1,44 @@
+---
+- name: "Vérification de la présence de rear"
+  stat:
+    path: /usr/sbin/rear
+  register: rear_binary_check
+
+- name: "Vérification des configurations ReaR existantes"
+  stat:
+    path: /etc/rear/local.conf
+  register: rear_conf_check
+
+- name: "Exécution de la sauvegarde ReaR"
+  shell: |
+    echo "=== Exécution ReaR backup ==="
+    /usr/sbin/rear -v mkbackup 2>/dev/null || echo "Backup ReaR échoué"
+    echo "=== Fin ReaR backup ==="
+  when:
+    - rear_binary_check.stat.exists
+    - rear_conf_check.stat.exists
+  register: rear_backup_result
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage du résumé ReaR"
+  debug:
+    msg:
+      - "Binary ReaR : {{ 'Oui' if rear_binary_check.stat.exists else 'Non' }}"
+      - "Fichier local.conf : {{ 'Oui' if rear_conf_check.stat.exists else 'Non' }}"
+      - "Résultat backup : {{ rear_backup_result.stdout_lines | default(['Aucun résultat']) }}"
+
+- name: "Enregistrement du résultat ReaR"
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'OK' if rear_backup_result.rc == 0 else 'KO' }}"
+    set_results_component: "rear"
+    set_results_operation: "backup"
+    set_results_value: >-
+      {% if rear_backup_result.rc == 0 %}
+      Sauvegarde ReaR réussie
+      {% else %}
+      Sauvegarde ReaR échouée
+      {% endif %}
+  ignore_errors: true

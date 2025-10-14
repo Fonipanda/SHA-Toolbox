@@ -1,0 +1,23 @@
+---
+- name: "Fallback ReaR générique"
+  shell: |
+    echo "=== Fallback ReaR ==="
+    which rear || echo "ReaR non installé"
+    echo "=== Fin fallback ReaR ==="
+  register: rear_generic
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage du fallback ReaR"
+  debug:
+    msg: "{{ rear_generic.stdout_lines | default(['Fallback échoué']) }}"
+
+- name: "Enregistrement du fallback ReaR"
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "INFO"
+    set_results_component: "rear"
+    set_results_operation: "backup"
+    set_results_value: "Fallback ReaR exécuté"
+  ignore_errors: true

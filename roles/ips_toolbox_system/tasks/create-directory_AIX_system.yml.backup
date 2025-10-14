@@ -1,0 +1,113 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - system_codeAP != ""
+     - system_code5car != ""
+   msg: "at least one mandatory variable is missing beyond: system_codeAP & system_code5car"
+
+- name: Check toolbox installation
+  find:
+    paths: "/apps/toolboxes"
+    patterns: "version"
+  register: tbxcheck
+
+- name: Check toolbox version
+  shell: cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g'
+  register: tbxversion
+  changed_when: false
+  when:
+    - tbxcheck.matched > 0
+
+- name: Create Directory for {{ system_Appli_Code }}
+  shell: /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh codeAP={{ system_Appli_Code }} code5car={{ system_Appli_5_car }} {{ system_Appli_id }} {{ system_Appli_vg }} {{ system_Appli_lv }} {{ system_Appli_lvex }}{{ system_Appli_lvex1 }}{{ system_Appli_lvex2 }} {{ system_Appli_user }}
+  register: resultarbo
+  ignore_errors: yes
+  changed_when: 
+    - '"-I- Creation du FS" in resultarbo.stdout'
+    - resultarbo.rc == 0 
+  when:
+    - tbxversion.stdout_lines[0]|int >= (1820|int)
+
+- name: check filesystem presence
+  stat:
+    path: "{{ filesystem.split(':')[2] }}"
+  loop: "{{ resultarbo.stdout_lines | select('match', '.*:lv_.*') | list }}"
+  loop_control:
+    loop_var: filesystem
+  register: checkfs
+  when:
+    - 'resultarbo.rc != 0 or "espace disponible sur le VG " in resultarbo.stdout'
+
+- name: set missing filesystems list
+  set_fact:
+    system_stat_exist: "{% if line_json.stat.exists == false %}{% if system_stat_exist == '' %}\"{{ line_json.filesystem.split(':')[2] }}\"{% else %}{{ system_stat_exist }}, \"{{ line_json.filesystem.split(':')[2] }}\"{% endif %}{% else %}{{ system_stat_exist }}{% endif %}"
+  loop: "{{ checkfs.results | list }}"
+  loop_control:
+    loop_var: line_json
+  no_log: True
+  when:
+    - 'resultarbo.rc != 0 or "espace disponible sur le VG " in resultarbo.stdout'
+
+- name: set results Creating Arbo
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state: 
+      "{% if tbxversion.stdout_lines[0]|int < (1820|int) %}\
+
+          not created\
+
+       {% else %}\
+
+          {% if resultarbo.rc != 0 or system_stat_exist != '' %}\
+
+             not created\
+
+          {% else %}\
+
+             created\
+
+          {% endif %}\
+
+       {% endif %}"
+    set_results_item: "{{ system_Appli_Code }}"
+    set_results_value: 
+      "{% if tbxversion.stdout_lines[0]|int < (1820|int) %}\
+
+          toolboxes under required version\
+
+       {% else %}\
+
+          {% if resultarbo.rc != 0 %}\
+
+             { \"message\": \"{{ resultarbo.stdout.split('-E- ')[1].split('\u001b[0m')[0] }}\", \"missing filesystems\": [ {{ system_stat_exist }} ] }\
+
+          {% else %}\
+
+             {% if \"-W- L'espace disponible sur le VG\" in resultarbo.stdout and system_stat_exist != '' %}\
+
+                { \"message\": \"{{ resultarbo.stdout.split('-W- ')[1].split('\u001b')[0] }}\", \"missing filesystems\": [ {{ system_stat_exist }} ] }\
+
+             {% endif %}\
+
+          {% endif %}\
+
+       {% endif %}"
+    set_results_component: "{{ system_component }}"
+    set_results_operation: "{{ system_operation }}"
+    set_results_role_name: "{{ system_role_name }}"
+    set_results_result_name: "{{ system_result_name }}"
+    set_results_status: 
+      "{% if resultarbo.rc != 0 %}\
+
+          KO\
+
+       {% else %}\
+
+          OK\
+
+       {% endif %}"
+

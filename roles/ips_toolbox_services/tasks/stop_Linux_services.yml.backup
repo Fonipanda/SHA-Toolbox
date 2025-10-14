@@ -1,0 +1,52 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+    that:
+      - services_item != ""
+    msg: "services_item variable is missing"
+
+- name: stop service
+  systemd:
+    state: stopped
+    name: "{{ services_item }}"
+  register: stop_service
+  failed_when: false
+
+- name: set results output for services
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    name: results
+    set_results_state: 
+      "{% if stop_service.state is defined %}\
+
+             stopped\
+
+          {% else %}\
+
+             not stopped\
+
+          {% endif %}"
+    set_results_item: "{{ services_item }}"
+    set_results_value: 
+       "{% if stop_service.msg is defined %}\
+
+           {{ stop_service.msg }}\
+
+        {% endif %}"
+    set_results_component: "{{ services_component }}"
+    set_results_operation: "{{ services_operation }}"
+    set_results_role_name: "{{ services_role_name }}"
+    set_results_result_name: "{{ services_result_name }}"
+    set_results_status: 
+      "{% if stop_service.state is defined %}\
+
+          OK\
+
+       {% else %}\
+
+          KO\
+
+       {% endif %}"
+

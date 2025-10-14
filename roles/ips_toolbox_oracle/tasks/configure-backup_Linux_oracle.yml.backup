@@ -1,0 +1,79 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - oracle_item != ""
+   msg: "A mandatory variable is missing: oracle_item"
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: stop play when option parameter does not fit toolbox version
+  assert:
+   that:
+     "{% if oracle_retention_backuporacle == \"BKP\" %}\
+
+        tbxversion.stdout_lines[0]|int >= (1921|int)\
+
+      {% endif %}"
+   msg: "No TSM backup before toolbox's version 19.2.1"
+
+- name: Begin configure bt_sauvegarde.conf file
+  block:
+
+    - name: check presence instance
+      shell: 'if [ "{{ oracle_item }}" = "all" ];then egrep -v "^#|^$|^\*" /etc/oratab | cut -d: -f1;else egrep -v "^#|^$|^\*" /etc/oratab | cut -d: -f1 | grep -w ^{{ oracle_item }};fi'
+      register: checkPresence
+      failed_when: false
+      changed_when: false
+
+    - name: configure bt_sauvegarde.conf file
+      oracle_backup:
+        action: configure
+        instanceName: "{{ oracle_item }}"
+        retention: "{{ oracle_retention_backuporacle }}"
+      register: configureTSM
+      when:
+        - checkPresence.rc == 0
+      changed_when: configureTSM.changed == True
+
+    - name: working configuration
+      set_fact:
+        oracle_status: "OK"
+        oracle_state: "configured"
+        oracle_value: "{% if configureTSM.message is defined %}{{ configureTSM.message }}{% endif %}"
+      when:
+        - checkPresence.rc == 0
+        - configureTSM.failed == False
+
+    - name: "{{ oracle_item }} not found"
+      set_fact:
+        oracle_status: "KO"
+        oracle_state: "not configured"     
+        oracle_value: "instance {{ oracle_item }} not found"  
+      when:
+        - checkPresence.rc != 0
+      
+  rescue:
+    - name: ansible failure
+      set_fact:
+        oracle_status: "KO"
+        oracle_value: "{% if configureTSM.message is defined %}{{ configureTSM.message }}{% else %}{{ configureTSM.msg }}{% endif %}"
+        oracle_state: "not configured"
+  always:
+    - name: End configure bt_sauvegarde.conf file
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "{{ oracle_state }}"
+        set_results_item: "{% if oracle_item == \"all\" %}{{ checkPresence.stdout_lines | list }}{% else %}{{ oracle_item }}{% endif %}"
+        set_results_component: "{{ oracle_component }}"
+        set_results_operation: "{{ oracle_operation }}"
+        set_results_role_name: "{{ oracle_role_name }}"
+        set_results_value: "{{ oracle_value }}"
+        set_results_result_name: "{{ oracle_result_name }}"
+        set_results_status: "{{ oracle_status }}"        
+

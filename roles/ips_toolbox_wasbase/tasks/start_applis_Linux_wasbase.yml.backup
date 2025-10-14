@@ -1,0 +1,57 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - wasbase_item != ""
+   msg: "wasbase_item variable is missing"
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/web/version && cat /apps/toolboxes/web/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: "starting application {{ wasbase_item }}"
+  command: chdir=/apps/toolboxes/web/WasOperating/wasstartstop ./wasstartstop.ksh start app {{ wasbase_item }} "{{ wasbase_was_vi | default('85S') }}"
+  register: wasopr_result
+  changed_when: "'is already in started' not in wasopr_result.stdout"
+  failed_when: wasopr_result.stdout | regex_search('WASX[0-9]{4}E')
+  when: tbxversion.stdout_lines[0]|int >= (17240|int)
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_item: "{{ wasbase_item }}"
+     set_results_component: "{{ wasbase_component }}"
+     set_results_operation: "{{ wasbase_operation }}"
+     set_results_role_name: "{{ wasbase_role_name }}"
+     set_results_result_name: "{{ wasbase_result_name }}"
+     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+
+                           {% if wasopr_result.rc == 0 %}\
+
+                             started\
+
+                           {% else %}\
+
+                             not started\
+
+                           {% endif %}\
+
+                         {% else %}\
+
+                           toolboxes under required version\
+
+                         {% endif %}"
+     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+
+                           OK\
+
+                         {% else %}\
+
+                           KO\
+
+                         {% endif %}"
+     set_results_value: ""
+

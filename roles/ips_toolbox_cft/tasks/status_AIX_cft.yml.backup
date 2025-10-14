@@ -1,0 +1,43 @@
+---
+
+- name: Begin Check status CFT
+  no_log: True
+
+  block:
+
+  - name: status cft
+    cft:
+      action: status
+    register: statusCFT
+    become: True
+    become_user: cft
+    become_method: su
+
+  - name: set facts
+    set_fact:
+      cft_state: "{{ statusCFT.state }}"
+      cft_value: ""
+      cft_status: "OK"
+
+  rescue:
+    - name: ansible failure
+      set_fact:
+        cft_state: "unknow"
+        cft_value: "{{ statusCFT.msg }}"
+        cft_status: "KO"
+
+
+  always:
+  - name: set result output for CFT installation
+    include_role:
+      name: ips_toolbox_set_results
+    vars:
+      set_results_state: "{{ cft_state }}"
+      set_results_item: ""
+      set_results_value: "{{ cft_value }}"
+      set_results_component: "{{ cft_component }}"
+      set_results_operation: "{{ cft_operation }}"
+      set_results_role_name: "{{ cft_role_name }}"
+      set_results_result_name: "{{ cft_result_name }}"
+      set_results_status: "{{ cft_status }}"
+

@@ -1,0 +1,121 @@
+---
+
+- set_fact:
+    controlm_status: "OK"
+    controlm_value: ""
+    controlm_state: "started"
+- name: Start Control-M Agent
+  no_log: true
+  block:
+    - win_shell: |
+        $ErrorActionPreference = "Stop"
+        [int]$Failed=0
+        [int]$Changed=0
+        [int]$Open=0
+        [string]$Message=""
+        [PSObject]$Object = New-Object PSObject
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name failed -Value $Failed
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name changed -Value $Changed
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name message -Value $Message
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name agent_name -Value ""
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name agent_startmode -Value ""
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name agent_state -Value ""
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name filewatcher_name -Value ""
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name filewatcher_startmode -Value ""
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name filewatcher_state -Value ""
+        try
+        {
+            [string]$agent_name="{{ controlm_agent_name }}"
+            [string]$Service_agent_name="ctmag"
+            [string]$Service_fw_name="ctmfw_service"
+            if($agent_name -ne "Default")
+            {
+                $Service_agent_name="ctmag_$($agent_name)"
+                $Service_fw_name="ctmfw_service_$($agent_name)"
+            }
+            $Query_agent="select * from win32_service where Name like '$($Service_agent_name)'"
+            $Query_filewatcher="select * from win32_service where Name like '$($Service_fw_name)'"
+            $Wmi_agent=Get-WmiObject -Query $Query_agent -ErrorAction Stop
+            $Wmi_filewatcher=Get-WmiObject -Query $Query_filewatcher -ErrorAction Stop
+            if(-not $Wmi_agent.Name -eq "" )
+            {
+                $Object.agent_name=$Wmi_agent.Name
+                $Object.agent_startmode=$Wmi_agent.StartMode
+                $Object.agent_state=$Wmi_agent.State
+            }
+            else
+            {
+                $Object.failed=1
+                $Object.message="Agent $($agent_name) not exist"
+            }
+            if(-not $Wmi_filewatcher.Name -eq "" )
+            {
+                $Object.filewatcher_name=$Wmi_filewatcher.Name
+                $Object.filewatcher_startmode=$Wmi_filewatcher.StartMode
+                $Object.filewatcher_state=$Wmi_filewatcher.State
+            }
+            else
+            {
+                $Object.failed=1
+                $Object.message="Agent $($agent_name) not exist"
+            }
+        }
+        catch
+        {
+          $Message="$($_.Exception.Message)"
+          $Object.failed=1
+          $Object.message=$Message
+        }
+        finally
+        { 
+          clear
+          $Object|ConvertTo-Json -Depth 99
+        }
+      register: ctmStart
+      changed_when: (ctmStart.stdout | from_json).changed
+    - set_fact:
+        controlm_value: "{{ (ctmStart.stdout | from_json).message }}"
+        controlm_state: "not started"
+      when:
+        - ctmStart.stdout != ""
+        - (ctmStart.stdout | from_json).failed
+    - win_service:
+        name: "{{ (ctmStart.stdout | from_json).agent_name }}"
+        state: started
+      when:
+        - ctmStart.stdout != ""
+        - not (ctmStart.stdout | from_json).failed
+    - win_service:
+        name: "{{ (ctmStart.stdout | from_json).filewatcher_name }}"
+        state: started
+      when:
+        - ctmStart.stdout != ""
+        - not (ctmStart.stdout | from_json).failed
+        - (ctmStart.stdout | from_json).filewatcher_startmode == 'Auto'   
+    - set_fact:
+        controlm_value: ""
+        controlm_state: "unknown"
+      when:
+        - ctmStart.stdout == ""    
+  rescue:
+    - set_fact:
+        controlm_status: "KO"
+        controlm_value: ""
+        controlm_state: "unknown"
+  always:
+    - name: set result output for start Control-M Agent
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "{{ controlm_state }}"
+        set_results_item: "{{ controlm_agent_name }}"
+        set_results_value: "{{ controlm_value }}"
+        set_results_component: "{{ controlm_component }}"
+        set_results_operation: "{{ controlm_operation }}"
+        set_results_role_name: "{{ controlm_role_name }}"
+        set_results_result_name: "{{ controlm_result_name }}"
+        set_results_script_mode: "{{ controlm_script_mode }}"
+        set_results_status: "{{ controlm_status }}"
+
+
+

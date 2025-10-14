@@ -1,0 +1,146 @@
+---
+
+- name: stop play when a mandatory variable is missing
+  assert:
+   that:
+     - wasnd_xml_filename != ""
+     - wasnd_archive_filename != ""
+     - wasnd_xml_src_path != ""
+   msg: "One of this mandatory variable is missing: wasnd_xml_filename, wasnd_archive_filename, wasnd_xml_src_path"
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: Copy the xml file on the remote server
+  copy:
+   src: "{{ wasnd_xml_src_path }}/{{ wasnd_xml_filename }}"
+   dest: "{{ wasnd_dest_path }}/"
+   owner: root
+   group: web
+   mode: u=rwx,g=rwx,o=rx
+  when: (tbxversion.stdout_lines[0]|int >= (1920|int))
+
+- name: Copy the archive file on the remote server
+  copy:
+   src: "{{ wasnd_archive_src_path }}/{{ wasnd_archive_filename }}"
+   dest: "{{ wasnd_dest_path }}/"
+   owner: root
+   group: web
+   mode: u=rwx,g=rwx,o=rx
+  register: copy_archive
+  when: (tbxversion.stdout_lines[0]|int >= (1920|int))
+
+- name: Copy the deploy_app.ksh script on the remote server
+  copy:
+   src: deploy_app.ksh
+   dest: /apps/toolboxes/web/ManageDeployEarWas/DeployEarWas
+   mode: '0755'
+  when:
+   - (tbxversion.stdout_lines[0]|int >= (1920|int))
+   - copy_archive.changed or wasnd_force_deploy == "yes"
+
+- name: Copy the WAS_Manage.ksh script on the remote server
+  copy:
+   src: WAS_Manage.ksh
+   dest: /apps/toolboxes/web/WasOperating
+   mode: '0755'
+  when: 
+   - (tbxversion.stdout_lines[0]|int >= (1920|int))
+   - copy_archive.changed or wasnd_force_deploy == "yes"
+
+- name: Deploy application
+  shell: /apps/toolboxes/web/ManageDeployEarWas/DeployEarWas/deploy_app.ksh wnd {{ wasnd_archive_filename }} {{ wasnd_xml_filename }} {{ wasnd_dest_path }}
+  register: result_deploy_app
+  changed_when: "'Error' not in result_deploy_app.stdout"
+  failed_when: false
+  when:
+   - (tbxversion.stdout_lines[0]|int >= (1920|int))
+   - copy_archive.changed or wasnd_force_deploy == "yes"
+
+- name: set results output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+     set_results_component: "{{ wasnd_component }}"
+     set_results_operation: "{{ wasnd_operation }}"
+     set_results_role_name: "{{ wasnd_role_name }}"
+     set_results_result_name: "{{ wasnd_result_name }}"
+     set_results_item: "{{ wasnd_archive_filename }}"
+     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+
+                            {% if copy_archive.changed or wasnd_force_deploy == 'yes' %}\
+
+                              {% if result_deploy_app.rc != 0 %}\
+
+                                not deployed\
+
+                              {% else %}\
+
+                                deployed\
+
+                              {% endif %}\
+
+                            {% else %}\
+
+                              deployed\
+
+                            {% endif %}\
+
+                          {% else %}\
+
+                            not deployed\
+
+                          {% endif %}"
+     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+
+                            {% if copy_archive.changed or wasnd_force_deploy == 'yes' %}\
+
+                              {% if result_deploy_app.rc != 0 %}\
+
+                                KO\
+
+                              {% else %}\
+
+                                OK\
+
+                              {% endif %}\
+
+                            {% else %}\
+
+                              OK\
+
+                            {% endif %}\
+
+                          {% else %}\
+
+                            KO\
+
+                          {% endif %}"
+     set_results_value: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+
+                            {% if copy_archive.changed or wasnd_force_deploy == 'yes' %}\
+
+                              {% if result_deploy_app.rc != 0 %}\
+
+                                {{ result_deploy_app.stdout_lines }}\
+
+                              {% else %}\
+
+                                Application successfully deployed\
+
+                              {% endif %}\
+
+                            {% else %}\
+
+                              Application was already deployed\
+
+                            {% endif %}\
+
+                          {% else %}\
+
+                            Toolbox is under required version (19.2.0) to deploy application\
+
+                          {% endif %}"
+

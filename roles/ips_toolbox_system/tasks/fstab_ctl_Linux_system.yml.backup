@@ -1,0 +1,86 @@
+---
+
+- name: Check toolbox version
+  shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
+  register: tbxversion
+  changed_when: false
+
+- name: run control script
+  script: fstab_ctrl.ksh
+  changed_when: false
+  failed_when: false
+  register: fstab_ctl_script
+  when:
+    - tbxversion.stdout_lines[0]|int < (1922|int)
+
+- name: run control shell
+  shell: /apps/toolboxes/exploit/bin/fs_file_ctrl.ksh
+  changed_when: false
+  failed_when: false
+  register: fstab_ctl_shell
+  when:
+    - tbxversion.stdout_lines[0]|int >= (1922|int)
+
+- name: set result output
+  include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state:
+      "{% if fstab_ctl_script.rc is defined %}\
+
+         {% if fstab_ctl_script.rc == 0 %}\
+
+            OK\
+
+         {% else %}\
+
+            Error\
+
+         {% endif %}\
+
+       {% else %}\
+
+         {% if fstab_ctl_shell.rc == 0 %}\
+
+            OK\
+
+         {% else %}\
+
+            Error\
+
+         {% endif %}\
+
+       {% endif %}"
+    set_results_item: ""
+    set_results_value: 
+      "{% if fstab_ctl_script.rc is defined %}\
+
+         {% if fstab_ctl_script.rc == 1 %}\
+
+            {{ fstab_ctl_script.stdout_lines }}\
+
+         {% else %}\
+
+            No anomalies\
+
+         {% endif %}\
+
+       {% else %}\
+
+         {% if fstab_ctl_shell.rc == 1 %}\
+
+            {{ fstab_ctl_shell.stdout_lines }}\
+
+         {% else %}\
+
+            No anomalies\
+
+         {% endif %}\
+
+       {% endif %}"
+    set_results_component: "{{ system_component }}"
+    set_results_operation: "{{ system_operation }}"
+    set_results_role_name: "{{ system_role_name }}"
+    set_results_result_name: "{{ system_result_name }}"
+    set_results_status: "OK"
+

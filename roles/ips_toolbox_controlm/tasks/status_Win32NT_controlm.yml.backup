@@ -1,0 +1,117 @@
+---
+
+- set_fact:
+    controlm_status: "OK"
+    controlm_value: ""
+    controlm_state: "info"
+- name: Status Control-M Agent
+  no_log: true
+  block:
+    - win_shell: |
+        $ErrorActionPreference = "Stop"
+        [int]$Failed=0
+        [int]$Changed=0
+        [int]$Open=0
+        [string]$Message=""
+        [PSObject]$Object = New-Object PSObject
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name failed -Value $Failed
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name changed -Value $Changed
+        Add-Member -InputObject $Object -MemberType NoteProperty -Name message -Value $Message
+        $ReturnArray=@()
+        try
+        {
+            [string]$agent_name="{{ controlm_agent_name }}"
+            [string]$Service_agent_name="ctmag"
+            [string]$Service_fw_name="ctmfw_service"
+            if($agent_name -ne "Default")
+            {
+                $Service_agent_name="ctmag_$($agent_name)"
+                $Service_fw_name="ctmfw_service_$($agent_name)"
+            }
+            $Query_agent="select * from win32_service where Name like '$($Service_agent_name)'"
+            $Query_filewatcher="select * from win32_service where Name like '$($Service_fw_name)'"
+            $Wmi_agent=Get-WmiObject -Query $Query_agent -ErrorAction Stop
+            $Wmi_filewatcher=Get-WmiObject -Query $Query_filewatcher -ErrorAction Stop
+            if(-not $Wmi_agent.Name -eq "" )
+            {
+                $ObjTmp= New-Object PSObject   
+                $ObjTmp | Add-Member -type NoteProperty -name name -value $Wmi_agent.Name      
+                $ObjTmp | Add-Member -type NoteProperty -name startmode -value $Wmi_agent.StartMode          
+                $ObjTmp | Add-Member -type NoteProperty -name state -value $Wmi_agent.State  
+                $ObjTmp | Add-Member -type NoteProperty -name status -value $Wmi_agent.Status  
+                $ReturnArray +=$ObjTmp
+            }
+            else
+            {
+                $Object.failed=1
+                $Object.message="Agent $($agent_name) not exist"
+            }
+            if(-not $Wmi_filewatcher.Name -eq "" )
+            {
+                $ObjTmp= New-Object PSObject   
+                $ObjTmp | Add-Member -type NoteProperty -name name -value $Wmi_filewatcher.Name      
+                $ObjTmp | Add-Member -type NoteProperty -name startmode -value $Wmi_filewatcher.StartMode          
+                $ObjTmp | Add-Member -type NoteProperty -name state -value $Wmi_filewatcher.State  
+                $ObjTmp | Add-Member -type NoteProperty -name status -value $Wmi_filewatcher.Status  
+                $ReturnArray +=$ObjTmp
+            }
+            else
+            {
+                $Object.failed=1
+                $Object.message="Agent $($agent_name) not exist"
+            }
+            if(-not $Object.failed)
+            {
+                $Object.message=$ReturnArray
+            }
+        }
+        catch
+        {
+          $Message="$($_.Exception.Message)"
+          $Object.failed=1
+          $Object.message=$Message
+        }
+        finally
+        { 
+          clear
+          $Object|ConvertTo-Json -Depth 99
+        }
+      register: ctmStatus
+      changed_when: (ctmStatus.stdout | from_json).changed
+    - set_fact:
+        controlm_value: ""
+        controlm_state: "unknown"
+      when:
+        - ctmStatus.stdout == ""
+    - set_fact:
+        controlm_value: "{{ (ctmStatus.stdout | from_json).message }}"
+      when:
+        - ctmStatus.stdout != ""
+        - (ctmStatus.stdout | from_json).failed
+    - set_fact:
+        controlm_value: "{{ (ctmStatus.stdout | from_json).message }}"
+      when:
+        - ctmStatus.stdout != ""
+        - not (ctmStatus.stdout | from_json).failed   
+ 
+  rescue:
+    - set_fact:
+        controlm_status: "KO"
+        controlm_value: ""
+  always:
+    - name: set result output for status Control-M Agent
+      include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "{{ controlm_state }}"
+        set_results_item: "{{ controlm_agent_name }}"
+        set_results_value: "{{ controlm_value }}"
+        set_results_component: "{{ controlm_component }}"
+        set_results_operation: "{{ controlm_operation }}"
+        set_results_role_name: "{{ controlm_role_name }}"
+        set_results_result_name: "{{ controlm_result_name }}"
+        set_results_script_mode: "{{ controlm_script_mode }}"
+        set_results_status: "{{ controlm_status }}"
+
+
+
