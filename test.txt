@@ -1,1 +1,1 @@
-retest Gitlab
+test Gitlab
