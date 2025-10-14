@@ -1,0 +1,16 @@
+# templates/purge-logs.timer.j2
+# Timer systemd pour déclenchement automatique purge logs
+[Unit]
+Description=Timer pour purge automatique des logs SHA
+Documentation=file:///apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+Requires=purge-logs.service
+
+[Timer]
+# Exécution quotidienne à 2h du matin
+OnCalendar=daily
+RandomizedDelaySec=1800
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

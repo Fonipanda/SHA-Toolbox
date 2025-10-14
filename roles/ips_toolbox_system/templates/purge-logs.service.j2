@@ -1,0 +1,23 @@
+# templates/purge-logs.service.j2
+# Service systemd pour purge automatique des logs
+[Unit]
+Description=Purge automatique des logs applicatifs SHA
+Documentation=file:///apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/apps/toolboxes/exploit/bin
+ExecStart=/apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=1800
+Nice=10
+IOSchedulingClass=2
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target
