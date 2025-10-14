@@ -4,7 +4,7 @@
     dynatrace_component: "dynatrace"
     dynatrace_role_name: "ips_toolbox_dynatrace"
 
-- name: "Construction du nom de fichier de tâche selon l'OS"
+- name: "Construction du nom de fichier de tâche Dynatrace selon l'OS"
   ansible.builtin.set_fact:
     dynatrace_task_file: "{{ dynatrace_operation | default('configure') }}_{{ ansible_system }}_dynatrace.yml"
 
@@ -18,8 +18,8 @@
   ansible.builtin.include_tasks: "{{ dynatrace_task_file }}"
   when: dynatrace_task_exists.stat.exists
 
-- name: "Fallback - Tâche générique si fichier spécifique introuvable"
-  ansible.builtin.include_tasks: "configure_generic_dynatrace.yml"
+- name: "Fallback - tâche générique Dynatrace si spécifique introuvable"
+  ansible.builtin.include_tasks: configure_generic_dynatrace.yml
   when: not dynatrace_task_exists.stat.exists
 
 - name: "Affichage du statut d'exécution Dynatrace"
