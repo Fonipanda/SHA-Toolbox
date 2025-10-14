@@ -1,0 +1,92 @@
+---
+- name: "Vérification de l'existence du script purge_logs.ksh"
+  ansible.builtin.stat:
+    path: /apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+  register: purge_script_check
+
+- name: "Création du service systemd purge-logs"
+  ansible.builtin.template:
+    src: purge-logs.service.j2
+    dest: /etc/systemd/system/purge-logs.service
+    mode: '0644'
+    owner: root
+    group: root
+  when: purge_script_check.stat.exists
+  notify: reload systemd
+
+- name: "Création du timer systemd purge-logs"
+  ansible.builtin.template:
+    src: purge-logs.timer.j2
+    dest: /etc/systemd/system/purge-logs.timer
+    mode: '0644'
+    owner: root
+    group: root
+  when: purge_script_check.stat.exists
+  notify: reload systemd
+
+- name: "Vérification de l'existence du fichier exploit_rotate-log.conf"
+  ansible.builtin.stat:
+    path: /apps/toolboxes/exploit/conf/exploit_rotate-log.conf
+  register: rotate_conf_check
+
+- name: "Création du fichier de configuration exploit_rotate-log.conf par défaut"
+  ansible.builtin.template:
+    src: exploit_rotate-log.conf.j2
+    dest: /apps/toolboxes/exploit/conf/exploit_rotate-log.conf
+    mode: '0644'
+    owner: root
+    group: root
+  when: 
+    - purge_script_check.stat.exists
+    - not rotate_conf_check.stat.exists
+
+- name: "Activation du timer purge-logs"
+  ansible.builtin.systemd:
+    name: purge-logs.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: purge_script_check.stat.exists
+
+- name: "Vérification du statut du timer purge-logs"
+  ansible.builtin.shell: |
+    systemctl is-active purge-logs.timer && echo "ACTIVE" || echo "INACTIVE"
+  register: timer_status
+  changed_when: false
+  failed_when: false
+  when: purge_script_check.stat.exists
+
+- name: "Test d'exécution à sec du service purge-logs"
+  ansible.builtin.shell: |
+    systemctl start purge-logs.service --dry-run 2>/dev/null && echo "TEST_OK" || echo "TEST_FAIL"
+  register: service_test
+  changed_when: false
+  failed_when: false
+  when: purge_script_check.stat.exists
+
+- name: "Affichage du résumé de configuration purge logs"
+  ansible.builtin.debug:
+    msg:
+      - "=== CONFIGURATION PURGE LOGS ==="
+      - "Script exploit_rotate_log.ksh: {{ 'Présent' if purge_script_check.stat.exists else 'Absent' }}"
+      - "Fichier config: {{ 'Présent' if rotate_conf_check.stat.exists else 'Créé par défaut' }}"
+      - "Timer systemd: {{ timer_status.stdout if timer_status is defined else 'Non configuré' }}"
+      - "Test service: {{ service_test.stdout if service_test is defined else 'Non testé' }}"
+      - "=== FIN CONFIGURATION ==="
+
+- name: "Enregistrement du résultat dans ips_toolbox_set_results"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'OK' if purge_script_check.stat.exists and timer_status.stdout == 'ACTIVE' else 'KO' }}"
+    set_results_component: "system"
+    set_results_operation: "purge-logs"
+    set_results_value: >-
+      {% if purge_script_check.stat.exists and timer_status.stdout == 'ACTIVE' %}
+      Service et timer purge-logs configurés et actifs
+      {% elif purge_script_check.stat.exists %}
+      Script présent mais timer non actif
+      {% else %}
+      Script exploit_rotate_log.ksh non trouvé
+      {% endif %}
+  ignore_errors: true
