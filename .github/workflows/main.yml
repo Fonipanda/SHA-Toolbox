@@ -3,7 +3,7 @@ name: Push to GitLab
 on:
   push:
     branches:
-      - main  # branche que tu veux synchroniser
+      - main  # branche GitHub que tu veux synchroniser
 
 jobs:
   push-to-gitlab:
@@ -17,4 +17,4 @@ jobs:
           git remote add gitlab https://oauth2:${{ secrets.GITLAB_TOKEN }}@gitlab-docgen.group.echonet/Production-mutualisee/IPS/upm-frb/transformation-upm/create_socle/-/tree/Test.git
 
       - name: Push to GitLab
-        run: git push gitlab Test --force
+        run: git push gitlab test --force
