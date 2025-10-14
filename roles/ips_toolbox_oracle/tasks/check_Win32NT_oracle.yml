@@ -7,18 +7,18 @@
   failed_when: false
 
 - name: Format to Json when autosys is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: '{ "installed": "yes" ,"version": {{ check_installation.stdout_lines }} }'
   when: check_installation.rc == 0 
 
 - name: Format to Json when autosys is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: check_installation.rc != 0
 
 
 - name: set result output for oracle check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

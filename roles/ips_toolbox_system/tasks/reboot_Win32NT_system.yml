@@ -5,17 +5,17 @@
   register: rebootresult
 
 - name: set_results
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state:
       "{% if (rebootresult.rebooted == true) %}\
 
-         rebooted\
+        rebooted\
 
       {% else %}\
 
-         not rebooted\
+        not rebooted\
 
       {% endif %}"
     set_results_item: ""

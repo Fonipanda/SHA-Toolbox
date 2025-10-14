@@ -1,7 +1,7 @@
 ---
 
 - name: check local mksysb
-  find:
+  ansible.builtin.find:
     paths: "/apps/sys/back/"
     patterns: "mksysb_*"
     age: "-{{ backup_mksysb_age_limit }}d"
@@ -10,7 +10,7 @@
   failed_when: false
 
 - name: set results output for tsm system backup
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -18,11 +18,11 @@
     set_results_item: "mksysb"
     set_results_value: "{% if chkmksysb_date.matched == 0 %}\
 
-                           KO -- No mksysb files was generated for less than {{ backup_mksysb_age_limit }} days\
+                          KO -- No mksysb files was generated for less than {{ backup_mksysb_age_limit }} days\
 
                         {% else %}\
 
-                           OK -- At least one mksysb was generated for less than {{ backup_mksysb_age_limit }} days\
+                          OK -- At least one mksysb was generated for less than {{ backup_mksysb_age_limit }} days\
 
                         {% endif %}"
     set_results_component: "{{ backup_component }}"

@@ -1,19 +1,19 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that: appli_item != ""
-   msg: "appli_item variable is missing"
+  ansible.builtin.assert:
+  that: appli_item != ""
+  msg: "appli_item variable is missing"
 
 - name: reference status check
-  find:
+  ansible.builtin.find:
     paths: "/etc/local/"
     patterns: ref_status_{{ appli_item }}
   register: ref_check
 
 
 - name: set results for APPLI Rhel 
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -21,13 +21,13 @@
     set_results_item: "{{ appli_item }}"
     set_results_value: "{% if ref_check.matched > 0 %}\
 
-                         STOPPED\
+                        STOPPED\
 
-                         {% else %}\
+                        {% else %}\
 
-                         STARTED\
+                        STARTED\
 
-                         {% endif %}"
+                        {% endif %}"
     set_results_component: "{{ appli_component }}"
     set_results_operation: "{{ appli_operation }}"
     set_results_role_name: "{{ appli_role_name }}"

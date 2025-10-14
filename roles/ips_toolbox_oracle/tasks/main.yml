@@ -5,7 +5,7 @@
     oracle_role_name: "{{ role_name }}"
 
 - name: "collect filenames dynamically"
-  set_fact:
+  ansible.builtin.set_fact:
     task_directory_files: "{{ lookup('fileglob', '{{ role_path }}/tasks/*.yml').split(',') | map('basename') | list | reject('match', 'main.yml' ) | list }}"
     file_name: "{{ oracle_task_file_name }}"
 
@@ -18,7 +18,7 @@
   rescue:
 
   - name: set result failed operation
-    include_role:
+    ansible.builtin.include_role:
       name: ips_toolbox_set_results
     vars:
       set_results_state: "info"

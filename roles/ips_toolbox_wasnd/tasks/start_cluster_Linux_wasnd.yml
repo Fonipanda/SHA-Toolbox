@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - wasnd_item != ""
-   msg: "wasnd_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - wasnd_item != ""
+  msg: "wasnd_item variable is missing"
 
 - name: Check toolbox version
   shell: test -f /apps/toolboxes/web/version && cat /apps/toolboxes/web/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
@@ -19,39 +19,39 @@
   when: tbxversion.stdout_lines[0]|int >= (17240|int)
 
 - name: set results output start
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_item: "{{ wasnd_item }}"
-     set_results_component: "{{ wasnd_component }}"
-     set_results_operation: "{{ wasnd_operation }}"
-     set_results_role_name: "{{ wasnd_role_name }}"
-     set_results_result_name: "{{ wasnd_result_name }}"
-     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+    set_results_item: "{{ wasnd_item }}"
+    set_results_component: "{{ wasnd_component }}"
+    set_results_operation: "{{ wasnd_operation }}"
+    set_results_role_name: "{{ wasnd_role_name }}"
+    set_results_result_name: "{{ wasnd_result_name }}"
+    set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
 
-                           {% if wasopr_result.rc == 0 %}\
+                          {% if wasopr_result.rc == 0 %}\
 
-                             started\
+                            started\
 
-                           {% else %}\
+                          {% else %}\
 
-                             not started\
+                            not started\
 
-                           {% endif %}\
+                          {% endif %}\
 
-                         {% else %}\
+                        {% else %}\
 
-                           toolboxes under required version\
+                          toolboxes under required version\
 
-                         {% endif %}"
-     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
+                        {% endif %}"
+    set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (17240|int) %}\
 
-                           OK\
+                          OK\
 
-                         {% else %}\
+                        {% else %}\
 
-                           KO\
+                          KO\
 
-                         {% endif %}"
-     set_results_value: ""
+                        {% endif %}"
+    set_results_value: ""
 

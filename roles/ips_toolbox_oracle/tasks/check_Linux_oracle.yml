@@ -24,17 +24,17 @@
   when: installTest.rc == 0
 
 - name: Format to Json when oracle is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"yes\" ,\"version\": [ {{ tmp_json_versions[1:] }} ] }"
   when: installTest.rc == 0
 
 - name: Format to Json when oracle is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: installTest.rc != 0
     
 - name: set result output for oracle check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"
@@ -47,19 +47,19 @@
     set_results_status: 
       "{% if installTest.rc == 0 %}\
 
-         {% if versionCheck.rc == 0 %}\
+        {% if versionCheck.rc == 0 %}\
 
-           OK\
+          OK\
 
-         {% else %}\
+        {% else %}\
 
-           KO\
+          KO\
 
-         {% endif %}\
+        {% endif %}\
 
-       {% else %}\
+      {% else %}\
 
-         OK\
+        OK\
 
-       {% endif %}"
+      {% endif %}"
 

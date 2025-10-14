@@ -7,15 +7,15 @@
   failed_when: false
 
 - name: set results output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_component: "{{ libertybase_component }}"
-     set_results_operation: "{{ libertybase_operation }}"
-     set_results_role_name: "{{ libertybase_role_name }}"
-     set_results_result_name: "{{ libertybase_result_name }}"
-     set_results_item: ""
-     set_results_state: "info"
-     set_results_status: "OK"
-     set_results_value: "{{ list_env.stdout_lines }}"
+    set_results_component: "{{ libertybase_component }}"
+    set_results_operation: "{{ libertybase_operation }}"
+    set_results_role_name: "{{ libertybase_role_name }}"
+    set_results_result_name: "{{ libertybase_result_name }}"
+    set_results_item: ""
+    set_results_state: "info"
+    set_results_status: "OK"
+    set_results_value: "{{ list_env.stdout_lines }}"
 

@@ -4,11 +4,11 @@
 # Set last toolbox version if not define
 #---------------------------------------------
 - name: set tmp_list_version
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_list_version: ""
 
 - name: get list toolbox from artifactory
-  uri:
+  ansible.builtin.uri:
     url: http://af.staging.echonet:8090/artifactory/toolboxes/windows/
     return_content: yes
   register: webpage
@@ -18,7 +18,7 @@
   ignore_errors: true
   vars:
     key: "{{ item | regex_replace('<a[^>]+href=\"(.*?)/\">.*','\\1')| replace('<pre>..','') }}"
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_list_version: "{{ tmp_list_version }},{% if key != '' %}'{{ key }}'{% endif %}"
   when: 
     - "'<a href' in item"
@@ -26,19 +26,19 @@
   loop: "{{ webpage.content.split('\n')  }}"
 
 - name: set List_version
-  set_fact:
+  ansible.builtin.set_fact:
     List_version: "[ {{ tmp_list_version[2:] }} ]"
   when:
     - toolboxes_version is not defined 
 
 - name: get last toolbox version
-  set_fact:
+  ansible.builtin.set_fact:
     toolboxes_version: "{{ (List_version|sort)[-1] }}"
   when:
     - toolboxes_version is not defined
 
 - name: Create tmp directory
-  file:
+  ansible.builtin.file:
     path: "{{ toolboxes_tmp_directory }}"
     state: directory
   delegate_to: localhost
@@ -48,7 +48,7 @@
 - name: Download setup.ps1
   delegate_to: localhost
   run_once: true
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ toolboxes_url_ps1 }}"
     dest: "{{ toolboxes_tmp_ps1 }}"
     validate_certs: no
@@ -118,7 +118,7 @@
     - toolboxes_task_continue == true
 
 - name: set result output for toolboxes windows
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state:
@@ -126,11 +126,11 @@
 
         uninstalled\
 
-       {% else %}\
+      {% else %}\
 
         not uninstalled\
 
-       {% endif %}"
+      {% endif %}"
     set_results_item: ""
     set_results_value: ""
     set_results_component: "{{ toolboxes_component }}"
@@ -142,9 +142,9 @@
 
         OK\
 
-       {% else %}\
+      {% else %}\
 
         KO\
 
-       {% endif %}"
+      {% endif %}"
 

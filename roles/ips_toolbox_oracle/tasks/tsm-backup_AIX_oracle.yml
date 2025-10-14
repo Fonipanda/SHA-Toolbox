@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - oracle_item != ""
-   msg: "A mandatory variable is missing: oracle_item"
+  ansible.builtin.assert:
+  that:
+    - oracle_item != ""
+  msg: "A mandatory variable is missing: oracle_item"
 
 - name: Begin send backupsets on TSM
   block:
@@ -25,7 +25,7 @@
       changed_when: sendTSM.changed == True
 
     - name: working TSM backupsets backup
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_state: "sent"
         oracle_value: ""
@@ -34,7 +34,7 @@
         - sendTSM.failed == False
 
     - name: "{{ oracle_item }} not found"
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "KO"
         oracle_state: "not sent"     
         oracle_value: "instance {{ oracle_item }} not found"  
@@ -43,13 +43,13 @@
       
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "KO"
         oracle_value: "{% if sendTSM.message is defined %}{{ sendTSM.message }}{% else %}{{ sendTSM.msg }}{% endif %}"
         oracle_state: "not sent"
   always:
     - name: End send backupsets on TSM
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ oracle_state }}"

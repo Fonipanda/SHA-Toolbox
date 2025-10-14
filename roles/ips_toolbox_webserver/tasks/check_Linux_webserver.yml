@@ -7,17 +7,17 @@
   failed_when: false
 
 - name: Format to Json when webserver is installed
-  set_fact:
-   tmp_json_webserver: '{ "installed": "yes" ,"version": {{ webVersion.stdout_lines }} }'
+  ansible.builtin.set_fact:
+  tmp_json_webserver: '{ "installed": "yes" ,"version": {{ webVersion.stdout_lines }} }'
   when:  webVersion.stdout != ''
 
 - name: Format to Json when webserver is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_webserver: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: webVersion.stdout == ''
 
 - name: set result output for webserver installation
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"
@@ -32,10 +32,10 @@
 
         OK\
 
-       {% else %}\
+      {% else %}\
 
         KO\
 
-       {% endif %}"
+      {% endif %}"
 
 

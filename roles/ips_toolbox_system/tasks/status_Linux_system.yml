@@ -24,12 +24,12 @@
 
 
 - name: set blocksize per vg
-  set_fact:
+  ansible.builtin.set_fact:
     blocksizeVG: "{{ blocksizeVG|default({}) | combine( { (item.item | trim ) : item.stdout } )}}"
   with_items: "{{ block_size_output.results }}"
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

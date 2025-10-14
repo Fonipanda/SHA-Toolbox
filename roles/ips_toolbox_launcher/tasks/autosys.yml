@@ -2,7 +2,7 @@
 
 
 - name: include role autosys
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_autosys
   vars:
     autosys_operation: "{{ launcher_operation }}"

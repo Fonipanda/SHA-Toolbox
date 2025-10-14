@@ -1,15 +1,15 @@
 ---
 - name: "Initialisation du rôle maître ips_toolbox_tsm"
-  set_fact:
+  ansible.builtin.set_fact:
     tsm_component: "tsm"
     tsm_role_name: "ips_toolbox_tsm"
 
 - name: "Construction du nom de fichier de tâche TSM selon l'OS"
-  set_fact:
+  ansible.builtin.set_fact:
     tsm_task_file: "{{ tsm_operation | default('detect') }}_{{ ansible_system }}_tsm.yml"
 
 - name: "Vérification de l'existence du fichier de tâche TSM"
-  stat:
+  ansible.builtin.stat:
     path: "{{ role_path }}/tasks/{{ tsm_task_file }}"
   register: tsm_task_exists
   delegate_to: localhost
@@ -25,7 +25,7 @@
   ignore_errors: true
 
 - name: "Affichage du statut d'exécution TSM"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Rôle TSM maître exécuté"
       - "Fichier: {{ tsm_task_file if tsm_task_exists.stat.exists else 'detect_generic_tsm.yml' }}"

@@ -4,7 +4,7 @@
   block:
   
     - name: Check tsm installed
-      find:
+      ansible.builtin.find:
         paths: "/opt/tivoli/tsm/client/ba/bin"
         patterns: "dsmc"
       register: tsmbinchk
@@ -37,13 +37,13 @@
         - DefaultBackupClassDetails.rc != 0 or DefaultBackupClassDetails.stdout == ""
 
     - name: initiate tmp json
-      set_fact:
+      ansible.builtin.set_fact:
         tmp_json1: "\"mgmt class name\": \"{{ DefaultBackupClass.stdout }}\""
       when:
         - tsmbinchk.matched > 0
 
     - name: Format to json
-      set_fact:
+      ansible.builtin.set_fact:
         tmp_json1: "{{ tmp_json1 }}, \"{{ line_json.split(':')[0] }}\": \"{{ line_json.split(':')[1] | trim }}\""
       loop: "{{ DefaultBackupClassDetails.stdout_lines | list }}"
       loop_control:
@@ -52,19 +52,19 @@
         - tsmbinchk.matched > 0
 
     - name: success retrieving of information 
-      set_fact:
+      ansible.builtin.set_fact:
         tsm_status: "OK"
         tsm_value: "{% if tsmbinchk.matched > 0 %}{ \"archive classes\": [ {{ ArchClass.stdout_lines }} ], \"default backup class\": { {{ tmp_json1 }} } }{% else %}tsm is not installed{% endif %}"
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         tsm_status: "KO"
         tsm_value: "Error while retrieving information"
 
   always:
     - name: set result output for list classes
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         name: results

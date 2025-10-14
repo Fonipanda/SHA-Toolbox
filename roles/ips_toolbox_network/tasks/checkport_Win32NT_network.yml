@@ -7,10 +7,10 @@
 ##
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - network_remote_hostname != ""
-   msg: "at least one mandatory variable is missing beyond: network_remote_hostname"
+  ansible.builtin.assert:
+  that:
+    - network_remote_hostname != ""
+  msg: "at least one mandatory variable is missing beyond: network_remote_hostname"
 
 - name: check outgoing network traffic open
   win_testPort:
@@ -20,7 +20,7 @@
   ignore_errors: yes
 
 - name: set result outgoing network traffic open
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results

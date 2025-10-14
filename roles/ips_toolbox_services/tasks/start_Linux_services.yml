@@ -1,24 +1,24 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
+  ansible.builtin.assert:
     that:
       - services_item != ""
     msg: "services_item variable is missing"
 
 - name: start service
-  systemd:
+  ansible.builtin.systemd:
     state: started
     name: "{{ services_item }}"
   register: start_service
   failed_when: false
 
 - name: wait
-  wait_for:
+  ansible.builtin.wait_for:
     timeout: 5
   when:
-   - start_service.changed == True
-   - start_service.failed == False
+  - start_service.changed == True
+  - start_service.failed == False
 
 - name: status service
   check_systemd:
@@ -26,11 +26,11 @@
     service_name: "{{ services_item }}"
   register: status_service
   when:
-   - start_service.changed == True
-   - start_service.failed == False
+  - start_service.changed == True
+  - start_service.failed == False
 
 - name: set results output for services
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -39,54 +39,54 @@
 
           not started\
 
-       {% else %}\
+      {% else %}\
 
           {% if start_service.changed == True %}\
 
-             {% if status_service.failed == True %}\
+            {% if status_service.failed == True %}\
 
                 not started\
 
-             {% else %}\
+            {% else %}\
 
                 {% if status_service.status.state != 'started' %}\
 
-                   not started\
+                  not started\
 
                 {% else %}\
 
-                   started\
+                  started\
 
                 {% endif %}\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             started\
+            started\
 
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
     set_results_item: "{{ services_item }}"
     set_results_value: 
       "{% if start_service.msg is defined %}\
 
           {{ start_service.msg }}\
 
-       {% else %}\
+      {% else %}\
 
           {% if start_service.changed == True %}\
 
-             {% if status_service.failed == True %}\
+            {% if status_service.failed == True %}\
 
                 {{ status_service.msg }}\
 
-             {% endif %}\
+            {% endif %}\
 
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
     set_results_component: "{{ services_component }}"
     set_results_operation: "{{ services_operation }}"
     set_results_role_name: "{{ services_role_name }}"
@@ -96,24 +96,24 @@
 
           KO\
 
-       {% else %}\
+      {% else %}\
 
           {% if start_service.changed == True %}\
 
-             {% if status_service.failed == True %}\
+            {% if status_service.failed == True %}\
 
                 KO\
 
-             {% else %}\
+            {% else %}\
 
                 OK\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             OK
+            OK
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
 

@@ -17,15 +17,15 @@
       register: VersionMQ
       changed_when: false
       failed_when:
-       - VersionMQ.stderr != ""
+      - VersionMQ.stderr != ""
       when: 
-       - checkMQ.stdout == ""
+      - checkMQ.stdout == ""
     
     - set_fact:
         tmp_json_versions: ""
       when:
-       - VersionMQ.stdout is defined
-       - VersionMQ.stdout != ""
+      - VersionMQ.stdout is defined
+      - VersionMQ.stdout != ""
     
     - set_fact:
         tmp_json_versions: "{{ tmp_json_versions }}, \"{{ mq_version }}\""
@@ -33,35 +33,35 @@
       loop_control:
         loop_var: mq_version
       when:
-       - VersionMQ.stdout is defined
-       - VersionMQ.stdout != ""
+      - VersionMQ.stdout is defined
+      - VersionMQ.stdout != ""
     
     - name: Format to Json when mq is installed
-      set_fact:
+      ansible.builtin.set_fact:
         tmp_json: "{ \"installed\": \"yes\" ,\"version\": [ {{ tmp_json_versions[1:] }} ] }"
       when:
-       - VersionMQ.stdout is defined
-       - VersionMQ.stdout != ""
+      - VersionMQ.stdout is defined
+      - VersionMQ.stdout != ""
     
     - name: Format to Json when mq is not installed
-      set_fact:
+      ansible.builtin.set_fact:
         tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
       when: '"No MQ on this server" in checkMQ.stdout'
 
     - name: working configuration
-      set_fact:
+      ansible.builtin.set_fact:
         mq_status: "OK"
         mq_value: "{% if tmp_json is defined %}{{ tmp_json | to_json | from_json }}{% endif %}"
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         mq_status: "KO"
         mq_value: "{% if VersionMQ.stderr is defined %}{{ VersionMQ.stderr }}{% endif %}"
     
   always:
     - name: set result output for mq check
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "info" 

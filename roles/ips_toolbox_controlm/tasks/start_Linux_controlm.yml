@@ -20,18 +20,18 @@
   changed_when: false
 ##########################################
 - name: set results for start {{ controlm_agentaccount }}
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
     set_results_state:
-     "{% if checkctmag.stdout_lines[0]|int >= 3 and isctmag.stdout_lines[0]|int == 1 %}\
+    "{% if checkctmag.stdout_lines[0]|int >= 3 and isctmag.stdout_lines[0]|int == 1 %}\
 
-         started\
+        started\
 
       {% else %}\
 
-         not started\
+        not started\
 
       {% endif %}"
     set_results_item: "{{ controlm_agentaccount }}"
@@ -41,12 +41,12 @@
     set_results_result_name: "{{ controlm_result_name }}"
     set_results_value: ""
     set_results_status:
-     "{% if '{{ controlm_agentaccount }}' is defined %}\
+    "{% if '{{ controlm_agentaccount }}' is defined %}\
 
-         OK\
+        OK\
 
       {% else %}\
 
-         KO\
+        KO\
 
       {% endif %}"

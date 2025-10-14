@@ -7,20 +7,20 @@
   failed_when: false
 
 - name: Format to Json when tsm is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"yes\" ,\"version\": \"{{ tsmVersion.stdout | trim }}\" }"
   when:
     - tsmVersion.stderr == ""
 
 - name: Format to Json when tsm is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when:
     - tsmVersion.stderr | regex_search('command not found')
 
 
 - name: set result output for tsm check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -37,10 +37,10 @@
 
         OK\
 
-       {% else %}\
+      {% else %}\
 
         KO\
 
-       {% endif %}"
+      {% endif %}"
 
 

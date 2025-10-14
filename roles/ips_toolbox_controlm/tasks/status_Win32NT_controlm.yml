@@ -100,7 +100,7 @@
         controlm_value: ""
   always:
     - name: set result output for status Control-M Agent
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ controlm_state }}"

@@ -1,7 +1,7 @@
 ---
 
 - name: Check tsm installed
-  find:
+  ansible.builtin.find:
     paths: "/usr/tivoli/tsm/client/ba"
     patterns: "dsmc"
     recurse: yes
@@ -18,7 +18,7 @@
   when: tsmbinchk.matched > 0
 
 - name: set results output for tsm system backup
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -26,35 +26,35 @@
     set_results_item: "TSM backup system"
     set_results_value: "{% if tsmbinchk.matched == 0 %}\
 
-                           KO -- TSM is not installed\
+                          KO -- TSM is not installed\
 
                         {% else %}\
 
-                           {% if chkbkpsys_date.stderr | regex_search('ANS1092W') %}\
+                          {% if chkbkpsys_date.stderr | regex_search('ANS1092W') %}\
 
                               KO -- No system backup detected\
 
-                           {% else %}\
+                          {% else %}\
 
-                             {% if chkbkpsys_date.stdout != '' %}\
+                            {% if chkbkpsys_date.stdout != '' %}\
 
                                 {% if (( (ansible_date_time.date | to_datetime('%Y-%m-%d') - chkbkpsys_date.stdout_lines | last | to_datetime('%Y-%m-%d')).total_seconds() / 86400 ) | int) > 15 %}\
 
-                                   KO -- The last backup is older than 15 days, it has been performed the {{ chkbkpsys_date.stdout_lines | last }} (YYYY-MM-DD)\
+                                  KO -- The last backup is older than 15 days, it has been performed the {{ chkbkpsys_date.stdout_lines | last }} (YYYY-MM-DD)\
 
                                 {% else %}\
 
-                                   OK -- The last backup is not older than 15 days, it has been performed the {{ chkbkpsys_date.stdout_lines | last }} (YYYY-MM-DD)\
+                                  OK -- The last backup is not older than 15 days, it has been performed the {{ chkbkpsys_date.stdout_lines | last }} (YYYY-MM-DD)\
 
                                 {% endif %}\
 
-                             {% else %}\
+                            {% else %}\
 
                                 KO -- No system backup detected\
 
-                             {% endif %}\
+                            {% endif %}\
 
-                           {% endif %}\
+                          {% endif %}\
 
                         {% endif %}"
     set_results_component: "{{ backup_component }}"

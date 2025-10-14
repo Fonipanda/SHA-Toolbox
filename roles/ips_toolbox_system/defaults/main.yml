@@ -22,47 +22,47 @@ system_Appli_id: "{% if system_idappli is defined %}\
 
                 id={{ system_idappli }}\
 
-           {% endif %}"
+          {% endif %}"
 system_Appli_vg: "{% if system_vgName is defined %}\
 
                 vg={{ system_vgName }}\
 
-           {% endif %}"
+          {% endif %}"
 
 system_Appli_lv: "{% if (system_lvSize) is defined %}\
 
               lv=lv_{{ system_code5car }}:{{ system_lvSize }},lv_{{ system_code5car }}_ti:{{ system_lvSize }},lv_{{ system_code5car }}_to:{{ system_lvSize }},lv_{{ system_code5car }}_tmp:{{ system_lvSize }},lv_{{ system_code5car }}_arch:{{ system_lvSize }},lv_log_{{ system_code5car }}:{{ system_lvSize }},lv_shared:{{ system_lvSize }},lv_shared_tmp:{{ system_lvSize }},lv_shared_arch:{{ system_lvSize }},lv_log_shared:{{ system_lvSize }},lv_dlv_shared:{{ system_lvSize }},lv_dlv_{{ system_code5car }}:{{ system_lvSize }}\
 
-           {% endif %}"
+          {% endif %}"
 
 system_Appli_lvex: "{% if system_lvEx is defined %}\
 
                 exclude={{ system_lvEx }}\
 
-           {% endif %}"
+          {% endif %}"
 system_Appli_lvex1: "{% if system_lvEx1 is defined %}\
 
                 ,{{ system_lvEx1 }}\
 
-           {% endif %}"
+          {% endif %}"
 system_Appli_lvex2: "{% if system_lvEx2 is defined %}\
 
                 ,{{ system_lvEx2 }}\
 
-           {% endif %}"
+          {% endif %}"
 system_Appli_user: "{% if system_username is defined %}\
 
                 {% if system_group is defined %}\
 
-                   {% if system_NNN is defined %}\
+                  {% if system_NNN is defined %}\
 
                     user={{ system_username }}:{{ system_group }},{{ system_NNN }}\
 
                 {% endif %}\
 
-                   {% endif %}\
+                  {% endif %}\
 
-           {% endif %}"
+          {% endif %}"
 
 system_result_name: ""
 system_stat_exist: ""
@@ -73,36 +73,36 @@ system_create_fsname: ""
 system_create_lvsize: ""
 system_create_vg: "{% if system_create_vgname is defined %}\
 
-                       {{ system_create_vgname }}\
+                      {{ system_create_vgname }}\
 
-                       {% else %}\
+                      {% else %}\
 
-                       vg_apps\
+                      vg_apps\
 
-                       {% endif %}"
+                      {% endif %}"
 system_create_user: "{% if system_create_username is defined %}\
 
-                         {{ system_create_username }}\
+                        {{ system_create_username }}\
 
-                         {% else %}\
+                        {% else %}\
 
-                         0\
+                        0\
 
-                         {% endif %}"
+                        {% endif %}"
 system_create_group: "{% if system_create_groupname is defined %}\
 
-                         {{ system_create_groupname }}\
+                        {{ system_create_groupname }}\
 
-                         {% else %}\
+                        {% else %}\
 
-                         0\
+                        0\
 
-                         {% endif %}"
+                        {% endif %}"
 system_create_mwtype: "{% if system_create_middlewaretype is defined %}\
 
-                       {{ system_create_middlewaretype }}\
+                      {{ system_create_middlewaretype }}\
 
-                       {% endif %}"
+                      {% endif %}"
 system_create_ftype: "{% if system_create_filetype is defined %}\
 
                       {{ system_create_filetype }}\

@@ -1,19 +1,19 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that: backup_instance != ""
-   msg: "backup_instance variable is missing"
+  ansible.builtin.assert:
+  that: backup_instance != ""
+  msg: "backup_instance variable is missing"
 
 - name: copy script to check oracle backup
-  copy:
+  ansible.builtin.copy:
     src: verif_backup.ksh
     dest: /apps/toolboxes/backup_restore/scripts/verif_backup.ksh
     mode: 0755
     owner: root
 
 - name: refresh oracle backup state
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_backup
   vars:
     backup_operation: refresh_orabkp_state
@@ -28,18 +28,18 @@
   failed_when: false
 
 - name: set results output for check backup instance
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "\
 
           {% if check_backup_oracle.rc == 0 %}\
 
-             compliant\
+            compliant\
 
           {% else %}\
 
-             not compliant\
+            not compliant\
 
           {% endif %}"
     set_results_item: "{{ backup_instance }}"

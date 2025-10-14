@@ -1,17 +1,17 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - libertybase_xml_file != ""
-     - libertybase_layer != ""
-   msg: "One of this mandatory variable is missing: libertybase_xml_file, libertybase_layer"
+  ansible.builtin.assert:
+  that:
+    - libertybase_xml_file != ""
+    - libertybase_layer != ""
+  msg: "One of this mandatory variable is missing: libertybase_xml_file, libertybase_layer"
 
 - name: stop play when layer is not conform
-  assert:
-   that:
-     - libertybase_layer == "prez" or libertybase_layer == "biz"
-   msg: "The libertybase_layer value is not valid"
+  ansible.builtin.assert:
+  that:
+    - libertybase_layer == "prez" or libertybase_layer == "biz"
+  msg: "The libertybase_layer value is not valid"
 
 - name: Check toolbox version
   shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
@@ -19,10 +19,10 @@
   changed_when: false
 
 - name: Copy WAS_Detect script on the remote server
-  copy:
-   src: WAS_Detect.ksh
-   dest: /apps/toolboxes/web/CreateEnvWas/param
-   mode: '0755'
+  ansible.builtin.copy:
+  src: WAS_Detect.ksh
+  dest: /apps/toolboxes/web/CreateEnvWas/param
+  mode: '0755'
   changed_when: false
   when: (tbxversion.stdout_lines[0]|int >= (1920|int))
 
@@ -34,12 +34,12 @@
   when: (tbxversion.stdout_lines[0]|int >= (1920|int))
 
 - name: Copy the xml file create Entry Resource on the remote server
-  copy:
-   src: "{{ libertybase_xml_file }}"
-   dest: /apps/toolboxes/web/CreateEnvWas/param
-   owner: was
-   group: web
-   mode: u=rw,g=r,o=r
+  ansible.builtin.copy:
+  src: "{{ libertybase_xml_file }}"
+  dest: /apps/toolboxes/web/CreateEnvWas/param
+  owner: was
+  group: web
+  mode: u=rw,g=r,o=r
   changed_when: false
   when: (tbxversion.stdout_lines[0]|int >= (1920|int))
 
@@ -51,26 +51,26 @@
   when: (tbxversion.stdout_lines[0]|int >= (1920|int))
 
 - name: set results output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_component: "{{ libertybase_component }}"
-     set_results_operation: "{{ libertybase_operation }}"
-     set_results_role_name: "{{ libertybase_role_name }}"
-     set_results_result_name: "{{ libertybase_result_name }}"
-     set_results_item: "{{ libertybase_item }}"
-     set_results_state: "OK"
-     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+    set_results_component: "{{ libertybase_component }}"
+    set_results_operation: "{{ libertybase_operation }}"
+    set_results_role_name: "{{ libertybase_role_name }}"
+    set_results_result_name: "{{ libertybase_result_name }}"
+    set_results_item: "{{ libertybase_item }}"
+    set_results_state: "OK"
+    set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
 
                             {% if result_create_env.rc != 0 %}\
 
                               {% if 'already exists' not in result_create_env.stdout %}\
 
-                                 KO\
+                                KO\
 
                               {% else %}\
 
-                                 OK\
+                                OK\
 
                               {% endif %}\
 
@@ -85,19 +85,19 @@
                             KO\
 
                           {% endif %}"
-     set_results_value: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+    set_results_value: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
 
                             {% if result_create_env.rc != 0 %}\
 
                                 {% if 'already exists' not in result_create_env.stdout %}\
 
-                                   Error encountered  during Entry Resource creation\
+                                  Error encountered  during Entry Resource creation\
 
-                                 {% else %}\
+                                {% else %}\
 
-                                   Entry Resource successfully created\
+                                  Entry Resource successfully created\
 
-                                 {% endif %}\
+                                {% endif %}\
 
                             {% else %}\
 

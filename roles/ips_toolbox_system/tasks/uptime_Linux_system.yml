@@ -7,27 +7,27 @@
   register: uptime_days
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state:
       "{% if (uptime_days.stdout | int) < (system_uptime_limit | int ) %}\
 
-         Compliant\
+        Compliant\
 
       {% else %}\
 
-         Not compliant\
+        Not compliant\
 
       {% endif %}"
     set_results_item: "{{ inventory_hostname }}" 
     set_results_value: "{% if uptime_days.stdout < 1 %}\
 
-                         0 day\
+                        0 day\
 
                         {% else %}\
 
-                         {{ uptime_days.stdout }} days\
+                        {{ uptime_days.stdout }} days\
 
                         {% endif %}"
     set_results_component: "{{ system_component }}"

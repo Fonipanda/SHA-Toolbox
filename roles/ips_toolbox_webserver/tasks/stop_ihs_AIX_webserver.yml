@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - webserver_item != ""
-   msg: "webserver_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - webserver_item != ""
+  msg: "webserver_item variable is missing"
 
 - name: "Listing ihs folder"
   shell: find /applis/*/ihs/ -type d -name sw* | awk -F '/' '{print"/"$2"/"$3"/"$4"/"$5}'  | sort -u
@@ -39,7 +39,7 @@
     - " '1' in ihs_dir_name_count.stdout"
 
 - name: "copy stop script for specific ihs"
-  copy:
+  ansible.builtin.copy:
     src: stop 
     dest: "{{ ihs_dir_name.stdout }}"
     mode: '0755'
@@ -50,7 +50,7 @@
     - ihs_dir_name.stderr == ''
 
 - name: "Copy stop script for all ihs"
-  copy:
+  ansible.builtin.copy:
     src: stop
     dest: "{{ webserver_loop_item }}"
     mode: '0755'
@@ -82,19 +82,19 @@
     - ihs_dir_name.stderr == ''
 
 - set_fact:
-     state_json: "IHS not found"
+    state_json: "IHS not found"
 
 - set_fact:
-     state_value_json: ""
+    state_value_json: ""
 
 - set_fact:
-     state_value_json: "No IHS found"
+    state_value_json: "No IHS found"
   when:
     - webserver_item == "all"
     - "'sw' not in ihslist_result.stdout"
 
 - set_fact:
-     state_value_json: "{% if line_json.split(' ')[3] != \"stopped\" %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"not stopped\" }{% else %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"stopped\" }{% endif %}"
+    state_value_json: "{% if line_json.split(' ')[3] != \"stopped\" %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"not stopped\" }{% else %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"stopped\" }{% endif %}"
   loop: "{{ ihs_stop_all.stdout_lines | select('match', '.*stopped.*') | list }}"
   loop_control:
     loop_var: line_json
@@ -103,7 +103,7 @@
     - "'sw' in ihslist_result.stdout"
 
 - set_fact:
-     state_value_json: "stopped"
+    state_value_json: "stopped"
   when:
     - webserver_item != "all"
     - " '1' in ihs_dir_name_count.stdout"
@@ -111,12 +111,12 @@
     - "' stopped' in ihs_stop.stdout"
 
 - name: Format to Json
-  set_fact:
+  ansible.builtin.set_fact:
     state_json: "{ \"ihs\": \"{{ webserver_item }}\" ,\"status\": \"{{ state_value_json }}\" }"
   when:
-   - webserver_item != "all"
-   - " '1' in ihs_dir_name_count.stdout"
-   - ihs_dir_name.stderr == ''
+  - webserver_item != "all"
+  - " '1' in ihs_dir_name_count.stdout"
+  - ihs_dir_name.stderr == ''
 
 - set_fact:
     final_state: "stopped"
@@ -133,33 +133,33 @@
     - "'sw' not in ihslist_result.stdout"
 
 - name: set results output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_item: "{{ webserver_item }}"
-     set_results_component: "{{ webserver_component }}"
-     set_results_operation: "{{ webserver_operation }}"
-     set_results_role_name: "{{ webserver_role_name }}"
-     set_results_result_name: "{{ webserver_result_name }}"
-     set_results_state: "{{ final_state }}"
-     set_results_status: "OK"
-     set_results_value: "\
+    set_results_item: "{{ webserver_item }}"
+    set_results_component: "{{ webserver_component }}"
+    set_results_operation: "{{ webserver_operation }}"
+    set_results_role_name: "{{ webserver_role_name }}"
+    set_results_result_name: "{{ webserver_result_name }}"
+    set_results_state: "{{ final_state }}"
+    set_results_status: "OK"
+    set_results_value: "\
 
       {% if webserver_item == 'all' %}\
 
-         {% if 'sw' in ihslist_result.stdout %}\
+        {% if 'sw' in ihslist_result.stdout %}\
 
-           [ {{ state_value_json[1:] }} ]\
+          [ {{ state_value_json[1:] }} ]\
 
-         {% else %}\
+        {% else %}\
 
-           {{ state_value_json }}\
+          {{ state_value_json }}\
 
-         {% endif %}\
+        {% endif %}\
 
       {% else %}\
 
-         {{ state_json | to_json | from_json }}\
+        {{ state_json | to_json | from_json }}\
 
       {% endif %}"
 

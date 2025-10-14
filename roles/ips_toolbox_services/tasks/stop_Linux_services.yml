@@ -1,38 +1,38 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
+  ansible.builtin.assert:
     that:
       - services_item != ""
     msg: "services_item variable is missing"
 
 - name: stop service
-  systemd:
+  ansible.builtin.systemd:
     state: stopped
     name: "{{ services_item }}"
   register: stop_service
   failed_when: false
 
 - name: set results output for services
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
     set_results_state: 
       "{% if stop_service.state is defined %}\
 
-             stopped\
+            stopped\
 
           {% else %}\
 
-             not stopped\
+            not stopped\
 
           {% endif %}"
     set_results_item: "{{ services_item }}"
     set_results_value: 
-       "{% if stop_service.msg is defined %}\
+      "{% if stop_service.msg is defined %}\
 
-           {{ stop_service.msg }}\
+          {{ stop_service.msg }}\
 
         {% endif %}"
     set_results_component: "{{ services_component }}"
@@ -44,9 +44,9 @@
 
           OK\
 
-       {% else %}\
+      {% else %}\
 
           KO\
 
-       {% endif %}"
+      {% endif %}"
 

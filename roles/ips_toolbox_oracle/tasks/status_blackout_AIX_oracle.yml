@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - oracle_item != ""
-   msg: "oracle_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - oracle_item != ""
+  msg: "oracle_item variable is missing"
 
 - name: Begin status blackout
   block:
@@ -28,7 +28,7 @@
     changed_when: statusblackout.changed == True  
 
   - name: working blackout
-    set_fact:
+    ansible.builtin.set_fact:
       oracle_status: "OK"
       oracle_state: "{{ statusblackout.state }}"
       oracle_value: "{% if statusblackout.message is defined %}{{ statusblackout.message }}{% endif %}"
@@ -36,7 +36,7 @@
       - checkPresence.rc == 0
 
   - name: "{{ oracle_item }} not found"
-    set_fact:
+    ansible.builtin.set_fact:
       oracle_status: "KO"
       oracle_state: ""
       oracle_value: "instance {{ oracle_item }} not found"
@@ -45,14 +45,14 @@
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "KO"
         oracle_value: "{% if statusblackout.message is defined %}{{ statusblackout.message }}{% else %}{{ statusblackout.msg }}{% endif %}"
         oracle_state: "{{ statusblackout.state }}"
 
   always:
     - name: End status blackout {{ oracle_item }}
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ oracle_state }}"

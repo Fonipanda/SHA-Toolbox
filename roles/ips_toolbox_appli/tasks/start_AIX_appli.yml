@@ -1,12 +1,12 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that: appli_item != ""
-   msg: "appli_item variable is missing"
+  ansible.builtin.assert:
+  that: appli_item != ""
+  msg: "appli_item variable is missing"
 
 - name: Check toolbox installation
-  find:
+  ansible.builtin.find:
     paths: "/apps/toolboxes"
     patterns: "version"
   register: tbxcheck
@@ -83,13 +83,13 @@
 - set_fact:
     ctl_app_result: "{% if 'TIMEOUT' in result_app_exploit.stdout %}timeout{% else %}unknown{% endif %}"
   when:
-     - app_continue == true
-     - result_app_exploit.rc != 0 
+    - app_continue == true
+    - result_app_exploit.rc != 0 
 
 
 ##########################################
 - name: set results for APPLI AIX
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results

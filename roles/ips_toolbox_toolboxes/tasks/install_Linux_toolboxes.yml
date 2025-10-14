@@ -7,10 +7,10 @@
   failed_when: false
 
 - set_fact:
-     state_value_json: ""
+    state_value_json: ""
 
 - set_fact:
-     state_value_json: "{{ updatekmoscript.stdout_lines | select('match','.*ERROR :.*') | list }}"
+    state_value_json: "{{ updatekmoscript.stdout_lines | select('match','.*ERROR :.*') | list }}"
 
 - name: Check toolbox version after upgrade
   shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' || echo "0"
@@ -19,17 +19,17 @@
   when: updatekmoscript.rc == 0
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state:
           "{% if updatekmoscript.rc == 0 %}\
 
-             installed\
+            installed\
 
           {% else %}\
 
-             error while installing\
+            error while installing\
 
           {% endif %}"
     set_results_item: "{{ inventory_hostname }}"
@@ -37,11 +37,11 @@
 
                           {{ state_value_json }}\
 
-                       {% else %}\
+                      {% else %}\
 
                           current installed version is {{ tbxversion_last_version.stdout }}\
 
-                       {% endif %}"
+                      {% endif %}"
     set_results_component: "{{ toolboxes_component }}"
     set_results_operation: "{{ toolboxes_operation }}"
     set_results_role_name: "{{ toolboxes_role_name }}"
@@ -49,11 +49,11 @@
     set_results_status:
       "{% if updatekmoscript.rc == 0 %}\
 
-             OK\
+            OK\
 
           {% else %}\
 
-             KO\
+            KO\
 
-       {% endif %}"
+      {% endif %}"
 

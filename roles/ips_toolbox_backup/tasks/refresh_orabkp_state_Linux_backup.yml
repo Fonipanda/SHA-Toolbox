@@ -1,13 +1,13 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - backup_instance != ""
-   msg: "backup_instance variable is missing"
+  ansible.builtin.assert:
+  that:
+    - backup_instance != ""
+  msg: "backup_instance variable is missing"
 
 - name: copy script to check oracle backup
-  copy:
+  ansible.builtin.copy:
     src: verif_backup.ksh
     dest: /apps/toolboxes/backup_restore/scripts/verif_backup.ksh
     mode: 0755
@@ -19,7 +19,7 @@
   changed_when: refresh_backup_all_oracle.rc == 0
   failed_when: false
   when:
-   - backup_instance == "all"
+  - backup_instance == "all"
 
 - name: Launch refresh scripts
   script: refresh_bkp_oracle_state.ksh {{ backup_instance }}
@@ -27,37 +27,37 @@
   changed_when: refresh_backup_oracle.rc == 0
   failed_when: false
   when:
-   - backup_instance != "all"
+  - backup_instance != "all"
 
 - name: set results output for refresh
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "\
 
           {% if backup_instance != 'all' %}\
 
-             {% if refresh_backup_oracle.rc == 0 %}\
+            {% if refresh_backup_oracle.rc == 0 %}\
 
                 refreshed\
 
-             {% else %}\
+            {% else %}\
 
                 not refreshed\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             {% if refresh_backup_all_oracle.rc == 0 %}\
+            {% if refresh_backup_all_oracle.rc == 0 %}\
 
                 refreshed\
 
-             {% else %}\
+            {% else %}\
 
                 not refreshed\
 
-             {% endif %}\
+            {% endif %}\
 
           {% endif %}"
     set_results_item: ""

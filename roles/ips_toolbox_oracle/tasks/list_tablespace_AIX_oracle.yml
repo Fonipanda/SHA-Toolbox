@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - oracle_item != ""
-   msg: "oracle_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - oracle_item != ""
+  msg: "oracle_item variable is missing"
 
 - name: Begin list_tablespace oracle
   no_log: true
@@ -28,7 +28,7 @@
         - checkPresence.rc == 0
 
     - name: working list_tablespace {{ oracle_item }}
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_value: "{{ list_tablespaces.tablespaces }}"
         oracle_state: "listed"
@@ -39,7 +39,7 @@
 
 
     - name: not working list_tablespace {{ oracle_item }}
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_value: "{{ list_tablespaces.message }}"
         oracle_state: "not listed"
@@ -50,7 +50,7 @@
    
       
     - name: "{{ oracle_item }} not found"
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_state: "not listed"     
         oracle_value: "instance {{ oracle_item }} not found"  
@@ -60,14 +60,14 @@
       
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "KO"
         oracle_value: "{% if list_tablespaces.message is defined %}{{ list_tablespaces.message }}{% endif %}"
         oracle_state: "not listed"
         oracle_item: "{% if oracle_item is defined %}{{ oracle_item }}{% endif %}"
   always:
     - name: End list_tablespace oracle
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ oracle_state }}"

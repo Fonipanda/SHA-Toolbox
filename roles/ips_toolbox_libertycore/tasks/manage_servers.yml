@@ -2,7 +2,7 @@
 # Manage Liberty Core servers
 
 - name: Validate server action
-  assert:
+  ansible.builtin.assert:
     that:
       - server_action in ['start', 'stop', 'status', 'list']
     fail_msg: "server_action must be 'start', 'stop', 'status', or 'list'"
@@ -14,7 +14,7 @@
   when: server_action == 'list'
 
 - name: Display Liberty servers
-  debug:
+  ansible.builtin.debug:
     msg: "{{ liberty_servers.stdout_lines }}"
   when: server_action == 'list'
 
@@ -42,6 +42,6 @@
     - server_name is defined
 
 - name: Display server status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ server_status.stdout_lines }}"
   when: server_status is defined

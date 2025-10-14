@@ -18,17 +18,17 @@
   when: liberty_install.rc == 0
 
 - name: Format to Json when liberty base is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_libertybase: "{ \"installed\": \"yes\" ,\"version\": \"{{ wasVersion.stdout }}\" }"
   when: liberty_install.rc == 0
 
 - name: Format to Json when liberty base is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_libertybase: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: liberty_install.rc != 0
 
 - name: set result output for liberty check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

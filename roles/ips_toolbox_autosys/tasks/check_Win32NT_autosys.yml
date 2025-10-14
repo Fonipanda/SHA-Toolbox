@@ -6,18 +6,18 @@
   changed_when: False
 
 - name: Format to Json when autosys is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"yes\" ,\"version\": \"{{ AutosysVersion.stdout_lines[0] }}\" }"
   when: AutosysVersion.stdout_lines[0] != ''
 
 - name: Format to Json when autosys is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: AutosysVersion.stdout_lines[0] == ''
 
 
 - name: set result output for autosys check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"
@@ -36,13 +36,13 @@
 
         {% else %}\
 
-         OK\
+        OK\
 
         {% endif %}\
 
       {% else %}\
 
-       OK\
+      OK\
 
       {% endif %}"
 

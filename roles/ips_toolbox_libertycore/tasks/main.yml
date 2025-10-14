@@ -1,4 +1,4 @@
 ---
 - name: Libertycore tasks placeholder
-  debug:
+  ansible.builtin.debug:
     msg: "Execute Libertycore Web tasks"

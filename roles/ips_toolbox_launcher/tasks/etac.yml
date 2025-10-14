@@ -2,7 +2,7 @@
 
 
 - name: include role etac
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_etac
   vars:
     etac_operation: "{{ launcher_operation }}"

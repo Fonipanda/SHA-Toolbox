@@ -12,17 +12,17 @@
   changed_when: false
 
 - name: Format to Json when sqlserver is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"yes\" ,\"version\": \"{{ check_version.stdout_lines[0] }}\" }"
   when:  check_install.services_info[0] is defined
 
 - name: Format to Json when sqlserver is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: check_install.services_info[0] is not defined
 
 - name: format installation status
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

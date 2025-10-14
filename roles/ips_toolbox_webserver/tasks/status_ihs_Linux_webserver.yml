@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - webserver_item != ""
-   msg: "webserver_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - webserver_item != ""
+  msg: "webserver_item variable is missing"
 
 - name: "Listing ihs folder"
   shell: find /applis/*/ihs/ -maxdepth 1 -type d -name sw-*
@@ -39,7 +39,7 @@
     - " '1' in ihs_dir_name_count.stdout"
 
 - name: "copy status script for specific ihs"
-  copy: 
+  ansible.builtin.copy:
     src: status
     dest: "{{ ihs_dir_name.stdout }}"
     mode: '0755'
@@ -50,7 +50,7 @@
     - ihs_dir_name.stderr == ''
 
 - name: "Copy status script for all ihs"
-  copy: 
+  ansible.builtin.copy:
     src: status
     dest: "{{ webserver_loop_item }}"
     mode: '0755'
@@ -63,10 +63,10 @@
     - "'sw-' in ihslist_result.stdout"
 
 - set_fact:
-     ref_value: ""
+    ref_value: ""
 
 - set_fact:
-     ref_value: "ref"
+    ref_value: "ref"
   when:
     - webserver_ref == "yes"
 
@@ -90,19 +90,19 @@
     - ihs_dir_name.stderr == ''
 
 - set_fact:
-     state_json: "IHS not found"
+    state_json: "IHS not found"
 
 - set_fact:
-     state_value_json: "" 
+    state_value_json: "" 
 
 - set_fact:
-     state_value_json: "No IHS found"
+    state_value_json: "No IHS found"
   when:
     - webserver_item == "all"
     - "'sw-' not in ihslist_result.stdout"
 
 - set_fact:
-     state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[2] }}\" ,\"service\": \"no\" ,\"status\": \"{% if line_json.split(' ')[4] == \"STARTED\" %}started\"{% else %}stopped\"{% endif %} }{% else %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[2] }}\" ,\"service\": \"{{ line_json.split(' ')[6] }}\" ,\"status\": \"{% if line_json.split(' ')[4] == \"STARTED\" %}started\"{% else %}stopped\"{% endif %} }{% endif %}"
+    state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[2] }}\" ,\"service\": \"no\" ,\"status\": \"{% if line_json.split(' ')[4] == \"STARTED\" %}started\"{% else %}stopped\"{% endif %} }{% else %}{{ state_value_json }}, { \"ihs\": \"{{ line_json.split(' ')[2] }}\" ,\"service\": \"{{ line_json.split(' ')[6] }}\" ,\"status\": \"{% if line_json.split(' ')[4] == \"STARTED\" %}started\"{% else %}stopped\"{% endif %} }{% endif %}"
   loop: "{{ ihs_status_all.stdout_lines | select('match', '.*The IHS.*') | list }}"
   loop_control:
     loop_var: line_json
@@ -111,7 +111,7 @@
     - "'sw' in ihslist_result.stdout"
 
 - set_fact:
-     state_value_json: "started"
+    state_value_json: "started"
   when:
     - webserver_item != "all"
     - " '1' in ihs_dir_name_count.stdout"
@@ -119,7 +119,7 @@
     - "'is STARTED' in ihs_status.stdout"
 
 - set_fact:
-     state_value_json: "stopped"
+    state_value_json: "stopped"
   when:
     - webserver_item != "all"
     - " '1' in ihs_dir_name_count.stdout"
@@ -127,52 +127,52 @@
     - "'is STOPPED' in ihs_status.stdout"
 
 - name: Format to Json
-  set_fact:
+  ansible.builtin.set_fact:
     state_json: "{ \"ihs\": \"{{ webserver_item }}\" , \"service\": \"no\", \"status\": \"{{ state_value_json }}\" }"
   when:
-   - webserver_item != "all"
-   - " '1' in ihs_dir_name_count.stdout"
-   - ihs_dir_name.stderr == ''
-   - "'systemd service' not in ihs_status.stdout"
+  - webserver_item != "all"
+  - " '1' in ihs_dir_name_count.stdout"
+  - ihs_dir_name.stderr == ''
+  - "'systemd service' not in ihs_status.stdout"
 
 - name: Format to Json
-  set_fact:
+  ansible.builtin.set_fact:
     state_json: "{ \"ihs\": \"{{ webserver_item }}\" , \"service\": \"{{ ihs_status.stdout.split(' ')[6] }}\", \"status\": \"{{ state_value_json }}\" }"
   when:
-   - webserver_item != "all"
-   - " '1' in ihs_dir_name_count.stdout"
-   - ihs_dir_name.stderr == ''
-   - "'systemd service' in ihs_status.stdout"
+  - webserver_item != "all"
+  - " '1' in ihs_dir_name_count.stdout"
+  - ihs_dir_name.stderr == ''
+  - "'systemd service' in ihs_status.stdout"
 
 
 - name: set results output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_item: "{{ webserver_item }}"
-     set_results_component: "{{ webserver_component }}"
-     set_results_operation: "{{ webserver_operation }}"
-     set_results_role_name: "{{ webserver_role_name }}"
-     set_results_result_name: "{{ webserver_result_name }}"
-     set_results_state: "info"
-     set_results_status: "OK"
-     set_results_value: "\
+    set_results_item: "{{ webserver_item }}"
+    set_results_component: "{{ webserver_component }}"
+    set_results_operation: "{{ webserver_operation }}"
+    set_results_role_name: "{{ webserver_role_name }}"
+    set_results_result_name: "{{ webserver_result_name }}"
+    set_results_state: "info"
+    set_results_status: "OK"
+    set_results_value: "\
 
       {% if webserver_item == 'all' %}\
 
-         {% if 'sw-' in ihslist_result.stdout %}\
+        {% if 'sw-' in ihslist_result.stdout %}\
 
-           [ {{ state_value_json[1:] }} ]\
+          [ {{ state_value_json[1:] }} ]\
 
-         {% else %}\
+        {% else %}\
 
-           {{ state_value_json }}\
+          {{ state_value_json }}\
 
-         {% endif %}\
+        {% endif %}\
 
       {% else %}\
 
-         {{ state_json | to_json | from_json }}\
+        {{ state_json | to_json | from_json }}\
 
       {% endif %}"
 

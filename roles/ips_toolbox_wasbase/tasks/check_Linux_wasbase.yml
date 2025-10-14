@@ -14,17 +14,17 @@
   when: wasbase_install.rc == 0
 
 - name: Format to Json when was base is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_wasbase: "{ \"installed\": \"yes\" ,\"version\": \"{{ wasVersion.stdout }}\" }"
   when:  wasbase_install.rc == 0
 
 - name: Format to Json when was base is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_wasbase: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: wasbase_install.rc != 0
 
 - name: set result output for was base check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

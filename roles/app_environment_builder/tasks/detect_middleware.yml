@@ -86,8 +86,8 @@
   when: 
     - ansible_os_family != "Windows"
     - (('TSM_SERVICES_FOUND' in tsm_service_detection.stdout) or 
-       ('TSM_BINARIES_FOUND' in tsm_binary_detection.stdout) or 
-       ('TSM_DIRS_FOUND' in tsm_dir_detection.stdout))
+      ('TSM_BINARIES_FOUND' in tsm_binary_detection.stdout) or 
+      ('TSM_DIRS_FOUND' in tsm_dir_detection.stdout))
 
 # ===== DÉTECTION ILLUMIO VEN (SERVICE) =====
 - name: "Détection Illumio - Vérification des services"
@@ -129,7 +129,7 @@
   when: 
     - ansible_os_family != "Windows"
     - (('ILLUMIO_SERVICE_FOUND' in illumio_service_detection.stdout) or 
-       ('ILLUMIO_BINARY_FOUND' in illumio_binary_detection.stdout))
+      ('ILLUMIO_BINARY_FOUND' in illumio_binary_detection.stdout))
 
 # ===== DÉTECTION DYNATRACE (SERVICE) =====
 - name: "Détection Dynatrace - Vérification des services"
@@ -171,7 +171,7 @@
   when: 
     - ansible_os_family != "Windows"
     - (('DYNATRACE_SERVICE_FOUND' in dynatrace_service_detection.stdout) or 
-       ('DYNATRACE_BINARY_FOUND' in dynatrace_binary_detection.stdout))
+      ('DYNATRACE_BINARY_FOUND' in dynatrace_binary_detection.stdout))
 
 # ===== DÉTECTION WEBSPHERE (MIDDLEWARE) =====
 - name: "Détection WebSphere - Vérification des répertoires"

@@ -1,17 +1,17 @@
 ---
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state:
       "{% if (ansible_uptime_seconds/86400) | int < (system_uptime_limit | int ) %}\
 
-         Compliant\
+        Compliant\
 
       {% else %}\
 
-         Not compliant\
+        Not compliant\
 
       {% endif %}"
     set_results_item: "" 

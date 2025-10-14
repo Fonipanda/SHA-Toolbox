@@ -2,7 +2,7 @@
 
 
 - name: include role mq
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_mq
   vars:
     mq_operation: "{{ launcher_operation }}"

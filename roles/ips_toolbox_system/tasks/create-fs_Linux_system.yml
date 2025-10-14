@@ -1,7 +1,7 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
+  ansible.builtin.assert:
     that:
       - system_create_lvname != ""
       - system_create_fsname != ""
@@ -11,7 +11,7 @@
     - system_create_filename == ""
 
 - name: stop play when incompatible variables are used
-  assert:
+  ansible.builtin.assert:
     that:
       - system_create_lvname == ""
       - system_create_fsname == ""
@@ -21,7 +21,7 @@
     - system_create_filename != ""
 
 - name: set configuration file name
-  set_fact:
+  ansible.builtin.set_fact:
     system_create_conffile: "/apps/toolboxes/exploit/conf/exploit_create-fs_tbxng_{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}.conf"
 
 - name: Begin create filesystems
@@ -34,7 +34,7 @@
     changed_when: false
   
   - name: copy configuration file on the remote server
-    copy:
+    ansible.builtin.copy:
       src: "{{ system_create_filename }}"
       dest: "{{ system_create_conffile }}"
       owner: 0
@@ -58,57 +58,57 @@
   ignore_errors: yes
 
 - name: working filesystems creation
-  set_fact:
+  ansible.builtin.set_fact:
     system_status: "OK"
     system_value: "{% if createfslog.message is defined %}{{ createfslog.message }}{% endif %}"
     system_state: "{% if createfslog.state is defined %}{{ createfslog.state }}{% endif %}"
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         system_status: "KO"
         system_value: "{% if createfslog is defined %}\
 
                           {% if createfslog.msg is defined %}\
 
-                             {{ createfslog.msg }}\
+                            {{ createfslog.msg }}\
 
                           {% endif %}\
 
-                       {% else%}\
+                      {% else%}\
 
                           {% if copyfile is defined %}\
 
-                             {% if copyfile.msg is defined %}\
+                            {% if copyfile.msg is defined %}\
 
                                 {{ copyfile.msg }}\
 
-                             {% endif %}\
+                            {% endif %}\
 
                           {% endif %}\
 
-                       {% endif %}"
+                      {% endif %}"
         system_state: "{% if createfslog is defined %}\
 
                           {% if createfslog.state is defined %}\
 
-                             {{ createfslog.state }}\
+                            {{ createfslog.state }}\
 
                           {% else %}\
 
-                             Unknown\
+                            Unknown\
 
                           {% endif %}\
 
-                       {% else %}\
+                      {% else %}\
 
                           Unknown\
 
-                       {% endif %}"
+                      {% endif %}"
 
   always:
     - name: End filesystem creation
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ system_state }}"

@@ -9,20 +9,20 @@
       register: status
 
     - name: working retreival of listeners' status
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_state: "{% if status.status is defined %}{{ status.status}}{% endif %}"
         oracle_value: "{% if status.information is defined %}{{ status.information }}{% endif %}"
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "KO"
         oracle_state: "{% if status.status is defined %}{{ status.status}}{% else %}Unknown{% endif %}"
         oracle_value: "{% if status.information is defined %}{{ status.information }}{% else %}{{ status.msg }}{% endif %}"
   always:
     - name: End get status listeners
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ oracle_state }}"

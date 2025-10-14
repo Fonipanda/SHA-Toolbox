@@ -1,14 +1,14 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - system_codeAP != ""
-     - system_code5car != ""
-   msg: "at least one mandatory variable is missing beyond: system_codeAP & system_code5car"
+  ansible.builtin.assert:
+  that:
+    - system_codeAP != ""
+    - system_code5car != ""
+  msg: "at least one mandatory variable is missing beyond: system_codeAP & system_code5car"
 
 - name: Check toolbox installation
-  find:
+  ansible.builtin.find:
     paths: "/apps/toolboxes"
     patterns: "version"
   register: tbxcheck
@@ -31,7 +31,7 @@
     - tbxversion.stdout_lines[0]|int >= (1820|int)
 
 - name: check filesystem presence
-  stat:
+  ansible.builtin.stat:
     path: "{{ filesystem.split(':')[2] }}"
   loop: "{{ resultarbo.stdout_lines | select('match', '.*:lv_.*') | list }}"
   loop_control:
@@ -41,7 +41,7 @@
     - 'resultarbo.rc != 0 or "espace disponible sur le VG " in resultarbo.stdout'
 
 - name: set missing filesystems list
-  set_fact:
+  ansible.builtin.set_fact:
     system_stat_exist: "{% if line_json.stat.exists == false %}{% if system_stat_exist == '' %}\"{{ line_json.filesystem.split(':')[2] }}\"{% else %}{{ system_stat_exist }}, \"{{ line_json.filesystem.split(':')[2] }}\"{% endif %}{% else %}{{ system_stat_exist }}{% endif %}"
   loop: "{{ checkfs.results | list }}"
   loop_control:
@@ -51,7 +51,7 @@
     - 'resultarbo.rc != 0 or "espace disponible sur le VG " in resultarbo.stdout'
 
 - name: set results Creating Arbo
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -60,42 +60,42 @@
 
           not created\
 
-       {% else %}\
+      {% else %}\
 
           {% if resultarbo.rc != 0 or system_stat_exist != '' %}\
 
-             not created\
+            not created\
 
           {% else %}\
 
-             created\
+            created\
 
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
     set_results_item: "{{ system_Appli_Code }}"
     set_results_value: 
       "{% if tbxversion.stdout_lines[0]|int < (1820|int) %}\
 
           toolboxes under required version\
 
-       {% else %}\
+      {% else %}\
 
           {% if resultarbo.rc != 0 %}\
 
-             { \"message\": \"{{ resultarbo.stdout.split('-E- ')[1].split('\u001b[0m')[0] }}\", \"missing filesystems\": [ {{ system_stat_exist }} ] }\
+            { \"message\": \"{{ resultarbo.stdout.split('-E- ')[1].split('\u001b[0m')[0] }}\", \"missing filesystems\": [ {{ system_stat_exist }} ] }\
 
           {% else %}\
 
-             {% if \"-W- L'espace disponible sur le VG\" in resultarbo.stdout and system_stat_exist != '' %}\
+            {% if \"-W- L'espace disponible sur le VG\" in resultarbo.stdout and system_stat_exist != '' %}\
 
                 { \"message\": \"{{ resultarbo.stdout.split('-W- ')[1].split('\u001b')[0] }}\", \"missing filesystems\": [ {{ system_stat_exist }} ] }\
 
-             {% endif %}\
+            {% endif %}\
 
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
     set_results_component: "{{ system_component }}"
     set_results_operation: "{{ system_operation }}"
     set_results_role_name: "{{ system_role_name }}"
@@ -105,9 +105,9 @@
 
           KO\
 
-       {% else %}\
+      {% else %}\
 
           OK\
 
-       {% endif %}"
+      {% endif %}"
 

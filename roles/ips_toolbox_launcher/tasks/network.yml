@@ -2,7 +2,7 @@
 
 
 - name: include role network
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_network
   vars:
     network_operation: "{{ launcher_operation }}"

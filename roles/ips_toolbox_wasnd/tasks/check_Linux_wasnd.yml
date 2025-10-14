@@ -18,17 +18,17 @@
   when: wasnd_install.rc == 0
 
 - name: Format to Json when was nd is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_wasnd: "{ \"installed\": \"yes\" ,\"version\": \"{{ wasVersion.stdout }}\" }"
   when: wasnd_install.rc == 0
 
 - name: Format to Json when was nd is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json_wasnd: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: wasnd_install.rc != 0
 
 - name: set result output for was nd check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

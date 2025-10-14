@@ -18,17 +18,17 @@
   when: ansible_os_family == "Windows"
 
 - name: "Initialisation de la variable uptime_days avec conversion de type"
-  set_fact:
+  ansible.builtin.set_fact:
     uptime_days_int: "{{ (uptime_days_raw.stdout | default('0')) | int }}"
   when: ansible_os_family != "Windows"
 
 - name: "Initialisation de la variable uptime_days Windows"
-  set_fact:
+  ansible.builtin.set_fact:
     uptime_days_int: "{{ (uptime_days_raw_win.stdout | default('0')) | int }}"
   when: ansible_os_family == "Windows"
 
 - name: "Formatage de l'uptime (corrigé avec conversion de type)"
-  set_fact:
+  ansible.builtin.set_fact:
     uptime_summary: >-
       {% if uptime_days_int < 1 %}
       0 day
@@ -37,7 +37,7 @@
       {% endif %}
 
 - name: "Initialisation des résultats temporaires"
-  set_fact:
+  ansible.builtin.set_fact:
     temp_result:
       component: "{{ set_results_component | default('unknown') }}"
       operation: "{{ set_results_operation | default('unknown') }}"
@@ -48,11 +48,11 @@
       uptime: "{{ uptime_summary }}"
 
 - name: "Ajout du résultat aux facts système"
-  set_fact:
+  ansible.builtin.set_fact:
     ips_toolbox_results: "{{ ips_toolbox_results | default([]) + [temp_result] }}"
 
 - name: "Affichage du résultat ajouté"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Résultat ajouté aux facts:"
       - "  - Composant: {{ temp_result.component }}"

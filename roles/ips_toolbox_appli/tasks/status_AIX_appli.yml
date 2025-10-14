@@ -1,9 +1,9 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that: appli_item != ""
-   msg: "appli_item variable is missing"
+  ansible.builtin.assert:
+  that: appli_item != ""
+  msg: "appli_item variable is missing"
   
 - name: exploit_app.ksh status {{ appli_item }}
   shell: /etc/local/{{ appli_item }} status 
@@ -13,7 +13,7 @@
 ##############################
 
 - name: reference initialization
-  file:
+  ansible.builtin.file:
     path: /etc/local/ref_status_{{ appli_item }}
     state: absent
   when: appli_ref == "yes" or appli_ref == "Yes"
@@ -21,11 +21,11 @@
 - name: reference status
   shell: echo "STOPPED" > /etc/local/ref_status_{{ appli_item }}
   when:
-   - appli_ref == "yes" or appli_ref == "Yes"
-   - result_app_exploit.stdout| regex_search('STOPPED')
+  - appli_ref == "yes" or appli_ref == "Yes"
+  - result_app_exploit.stdout| regex_search('STOPPED')
 
 - name: set results for APPLI status
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -33,25 +33,25 @@
     set_results_item: "{{ appli_item }}"
     set_results_value: "{% if 'STOPPED' in result_app_exploit.stdout %}\
 
-                         STOPPED\
+                        STOPPED\
 
-                         {% elif 'STARTED' in result_app_exploit.stdout %}\
+                        {% elif 'STARTED' in result_app_exploit.stdout %}\
 
-                         STARTED\
+                        STARTED\
 
-                         {% elif 'STARTING' in result_app_exploit.stdout %}\
+                        {% elif 'STARTING' in result_app_exploit.stdout %}\
 
-                         STARTING\
+                        STARTING\
 
-                         {% elif 'STOPPING' in result_app_exploit.stdout %}\
+                        {% elif 'STOPPING' in result_app_exploit.stdout %}\
 
-                         STOPPING\
+                        STOPPING\
 
-                         {% else %}\
+                        {% else %}\
 
-                         UNKNOWN\
+                        UNKNOWN\
 
-                         {% endif %}"
+                        {% endif %}"
     set_results_component: "{{ appli_component }}"
     set_results_operation: "{{ appli_operation }}"
     set_results_role_name: "{{ appli_role_name }}"

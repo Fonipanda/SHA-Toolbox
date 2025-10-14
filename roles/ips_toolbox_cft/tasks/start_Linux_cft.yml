@@ -14,14 +14,14 @@
     become_method: su
 
   - name: set facts
-    set_fact:
+    ansible.builtin.set_fact:
       cft_state: "{{ startCFT.state }}"
       cft_value: ""
       cft_status: "OK"
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         cft_state: "not started"
         cft_value: "{{ startCFT.msg }}"
         cft_status: "KO"
@@ -29,7 +29,7 @@
 
   always:
   - name: set result output for CFT installation
-    include_role:
+    ansible.builtin.include_role:
       name: ips_toolbox_set_results
     vars:
       set_results_state: "{{ cft_state }}"

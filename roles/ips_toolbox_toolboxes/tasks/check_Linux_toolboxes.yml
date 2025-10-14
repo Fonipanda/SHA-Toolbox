@@ -1,7 +1,7 @@
 ---
 
 - name: Check toolbox installation
-  find:
+  ansible.builtin.find:
     paths: "/apps/toolboxes"
     patterns: "version"
   register: tbxcheck
@@ -13,17 +13,17 @@
   changed_when: false
 
 - name: Format to Json when toolbox is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"yes\" ,\"version\": \"{{ tbxversion.stdout }}\" }"
   when: tbxcheck.matched > 0
 
 - name: Format to Json when toolbox is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: tbxcheck.matched < 1
 
 - name: Set result output for toolbox check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"
@@ -36,25 +36,25 @@
     set_results_status:
       "{% if tbxcheck.matched > 0 %}\
 
-         {% if tbxversion.stdout == '' %}\
+        {% if tbxversion.stdout == '' %}\
 
             KO\
 
-         {% else %}\
+        {% else %}\
 
             OK\
 
-         {% endif %}\
+        {% endif %}\
 
-       {% else %}\
+      {% else %}\
 
           OK\
 
-       {% endif %}"
+      {% endif %}"
 
 - name: Handle errors
   block:
     - name: Check for errors in previous tasks
-      fail:
+      ansible.builtin.fail:
         msg: "An error occurred during toolbox check."
       when: tbxcheck.failed or tbxversion.failed

@@ -1,20 +1,20 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - libertybase_item != ""
-   msg: "libertybase_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - libertybase_item != ""
+  msg: "libertybase_item variable is missing"
 
 - name: copy Manage script
-  copy:
+  ansible.builtin.copy:
     src: WAS_Manage.ksh 
     dest: "/applis/"
     mode: '0755'
   changed_when: false
 
 - name: copy Manage script2
-  copy:
+  ansible.builtin.copy:
     src: wasstartstop_cmd.ksh
     dest: "/applis/"
     mode: '0755'
@@ -35,28 +35,28 @@
   when: libertybase_ref == "yes"
 
 - set_fact:
-     state_value_json: ""
-     final_state: "OK"
+    state_value_json: ""
+    final_state: "OK"
 
 - set_fact:
-     state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"no\" }{% else %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"{{ line_json.split(' ')[5] }}\" }{% endif %}"
+    state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"no\" }{% else %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"{{ line_json.split(' ')[5] }}\" }{% endif %}"
   loop: "{{ status_lib_result.stdout_lines }}"
   loop_control:
     loop_var: line_json
   when:
-   - libertybase_ref != "yes"
-   - status_lib_result.rc == 0
-   - "'not found' not in status_lib_result.stdout"
+  - libertybase_ref != "yes"
+  - status_lib_result.rc == 0
+  - "'not found' not in status_lib_result.stdout"
 
 - set_fact:
-     state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"no\" }{% else %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"{{ line_json.split(' ')[5] }}\" }{% endif %}"
+    state_value_json: "{% if line_json.split(' ')[-1] != \"service\" %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"no\" }{% else %}{{ state_value_json }}, { \"application_server\": \"{{ line_json.split(' ')[1] }}\" ,\"status\": \"{% if line_json.split(' ')[3] == \"STARTED\" %}started\"{% else %}{% if line_json.split(' ')[3] == \"STOPPED\" %}stopped\"{% else %}unknown\"{% endif %}{% endif %} ,\"service\": \"{{ line_json.split(' ')[5] }}\" }{% endif %}"
   loop: "{{ status_lib_result2.stdout_lines }}"
   loop_control:
     loop_var: line_json
   when:
-   - libertybase_ref == "yes"
-   - status_lib_result2.rc == 0
-   - "'not found' not in status_lib_result2.stdout"
+  - libertybase_ref == "yes"
+  - status_lib_result2.rc == 0
+  - "'not found' not in status_lib_result2.stdout"
 
 - set_fact:
     final_state: "KO"
@@ -73,39 +73,39 @@
     - "'not found' not in status_lib_result2.stdout"
 
 - name: set results output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_component: "{{ libertybase_component }}"
-     set_results_operation: "{{ libertybase_operation }}"
-     set_results_role_name: "{{ libertybase_role_name }}"
-     set_results_result_name: "{{ libertybase_result_name }}"
-     set_results_item: "{{ libertybase_item }}"
-     set_results_state: "info"
-     set_results_status: "{{ final_state }}"
-     set_results_value: "{% if libertybase_ref != 'yes' %}\
+    set_results_component: "{{ libertybase_component }}"
+    set_results_operation: "{{ libertybase_operation }}"
+    set_results_role_name: "{{ libertybase_role_name }}"
+    set_results_result_name: "{{ libertybase_result_name }}"
+    set_results_item: "{{ libertybase_item }}"
+    set_results_state: "info"
+    set_results_status: "{{ final_state }}"
+    set_results_value: "{% if libertybase_ref != 'yes' %}\
 
-                           {% if 'not found' in status_lib_result.stdout %}\
+                          {% if 'not found' in status_lib_result.stdout %}\
 
-                             application server not found\
+                            application server not found\
 
-                           {% else %}\
+                          {% else %}\
 
-                             [ {{ state_value_json[1:] }} ]\
+                            [ {{ state_value_json[1:] }} ]\
 
-                           {% endif %}\
+                          {% endif %}\
 
-                         {% else %}\
+                        {% else %}\
 
-                           {% if 'not found' in status_lib_result2.stdout %}\
+                          {% if 'not found' in status_lib_result2.stdout %}\
 
-                             application server not found\
+                            application server not found\
 
-                           {% else %}\
+                          {% else %}\
 
-                             [ {{ state_value_json[1:] }} ]\
+                            [ {{ state_value_json[1:] }} ]\
 
-                           {% endif %}\
+                          {% endif %}\
 
-                         {% endif %}"
+                        {% endif %}"
 

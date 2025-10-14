@@ -1,24 +1,24 @@
 ---
 
 - name: initialize results tab
-  set_fact:
+  ansible.builtin.set_fact:
     results: []
   when:
-   - results is undefined
-   - not set_results_script_mode
+  - results is undefined
+  - not set_results_script_mode
 
 - name: initialize set_results_result_name
-  set_fact:
+  ansible.builtin.set_fact:
     temp_result_name: "temp"
   when: set_results_result_name == ""
 
 - name: initialize set_results_result_name
-  set_fact:
+  ansible.builtin.set_fact:
     temp_result_name: "{{ set_results_result_name }}"
   when: set_results_result_name != ""
 
 - name: initialize {{ temp_result_name }}
-  set_fact:
+  ansible.builtin.set_fact:
     "{{ temp_result_name }}":
       - State: "{{ set_results_state }}"
         Item: "{{ set_results_item }}"
@@ -39,7 +39,7 @@
         Target: "{{ inventory_hostname }}"
 
 - name: add to facts  
-  set_fact:
+  ansible.builtin.set_fact:
     results: "{{ results + hostvars[inventory_hostname][temp_result_name] }}"
   when: not set_results_script_mode  
 

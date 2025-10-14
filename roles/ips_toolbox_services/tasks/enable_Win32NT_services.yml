@@ -1,7 +1,7 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
+  ansible.builtin.assert:
     that:
       - services_item != ""
     msg: "services_item variable is missing"
@@ -19,20 +19,20 @@
       - enable_service.changed == True
 
   - name: set facts
-    set_fact:
+    ansible.builtin.set_fact:
       services_state: "enabled"
       services_value: ""
       services_status: "OK"
 
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         services_state: "not enabled"
         services_value: "{{ enable_service.msg }}"
         services_status: "KO"
 
 - name: set results output for services
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results

@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - oracle_item != ""
-   msg: "oracle_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - oracle_item != ""
+  msg: "oracle_item variable is missing"
 
 - name: check presence all instance
   shell: 'if [ "{{ oracle_item }}" = "all" ];then egrep -v "^#|^$|^\*" /etc/oratab | cut -d: -f1;else egrep -v "^#|^$|^\*" /etc/oratab | cut -d: -f1 | grep -w ^{{ oracle_item }};fi'
@@ -22,7 +22,7 @@
     - checkPresence.stdout_lines != "" 
 
 - name: reference initialization
-  file:
+  ansible.builtin.file:
     path: /var/tmp/ora_ref_status_stopped_{{ oracle_instance }}
     state: absent
   loop: "{{ checkPresence.stdout_lines | list }}"
@@ -34,7 +34,7 @@
     - checkPresence.stdout != ""
 
 - name: reference initialization
-  file:
+  ansible.builtin.file:
     path: /var/tmp/ora_ref_status_started_{{ oracle_instance }}
     state: absent
   loop: "{{ checkPresence.stdout_lines | list }}"
@@ -46,13 +46,13 @@
     - checkPresence.stdout != ""
 
 -  set_fact:
-     tmp_json: ""
+    tmp_json: ""
 
 -  set_fact:
-     state_json: ""
+    state_json: ""
 
 - name: Format to Json
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{% if line_json.split(';')[4] != \"NOT_RUNNING\" %}{{ tmp_json }}, { \"Oracle_Instance\": \"{{ line_json.split(';')[2] }}\" ,\"Oracle_Version\": \"{{ line_json.split(';')[3] }}\" ,\"Cluster\": \"{{ line_json.split(';')[5] }}\",\"Instance_Type\": \"{{ line_json.split(';')[6] }}\" ,\"Instance_Role\": \"{{ line_json.split(';')[7] }}\" ,\"Instance_Status\": \"{{ line_json.split(';')[8] }}\" ,\"Open_Mode\": \"{{ line_json.split(';')[9] }}\", \"Log_Mode\": \"{{ line_json.split(';')[13] }}\" ,\"Oracle_Conformity\": \"{% if line_json.split(';')[7] == \"PRIMARY\" and line_json.split(';')[9] == \"READ WRITE\"%}OK{% else %}{% if line_json.split(';')[7] == \"STANDBY\" and ( line_json.split(';')[9] == \"READ ONLY WITH APPLY\" or line_json.split(';')[9] == \"MOUNTED\" ) %}OK{% else %}KO{% endif %}{% endif %}\" }{% else %}{{ tmp_json }}, { \"Oracle_Instance\": \"{{ line_json.split(';')[2] }}\" , \"Oracle_Conformity\": \"OK\" }{% endif %}"
   loop: "{{ getinfo.stdout_lines | select('match', '.*;[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9];.*') | list }}"
   loop_control:
@@ -62,7 +62,7 @@
     - checkPresence.stdout != ""
 
 - name: Format to Json
-  set_fact:
+  ansible.builtin.set_fact:
     state_json: "{% if line_json.split(';')[4] != \"NOT_RUNNING\" %}{{ state_json }}, { \"Oracle_Instance\": \"{{ line_json.split(';')[2] }}\" ,\"Oracle_State\": \"Started\" }{% else %}{{ state_json }}, { \"Oracle_Instance\": \"{{ line_json.split(';')[2] }}\" ,\"Oracle_State\": \"Stopped\" }{% endif %}"
 #    state_json: "{% if line_json.split(';')[4] != \"NOT_RUNNING\" %}{{ state_json }}, { \"{{ line_json.split(';')[2] }}\": \"Started\" }{% else %}{{ state_json }}, { \"{{ line_json.split(';')[2] }}\": \"Stopped\" }{% endif %}"
   loop: "{{ getinfo.stdout_lines | select('match', '.*;[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9];.*') | list }}"
@@ -78,9 +78,9 @@
   loop_control:
     loop_var: line_json
   when:
-   - oracle_ref == "yes"
-   - checkPresence.rc == 0
-   - checkPresence.stdout != ""
+  - oracle_ref == "yes"
+  - checkPresence.rc == 0
+  - checkPresence.stdout != ""
 
 - name: reference status
   shell: echo "STARTED;{{ line_json }}" > /var/tmp/ora_ref_status_started_{{ line_json.split(';')[2] }}
@@ -88,12 +88,12 @@
   loop_control:
     loop_var: line_json
   when:
-   - oracle_ref == "yes"
-   - checkPresence.rc == 0
-   - checkPresence.stdout != ""
+  - oracle_ref == "yes"
+  - checkPresence.rc == 0
+  - checkPresence.stdout != ""
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_component: "{{ oracle_component }}"
@@ -104,32 +104,32 @@
 
       {% if checkPresence.rc == 1 %}\
 
-         not found\
+        not found\
 
       {% else %}\
 
-         [ {{ state_json[1:] }} ]
+        [ {{ state_json[1:] }} ]
       {% endif %}"
     set_results_item: "\
 
       {% if oracle_item != 'all' %}\
 
-         {{ oracle_item }}\
+        {{ oracle_item }}\
 
       {% else %}\
 
-         {% if checkPresence.stdout != \"\" %}\
+        {% if checkPresence.stdout != \"\" %}\
 
             {{ checkPresence.stdout_lines | list }}\
 
-         {% endif %}\
+        {% endif %}\
 
       {% endif %}"
     set_results_value: "\
 
       {% if checkPresence.rc != 1 %}\
 
-         [ {{ tmp_json[1:] }} ]\
+        [ {{ tmp_json[1:] }} ]\
 
       {% endif %}"
     set_results_status: "OK"

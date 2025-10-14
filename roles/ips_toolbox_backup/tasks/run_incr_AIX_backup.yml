@@ -1,13 +1,13 @@
 ---
 
 - name: Check tbx scripts
-  find:
+  ansible.builtin.find:
     paths: "/apps/toolboxes/backup_restore/scripts"
     patterns: "btsauve.ksh"
   register: tbxscrchk
 
 - name: Check tsm installed
-  find:
+  ansible.builtin.find:
     paths: "/usr/tivoli/tsm/client/ba"
     patterns: "dsmc"
     recurse: yes
@@ -20,7 +20,7 @@
   when: tbxscrchk.matched > 0 and tsmbinchk.matched > 0 
 
 - name: set results output for tsm applicative
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
@@ -39,7 +39,7 @@
 
       {% else %}\
 
-       not backed up\
+      not backed up\
 
       {% endif %}"
     set_results_item: ""
@@ -60,19 +60,19 @@
 
         {% if tbxscrchk.matched > 0 %}\
 
-           tsm is not installed\
+          tsm is not installed\
 
         {% else %}\
 
-           {% if tsmbinchk.matched > 0 %}\
+          {% if tsmbinchk.matched > 0 %}\
 
               btsauve.ksh script was not found\
 
-           {% else %}\
+          {% else %}\
 
               tsm is not installed and btsauve.ksh script was not found\
 
-           {% endif %}\
+          {% endif %}\
 
         {% endif %}\
 
@@ -95,7 +95,7 @@
 
       {% else %}\
 
-       KO\
+      KO\
 
       {% endif %}"
 

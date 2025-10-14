@@ -1,7 +1,7 @@
 ---
 
 - name: Check presence oratab
-  stat:
+  ansible.builtin.stat:
     path: "/etc/oratab"
   register: file_info
 
@@ -21,12 +21,12 @@
     - nb_instance.stdout[0]|int > 0
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "\
 
-       {% if file_info.stat.exists == true %}\
+      {% if file_info.stat.exists == true %}\
 
           {% if list_instance.rc is defined %}\
 
@@ -38,15 +38,15 @@
 
           {% endif %}\
 
-       {% else %}\
+      {% else %}\
 
           Not listed\
 
-       {% endif %}"
+      {% endif %}"
     set_results_item: ""
     set_results_value: "\
 
-       {% if file_info.stat.exists == true %}\
+      {% if file_info.stat.exists == true %}\
 
           {% if list_instance.rc is defined %}\
 
@@ -58,11 +58,11 @@
 
           {% endif %}\
 
-       {% else %}\
+      {% else %}\
 
           oratab not found\
 
-       {% endif %}"
+      {% endif %}"
     set_results_component: "{{ oracle_component }}"
     set_results_operation: "{{ oracle_operation }}"
     set_results_role_name: "{{ oracle_role_name }}"

@@ -7,7 +7,7 @@
   register: result
 
 - name: set results
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "{% if result.failed == False %}listed{% else %}not listed{% endif %}"
@@ -22,10 +22,10 @@
 
         OK\
 
-       {% else %}\
+      {% else %}\
 
         KO\
 
-       {% endif %}"
+      {% endif %}"
 
 

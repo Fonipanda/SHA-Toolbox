@@ -1,11 +1,11 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - system_lvname != ""
-     - system_addsize != ""
-   msg: "at least one mandatory variable is missing beyond: system_lvname & system_addsize"
+  ansible.builtin.assert:
+  that:
+    - system_lvname != ""
+    - system_addsize != ""
+  msg: "at least one mandatory variable is missing beyond: system_lvname & system_addsize"
 
 
 - name: extend lv {{ system_lvname }}
@@ -15,17 +15,17 @@
   failed_when: false
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state:
-     "{% if extendfsresult.rc == 0 %}\
+    "{% if extendfsresult.rc == 0 %}\
 
-         extended\
+        extended\
 
       {% else %}\
 
-         not extended\
+        not extended\
 
       {% endif %}"
     set_results_item: "{{ system_lvname }}" 
@@ -34,19 +34,19 @@
 
           {{ extendfsresult.stdout | regex_search('(-E-.*)') | replace('\u001b[0m','') }}\
 
-       {% endif %}"
+      {% endif %}"
     set_results_component: "{{ system_component }}"
     set_results_operation: "{{ system_operation }}"
     set_results_role_name: "{{ system_role_name }}"
     set_results_result_name: "{{ system_result_name }}"
     set_results_status:
-     "{% if extendfsresult.rc == 0 %}\
+    "{% if extendfsresult.rc == 0 %}\
 
-         OK\
+        OK\
 
       {% else %}\
 
-         KO\
+        KO\
 
       {% endif %}"
 

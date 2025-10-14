@@ -2,7 +2,7 @@
 
 
 - name: include role toolboxes
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_toolboxes
   vars:
     toolboxes_operation: "{{ launcher_operation }}"

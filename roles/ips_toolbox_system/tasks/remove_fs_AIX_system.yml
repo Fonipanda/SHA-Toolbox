@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - system_lvname != ""
-   msg: "system_lvname variable is missing"
+  ansible.builtin.assert:
+  that:
+    - system_lvname != ""
+  msg: "system_lvname variable is missing"
 
 - name: Check if lv {{ system_lvname }} is present
   shell: lslv {{ system_lvname }}
@@ -39,26 +39,26 @@
   failed_when: false
 
 - name: set results for remove lv
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     name: results
     set_results_state:
-     "{% if islvpresent.rc == 0 %}\
+    "{% if islvpresent.rc == 0 %}\
 
-         {% if islvremove.rc is defined and islvremove.rc != 0 %}\
+        {% if islvremove.rc is defined and islvremove.rc != 0 %}\
 
             removed\
 
-         {% else %}\
+        {% else %}\
 
             not removed\
 
-         {% endif %}\
+        {% endif %}\
 
       {% else %}\
 
-         removed\
+        removed\
 
       {% endif %}"
     set_results_item: "{{ system_lvname }}"
@@ -67,31 +67,31 @@
     set_results_role_name: "{{ system_role_name }}"
     set_results_result_name: "{{ system_result_name }}"
     set_results_value: 
-     "{% if removefsresult.rc is defined %}\
+    "{% if removefsresult.rc is defined %}\
 
-         {% if removefsresult.rc != 0 %}\
+        {% if removefsresult.rc != 0 %}\
 
             {{ removefsresult.stdout.split('-E- ')[1].split('\u001b[0m')[0] }}\
 
-         {% endif %}\
+        {% endif %}\
 
       {% endif %}"
     set_results_status: 
-     "{% if removefsresult.rc is defined %}\
+    "{% if removefsresult.rc is defined %}\
 
-         {% if removefsresult.rc != 0 %}\
+        {% if removefsresult.rc != 0 %}\
 
             KO\
 
-         {% else %}\
+        {% else %}\
 
             OK\
 
-         {% endif %}\
+        {% endif %}\
 
       {% else %}\
 
-         OK\
+        OK\
 
       {% endif %}"
 

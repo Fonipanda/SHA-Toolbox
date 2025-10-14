@@ -23,9 +23,9 @@
     
 - name: Wait for system to become reachable again
   wait_for_connection:
-     delay: 1
-     timeout: "{{ system_restart_timeout }}"
-     sleep: 5
+    delay: 1
+    timeout: "{{ system_restart_timeout }}"
+    sleep: 5
 
 - name: Uptime first check - part 1
   shell: uptime | awk -F"," '{print$1}' | awk -F" " '{print$3" "$4}' | sed -e 's/:/h/'
@@ -57,9 +57,9 @@
 
 - name: Wait for system to become reachable again - last chance
   wait_for_connection:
-     delay: 1
-     timeout: "{{ system_restart_timeout }}"
-     sleep: 5
+    delay: 1
+    timeout: "{{ system_restart_timeout }}"
+    sleep: 5
   when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
 
 - name: Uptime second check - part 1
@@ -80,50 +80,50 @@
   changed_when: false
   register: uptime_chk_last
   when: 
-   - uptime_chk_scd_last.rc is defined 
-   - uptime_chk_scd_last.rc == 0
+  - uptime_chk_scd_last.rc is defined 
+  - uptime_chk_scd_last.rc == 0
 
 - name: fail if uptime is not conform
-  debug:
+  ansible.builtin.debug:
     var: uptime_value
   failed_when: ((uptime_chk_last.stdout_lines[0]) | int > (uptime_max | int)) or  (uptime_chk_scd_last.rc != 0)
   when: "(uptime_chk_scd.rc != 0) or ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int > (system_uptime_max | int)))"
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "{% if ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int <= (system_uptime_max | int))) %}\
 
-                         rebooted\
+                        rebooted\
 
-                         {% else %}\
+                        {% else %}\
 
                             {% if uptime.stdout is defined %}\
 
-                               rebooted\
+                              rebooted\
 
                             {% else %}\
 
-                               error\
+                              error\
 
                             {% endif %}\
 
-                         {% endif %}"
+                        {% endif %}"
     set_results_item: ""
     set_results_value:  "{% if ((uptime_chk.stdout_lines is defined) and ((uptime_chk.stdout_lines[0]) | int <= (system_uptime_max | int))) %}\
 
-                         The server was rebooted  {{ uptime_value.stdout }} ago\
+                        The server was rebooted  {{ uptime_value.stdout }} ago\
 
-                         {% else %}\
+                        {% else %}\
 
                             {% if uptime.stdout is defined %}\
 
-                               The server was rebooted  {{ uptime.stdout }} ago\
+                              The server was rebooted  {{ uptime.stdout }} ago\
 
                             {% endif %}\
 
-                         {% endif %}"
+                        {% endif %}"
     set_results_component: "{{ system_component }}"
     set_results_operation: "{{ system_operation }}"
     set_results_role_name: "{{ system_role_name }}"

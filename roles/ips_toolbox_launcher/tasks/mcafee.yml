@@ -2,7 +2,7 @@
 
 
 - name: include role mcafee
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_mcafee
   vars:
     mcafee_operation: "{{ launcher_operation }}"

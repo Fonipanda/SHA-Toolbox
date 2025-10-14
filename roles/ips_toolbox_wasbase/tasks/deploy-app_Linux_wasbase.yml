@@ -1,12 +1,12 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - wasbase_xml_filename != ""
-     - wasbase_archive_filename != ""
-     - wasbase_xml_src_path != ""
-   msg: "One of this mandatory variable is missing: wasbase_xml_filename, wasbase_archive_filename, wasbase_xml_src_path"
+  ansible.builtin.assert:
+  that:
+    - wasbase_xml_filename != ""
+    - wasbase_archive_filename != ""
+    - wasbase_xml_src_path != ""
+  msg: "One of this mandatory variable is missing: wasbase_xml_filename, wasbase_archive_filename, wasbase_xml_src_path"
 
 - name: Check toolbox version
   shell: test -f /apps/toolboxes/version && cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g' || echo "0"
@@ -14,41 +14,41 @@
   changed_when: false
 
 - name: Copy the xml file on the remote server
-  copy:
-   src: "{{ wasbase_xml_src_path }}/{{ wasbase_xml_filename }}"
-   dest: "{{ wasbase_dest_path }}/"
-   owner: root
-   group: web
-   mode: u=rwx,g=rwx,o=rx
+  ansible.builtin.copy:
+  src: "{{ wasbase_xml_src_path }}/{{ wasbase_xml_filename }}"
+  dest: "{{ wasbase_dest_path }}/"
+  owner: root
+  group: web
+  mode: u=rwx,g=rwx,o=rx
   when: (tbxversion.stdout_lines[0]|int >= (1920|int))
 
 - name: Copy the archive file on the remote server
-  copy:
-   src: "{{ wasbase_archive_src_path }}/{{ wasbase_archive_filename }}"
-   dest: "{{ wasbase_dest_path }}/"
-   owner: root
-   group: web
-   mode: u=rwx,g=rwx,o=rx
+  ansible.builtin.copy:
+  src: "{{ wasbase_archive_src_path }}/{{ wasbase_archive_filename }}"
+  dest: "{{ wasbase_dest_path }}/"
+  owner: root
+  group: web
+  mode: u=rwx,g=rwx,o=rx
   register: copy_archive
   when: (tbxversion.stdout_lines[0]|int >= (1920|int))
 
 - name: Copy the deploy_app.ksh script on the remote server
-  copy:
-   src: deploy_app.ksh
-   dest: /apps/toolboxes/web/ManageDeployEarWas/DeployEarWas
-   mode: '0755'
+  ansible.builtin.copy:
+  src: deploy_app.ksh
+  dest: /apps/toolboxes/web/ManageDeployEarWas/DeployEarWas
+  mode: '0755'
   when:
-   - (tbxversion.stdout_lines[0]|int >= (1920|int))
-   - copy_archive.changed or wasbase_force_deploy == "yes"
+  - (tbxversion.stdout_lines[0]|int >= (1920|int))
+  - copy_archive.changed or wasbase_force_deploy == "yes"
 
 - name: Copy the WAS_Manage.ksh script on the remote server
-  copy:
-   src: WAS_Manage.ksh
-   dest: /apps/toolboxes/web/WasOperating
-   mode: '0755'
+  ansible.builtin.copy:
+  src: WAS_Manage.ksh
+  dest: /apps/toolboxes/web/WasOperating
+  mode: '0755'
   when: 
-   - (tbxversion.stdout_lines[0]|int >= (1920|int))
-   - copy_archive.changed or wasbase_force_deploy == "yes"
+  - (tbxversion.stdout_lines[0]|int >= (1920|int))
+  - copy_archive.changed or wasbase_force_deploy == "yes"
 
 - name: Deploy application
   shell: /apps/toolboxes/web/ManageDeployEarWas/DeployEarWas/deploy_app.ksh wba {{ wasbase_archive_filename }} {{ wasbase_xml_filename }} {{ wasbase_dest_path }}
@@ -56,19 +56,19 @@
   changed_when: "'Error' not in result_deploy_app.stdout"
   failed_when: false
   when:
-   - (tbxversion.stdout_lines[0]|int >= (1920|int))
-   - copy_archive.changed or wasbase_force_deploy == "yes"
+  - (tbxversion.stdout_lines[0]|int >= (1920|int))
+  - copy_archive.changed or wasbase_force_deploy == "yes"
 
 - name: set results output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-     set_results_component: "{{ wasbase_component }}"
-     set_results_operation: "{{ wasbase_operation }}"
-     set_results_role_name: "{{ wasbase_role_name }}"
-     set_results_result_name: "{{ wasbase_result_name }}"
-     set_results_item: "{{ wasbase_archive_filename }}"
-     set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+    set_results_component: "{{ wasbase_component }}"
+    set_results_operation: "{{ wasbase_operation }}"
+    set_results_role_name: "{{ wasbase_role_name }}"
+    set_results_result_name: "{{ wasbase_result_name }}"
+    set_results_item: "{{ wasbase_archive_filename }}"
+    set_results_state: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
 
                             {% if copy_archive.changed or wasbase_force_deploy == 'yes' %}\
 
@@ -93,7 +93,7 @@
                             not deployed\
 
                           {% endif %}"
-     set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+    set_results_status: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
 
                             {% if copy_archive.changed or wasbase_force_deploy == 'yes' %}\
 
@@ -118,7 +118,7 @@
                             KO\
 
                           {% endif %}"
-     set_results_value: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
+    set_results_value: "{% if tbxversion.stdout_lines[0]|int >= (1920|int) %}\
 
                             {% if copy_archive.changed or wasbase_force_deploy == 'yes' %}\
 

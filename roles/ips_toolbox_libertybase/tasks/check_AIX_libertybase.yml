@@ -8,8 +8,8 @@
 
 - name: check liberty version
   shell: |
-         . ~was/.profile
-         /apps/WebSphere*/LibertyBase/bin/productInfo version | grep version | awk '{print $3}'
+        . ~was/.profile
+        /apps/WebSphere*/LibertyBase/bin/productInfo version | grep version | awk '{print $3}'
   become: true
   become_user: was
   become_method: su
@@ -19,17 +19,17 @@
   when: liberty_install.rc == 0
 
 - name: Format to Json when liberty base is installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"yes\" ,\"version\": \"{{ wasVersion.stdout }}\" }"
   when: liberty_install.rc == 0
 
 - name: Format to Json when liberty base is not installed
-  set_fact:
+  ansible.builtin.set_fact:
     tmp_json: "{ \"installed\": \"no\" ,\"version\": \"\" }"
   when: liberty_install.rc != 0
 
 - name: set result output for liberty check
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "info"

@@ -1,10 +1,10 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - oracle_item != ""
-   msg: "oracle_item variable is missing"
+  ansible.builtin.assert:
+  that:
+    - oracle_item != ""
+  msg: "oracle_item variable is missing"
 
 - name: check instance exists
   shell: cat /etc/oratab | grep -w ^{{ oracle_item }}
@@ -51,65 +51,65 @@
     - checkPresence.stdout != ""
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "\
 
-       {% if checkExists.rc is defined %}\
+      {% if checkExists.rc is defined %}\
 
           {% if checkExists.rc == 0 %}\
 
-             {% if 'stopped' in stopRes.stdout %}\
+            {% if 'stopped' in stopRes.stdout %}\
 
                 stopped\
 
-             {% else %}\
+            {% else %}\
 
                 not stopped\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             instance not found\
+            instance not found\
 
           {% endif %}\
 
-       {% elif checkPresence.rc is defined %}\
+      {% elif checkPresence.rc is defined %}\
 
           {% if checkPresence.stdout != \"\" %}\
 
-             {% if 'Error' in stopResAll.stdout %}\
+            {% if 'Error' in stopResAll.stdout %}\
 
                 not stopped\
 
-             {% else %}\
+            {% else %}\
 
                 stopped\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             no instance found\
+            no instance found\
 
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
     set_results_item: "\
 
       {% if oracle_item != 'all' %}\
 
-         {{ oracle_item }}\
+        {{ oracle_item }}\
 
       {% else %}\
 
-         {% if checkPresence.stdout != \"\" %}\
+        {% if checkPresence.stdout != \"\" %}\
 
             {{ checkPresence.stdout_lines | list }}\
 
-         {% endif %}\
+        {% endif %}\
 
       {% endif %}"
     set_results_value: ""
@@ -119,49 +119,49 @@
     set_results_result_name: "{{ oracle_result_name }}"
     set_results_status: "\
 
-       {% if checkExists.rc is defined %}\
+      {% if checkExists.rc is defined %}\
 
           {% if checkExists.rc == 0 %}\
 
-             {% if 'stopped' not in stopRes.stdout %}\
+            {% if 'stopped' not in stopRes.stdout %}\
 
                 KO\
 
-             {% elif stopRes.rc != 0 %}\
+            {% elif stopRes.rc != 0 %}\
 
                 KO\
 
-             {% else %}\
+            {% else %}\
 
                 OK\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             OK\
+            OK\
 
           {% endif %}\
 
-       {% elif checkPresence.rc is defined %}\
+      {% elif checkPresence.rc is defined %}\
 
           {% if checkPresence.stdout != \"\" %}\
 
-             {% if 'Error' in stopResAll.stdout %}\
+            {% if 'Error' in stopResAll.stdout %}\
 
                 KO\
 
-             {% else %}\
+            {% else %}\
 
                 OK\
 
-             {% endif %}\
+            {% endif %}\
 
           {% else %}\
 
-             OK\
+            OK\
 
           {% endif %}\
 
-       {% endif %}"
+      {% endif %}"
 

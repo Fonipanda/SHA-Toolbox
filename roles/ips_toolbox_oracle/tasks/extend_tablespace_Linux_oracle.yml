@@ -1,11 +1,11 @@
 ---
 
 - name: stop play when a mandatory variable is missing
-  assert:
-   that:
-     - oracle_item != ""
-     - oracle_tablespace != ""
-   msg: "At least one mandatory variable is missing beyond: oracle_item & oracle_tablespace"
+  ansible.builtin.assert:
+  that:
+    - oracle_item != ""
+    - oracle_tablespace != ""
+  msg: "At least one mandatory variable is missing beyond: oracle_item & oracle_tablespace"
 
 - name: Begin list_tablespace oracle
   no_log: True
@@ -31,7 +31,7 @@
         - checkPresence.rc == 0
 
     - name: working extend_tablespace {{ oracle_tablespace }}
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_value: ""
         oracle_state: "extended"
@@ -42,7 +42,7 @@
 
 
     - name: not working extend_tablespace {{ oracle_tablespace }}
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_value: "{{ extend_tablespace.message }}"
         oracle_state: "not extended"
@@ -53,7 +53,7 @@
    
       
     - name: "{{ oracle_item }} not found"
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "OK"
         oracle_state: "not extended"     
         oracle_value: "instance {{ oracle_item }} not found"  
@@ -63,14 +63,14 @@
       
   rescue:
     - name: ansible failure
-      set_fact:
+      ansible.builtin.set_fact:
         oracle_status: "KO"
         oracle_value: "{% if extend_tablespace.message is defined %}{{ extend_tablespace.message }}{% endif %}"
         oracle_state: "not extended"
         oracle_item: "{% if oracle_item is defined %}{{ oracle_item }}{% endif %}"
   always:
     - name: End extend_tablespace oracle
-      include_role:
+      ansible.builtin.include_role:
         name: ips_toolbox_set_results
       vars:
         set_results_state: "{{ oracle_state }}"

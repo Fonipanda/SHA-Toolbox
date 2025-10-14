@@ -14,18 +14,18 @@
   when: uptime_day.rc == 0
 
 - name: set result output
-  include_role:
+  ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: "{% if uptime_day.rc != 0 %}Compliant{% else %}{% if (uptime_day_value.stdout) | int < (system_uptime_limit | int ) %}Compliant{% else %}Not compliant{% endif %}{% endif %}"
     set_results_item: ""
     set_results_value: "{% if uptime_day.rc != 0 %}\
 
-                         0 day\
+                        0 day\
 
                         {% else %}\
 
-                         {{ (uptime_day_value.stdout) | int }} day(s)\
+                        {{ (uptime_day_value.stdout) | int }} day(s)\
 
                         {% endif %}"
     set_results_component: "{{ system_component }}"
