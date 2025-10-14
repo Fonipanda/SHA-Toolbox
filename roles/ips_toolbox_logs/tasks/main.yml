@@ -1,0 +1,162 @@
+---
+- name: "Initialisation du rôle ips_toolbox_logs"
+  ansible.builtin.set_fact:
+    logs_component: "logs"
+    logs_role_name: "ips_toolbox_logs"
+
+- name: "Vérification de l'existence du service purge_logs"
+  ansible.builtin.shell: |
+    systemctl list-units --all | grep -i purge_logs && echo "SERVICE_EXISTS" || echo "SERVICE_MISSING"
+  register: purge_logs_service_check
+  changed_when: false
+  failed_when: false
+
+- name: "Vérification de l'existence du timer purge_logs"
+  ansible.builtin.shell: |
+    systemctl list-timers --all | grep -i purge_logs && echo "TIMER_EXISTS" || echo "TIMER_MISSING"
+  register: purge_logs_timer_check
+  changed_when: false
+  failed_when: false
+
+- name: "Vérification du fichier exploit_rotate-log.conf"
+  ansible.builtin.stat:
+    path: /apps/toolboxes/exploit/conf/exploit_rotate-log.conf
+  register: rotate_log_conf_check
+
+- name: "Création du service systemd purge_logs.service"
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Purge des logs applicatifs /applis/logs
+      Documentation=file:///apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+      After=multi-user.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+      User=root
+      Group=root
+      StandardOutput=journal
+      StandardError=journal
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: /etc/systemd/system/purge_logs.service
+    mode: '0644'
+    owner: root
+    group: root
+  when: "'SERVICE_MISSING' in purge_logs_service_check.stdout"
+  notify: "Recharger systemd"
+
+- name: "Création du timer systemd purge_logs.timer"
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Timer pour purge automatique des logs
+      Requires=purge_logs.service
+
+      [Timer]
+      OnCalendar=daily
+      RandomizedDelaySec=3600
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+    dest: /etc/systemd/system/purge_logs.timer
+    mode: '0644'
+    owner: root
+    group: root
+  when: "'TIMER_MISSING' in purge_logs_timer_check.stdout"
+  notify: "Recharger systemd"
+
+- name: "Création du fichier de configuration exploit_rotate-log.conf"
+  ansible.builtin.copy:
+    content: |
+      # Configuration rotation et purge des logs - SHA-Toolbox
+      # Répertoires de logs à traiter
+      LOG_DIRS="/applis/logs /apps/exploit/logs /var/log"
+      
+      # Rétention en jours
+      RETENTION_DAYS=30
+      
+      # Compression après rotation
+      COMPRESS=yes
+      
+      # Extensions de fichiers logs à traiter
+      LOG_EXTENSIONS="*.log *.out *.err *.trace"
+      
+      # Taille maximum avant rotation (en MB)
+      MAX_SIZE=100
+      
+      # Sauvegarde TSM avant purge
+      TSM_BACKUP=yes
+      
+      # Notification par email
+      EMAIL_NOTIFICATION=no
+      EMAIL_RECIPIENTS=""
+      
+      # Mode debug
+      DEBUG=no
+    dest: /apps/toolboxes/exploit/conf/exploit_rotate-log.conf
+    mode: '0644'
+    owner: root
+    group: root
+  when: not rotate_log_conf_check.stat.exists
+
+- name: "Création du répertoire de logs si absent"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0775'
+    owner: root
+    group: root
+  loop:
+    - "/apps/toolboxes/exploit/conf"
+    - "/apps/toolboxes/exploit/logs"
+    - "/applis/logs"
+
+- name: "Activation et démarrage du timer purge_logs"
+  ansible.builtin.systemd:
+    name: purge_logs.timer
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: "'TIMER_MISSING' in purge_logs_timer_check.stdout"
+
+- name: "Vérification du statut final des services de purge"
+  ansible.builtin.shell: |
+    echo "=== Statut services purge logs ==="
+    systemctl is-enabled purge_logs.timer 2>/dev/null || echo "Timer non activé"
+    systemctl is-active purge_logs.timer 2>/dev/null || echo "Timer non actif"
+    systemctl list-timers purge_logs.timer --no-pager 2>/dev/null || echo "Timer non trouvé"
+    echo "=== Fin statut ==="
+  register: purge_logs_final_status
+  changed_when: false
+  failed_when: false
+
+- name: "Affichage du résumé de configuration purge logs"
+  ansible.builtin.debug:
+    msg:
+      - "=== RÉSUMÉ PURGE LOGS ==="
+      - "Service purge_logs: {{ 'CRÉÉ' if 'SERVICE_MISSING' in purge_logs_service_check.stdout else 'PRÉSENT' }}"
+      - "Timer purge_logs: {{ 'CRÉÉ' if 'TIMER_MISSING' in purge_logs_timer_check.stdout else 'PRÉSENT' }}"
+      - "Configuration exploit_rotate-log.conf: {{ 'CRÉÉ' if not rotate_log_conf_check.stat.exists else 'PRÉSENT' }}"
+      - ""
+      - "STATUT FINAL:"
+      - "{{ purge_logs_final_status.stdout_lines | default(['Statut non disponible']) }}"
+      - "=== FIN RÉSUMÉ ==="
+
+- name: "Enregistrement du résultat purge logs"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "OK"
+    set_results_component: "logs"
+    set_results_operation: "configure"
+    set_results_value: "Purge automatique des logs configurée - service et timer systemd actifs"
+  ignore_errors: true
+
+handlers:
+  - name: "Recharger systemd"
+    ansible.builtin.systemd:
+      daemon_reload: yes
