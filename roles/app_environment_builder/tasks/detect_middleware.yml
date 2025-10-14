@@ -1,45 +1,277 @@
 ---
-- name: "Init lists"
+- name: "Initialisation de la liste des middlewares et services détectés"
   ansible.builtin.set_fact:
     detected_middleware_list: []
     detected_services_list: []
+    middleware_details: {}
+    services_details: {}
 
-- name: "Detect WebSphere"
+# ===== DÉTECTION TSM/IBM SPECTRUM PROTECT (SERVICE) =====
+- name: "Détection TSM - Vérification des services"
   ansible.builtin.shell: |
-    if [ -d /opt/IBM/WebSphere ]; then echo "WebSphere_WAS_ND"; fi
-  register: ws_detect
+    # Vérification des services TSM/DSM
+    tsm_services=""
+    if systemctl list-units --all 2>/dev/null | grep -q dsmsvc; then
+      tsm_services="${tsm_services}dsmsvc "
+    fi
+    if systemctl list-units --all 2>/dev/null | grep -q dsmcad; then
+      tsm_services="${tsm_services}dsmcad "
+    fi
+    if systemctl list-units --all 2>/dev/null | grep -i tsm; then
+      tsm_services="${tsm_services}tsm "
+    fi
+    
+    if [ -n "$tsm_services" ]; then
+      echo "TSM_SERVICES_FOUND:$tsm_services"
+    else
+      echo "TSM_SERVICES_MISSING"
+    fi
+  register: tsm_service_detection
   changed_when: false
-- name: "Add WebSphere"
-  ansible.builtin.set_fact:
-    detected_middleware_list: "{{ detected_middleware_list + [ws_detect.stdout] }}"
-  when: ws_detect.stdout != ""
+  failed_when: false
+  when: ansible_os_family != "Windows"
 
-- name: "Detect Illumio service"
+- name: "Détection TSM - Vérification des binaires"
   ansible.builtin.shell: |
-    systemctl list-units --all | grep -q illumio-ven && echo "Illumio"
-  register: ill_detect
+    # Recherche des binaires TSM
+    tsm_binaries=""
+    for binary in dsmc dsmcad dsm; do
+      binary_path=$(which "$binary" 2>/dev/null || find /opt /usr -name "$binary" -type f 2>/dev/null | head -1)
+      if [ -n "$binary_path" ]; then
+        tsm_binaries="${tsm_binaries}${binary}:${binary_path} "
+      fi
+    done
+    
+    if [ -n "$tsm_binaries" ]; then
+      echo "TSM_BINARIES_FOUND:$tsm_binaries"
+    else
+      echo "TSM_BINARIES_MISSING"
+    fi
+  register: tsm_binary_detection
   changed_when: false
-- name: "Add Illumio"
-  ansible.builtin.set_fact:
-    detected_services_list: "{{ detected_services_list + [ill_detect.stdout] }}"
-  when: ill_detect.stdout != ""
+  failed_when: false
+  when: ansible_os_family != "Windows"
 
-- name: "Detect TSM"
+- name: "Détection TSM - Vérification des répertoires"
   ansible.builtin.shell: |
-    systemctl list-units --all | grep -q dsmsvc && echo "TSM"
-  register: tsm_detect
+    # Recherche des répertoires TSM standards
+    tsm_dirs=""
+    for dir in "/opt/tivoli/tsm" "/usr/tivoli/tsm" "/opt/ibm/dsmclient"; do
+      if [ -d "$dir" ]; then
+        tsm_dirs="${tsm_dirs}$dir "
+      fi
+    done
+    
+    if [ -n "$tsm_dirs" ]; then
+      echo "TSM_DIRS_FOUND:$tsm_dirs"
+    else
+      echo "TSM_DIRS_MISSING"
+    fi
+  register: tsm_dir_detection
   changed_when: false
-- name: "Add TSM"
-  ansible.builtin.set_fact:
-    detected_services_list: "{{ detected_services_list + [tsm_detect.stdout] }}"
-  when: tsm_detect.stdout != ""
+  failed_when: false
+  when: ansible_os_family != "Windows"
 
-- name: "Detect Dynatrace"
-  ansible.builtin.shell: |
-    ps -ef | grep -q oneagent && echo "Dynatrace"
-  register: dt_detect
-  changed_when: false
-- name: "Add Dynatrace"
+- name: "Ajout de TSM à la liste des SERVICES si détecté"
   ansible.builtin.set_fact:
-    detected_services_list: "{{ detected_services_list + [dt_detect.stdout] }}"
-  when: dt_detect.stdout != ""
+    detected_services_list: "{{ detected_services_list + ['TSM'] }}"
+    services_details: "{{ services_details | combine({
+      'TSM': {
+        'type': 'Agent de sauvegarde IBM Spectrum Protect',
+        'services': tsm_service_detection.stdout if 'TSM_SERVICES_FOUND' in tsm_service_detection.stdout else 'Aucun service',
+        'binaries': tsm_binary_detection.stdout if 'TSM_BINARIES_FOUND' in tsm_binary_detection.stdout else 'Aucun binaire',
+        'directories': tsm_dir_detection.stdout if 'TSM_DIRS_FOUND' in tsm_dir_detection.stdout else 'Aucun répertoire'
+      }
+    }) }}"
+  when: 
+    - ansible_os_family != "Windows"
+    - (('TSM_SERVICES_FOUND' in tsm_service_detection.stdout) or 
+       ('TSM_BINARIES_FOUND' in tsm_binary_detection.stdout) or 
+       ('TSM_DIRS_FOUND' in tsm_dir_detection.stdout))
+
+# ===== DÉTECTION ILLUMIO VEN (SERVICE) =====
+- name: "Détection Illumio - Vérification des services"
+  ansible.builtin.shell: |
+    # Vérification du service Illumio VEN
+    if systemctl list-units --all 2>/dev/null | grep -q illumio-ven; then
+      echo "ILLUMIO_SERVICE_FOUND"
+    else
+      echo "ILLUMIO_SERVICE_MISSING"
+    fi
+  register: illumio_service_detection
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Détection Illumio - Vérification des binaires"
+  ansible.builtin.shell: |
+    # Recherche du binaire Illumio VEN
+    if [ -f "/opt/illumio_ven/illumio-ven-ctl" ]; then
+      echo "ILLUMIO_BINARY_FOUND:/opt/illumio_ven/illumio-ven-ctl"
+    else
+      echo "ILLUMIO_BINARY_MISSING"
+    fi
+  register: illumio_binary_detection
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Ajout d'Illumio à la liste des SERVICES si détecté"
+  ansible.builtin.set_fact:
+    detected_services_list: "{{ detected_services_list + ['Illumio'] }}"
+    services_details: "{{ services_details | combine({
+      'Illumio': {
+        'type': 'Agent de sécurité VEN (Virtual Enforcement Node)',
+        'service': illumio_service_detection.stdout,
+        'binary': illumio_binary_detection.stdout
+      }
+    }) }}"
+  when: 
+    - ansible_os_family != "Windows"
+    - (('ILLUMIO_SERVICE_FOUND' in illumio_service_detection.stdout) or 
+       ('ILLUMIO_BINARY_FOUND' in illumio_binary_detection.stdout))
+
+# ===== DÉTECTION DYNATRACE (SERVICE) =====
+- name: "Détection Dynatrace - Vérification des services"
+  ansible.builtin.shell: |
+    # Vérification du service Dynatrace OneAgent
+    if systemctl list-units --all 2>/dev/null | grep -q oneagent; then
+      echo "DYNATRACE_SERVICE_FOUND"
+    else
+      echo "DYNATRACE_SERVICE_MISSING"
+    fi
+  register: dynatrace_service_detection
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Détection Dynatrace - Vérification des binaires"
+  ansible.builtin.shell: |
+    # Recherche du binaire Dynatrace OneAgent
+    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
+      echo "DYNATRACE_BINARY_FOUND:/opt/dynatrace/oneagent/agent/bin/oneagentctl"
+    else
+      echo "DYNATRACE_BINARY_MISSING"
+    fi
+  register: dynatrace_binary_detection
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Ajout de Dynatrace à la liste des SERVICES si détecté"
+  ansible.builtin.set_fact:
+    detected_services_list: "{{ detected_services_list + ['Dynatrace'] }}"
+    services_details: "{{ services_details | combine({
+      'Dynatrace': {
+        'type': 'Agent de monitoring OneAgent',
+        'service': dynatrace_service_detection.stdout,
+        'binary': dynatrace_binary_detection.stdout
+      }
+    }) }}"
+  when: 
+    - ansible_os_family != "Windows"
+    - (('DYNATRACE_SERVICE_FOUND' in dynatrace_service_detection.stdout) or 
+       ('DYNATRACE_BINARY_FOUND' in dynatrace_binary_detection.stdout))
+
+# ===== DÉTECTION WEBSPHERE (MIDDLEWARE) =====
+- name: "Détection WebSphere - Vérification des répertoires"
+  ansible.builtin.shell: |
+    # Recherche des installations WebSphere
+    was_dirs=""
+    for dir in "/opt/IBM/WebSphere" "/usr/IBM/WebSphere" "/apps/IBM/WebSphere"; do
+      if [ -d "$dir" ]; then
+        was_dirs="${was_dirs}$dir "
+      fi
+    done
+    
+    if [ -n "$was_dirs" ]; then
+      echo "WEBSPHERE_DIRS_FOUND:$was_dirs"
+    else
+      echo "WEBSPHERE_DIRS_MISSING"
+    fi
+  register: websphere_detection
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Ajout de WebSphere à la liste des MIDDLEWARES si détecté"
+  ansible.builtin.set_fact:
+    detected_middleware_list: "{{ detected_middleware_list + ['WebSphere'] }}"
+    middleware_details: "{{ middleware_details | combine({
+      'WebSphere': {
+        'type': 'Serveur d application IBM WebSphere',
+        'directories': websphere_detection.stdout
+      }
+    }) }}"
+  when: 
+    - ansible_os_family != "Windows"
+    - "'WEBSPHERE_DIRS_FOUND' in websphere_detection.stdout"
+
+# ===== DÉTECTION ORACLE (MIDDLEWARE) =====
+- name: "Détection Oracle - Vérification oratab et processus"
+  ansible.builtin.shell: |
+    # Vérification du fichier oratab
+    if [ -f "/etc/oratab" ]; then
+      oracle_instances=$(grep -v "^#" /etc/oratab | grep -v "^$" | wc -l)
+      if [ "$oracle_instances" -gt 0 ]; then
+        echo "ORACLE_ORATAB_FOUND:$oracle_instances"
+      fi
+    fi
+    
+    # Vérification des processus Oracle
+    oracle_processes=$(ps -ef 2>/dev/null | grep -E "(ora_pmon|ora_smon)" | grep -v grep | wc -l)
+    if [ "$oracle_processes" -gt 0 ]; then
+      echo "ORACLE_PROCESSES_FOUND:$oracle_processes"
+    fi
+    
+    if [ "$oracle_instances" -eq 0 ] && [ "$oracle_processes" -eq 0 ]; then
+      echo "ORACLE_NOT_FOUND"
+    fi
+  register: oracle_detection
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Ajout d'Oracle à la liste des MIDDLEWARES si détecté"
+  ansible.builtin.set_fact:
+    detected_middleware_list: "{{ detected_middleware_list + ['Oracle'] }}"
+    middleware_details: "{{ middleware_details | combine({
+      'Oracle': {
+        'type': 'Base de données Oracle',
+        'detection': oracle_detection.stdout
+      }
+    }) }}"
+  when: 
+    - ansible_os_family != "Windows"
+    - oracle_detection.stdout is defined
+    - "'ORACLE_NOT_FOUND' not in oracle_detection.stdout"
+
+# ===== CONSOLIDATION FINALE =====
+- name: "Consolidation finale des middlewares et services détectés"
+  ansible.builtin.set_fact:
+    total_components_detected: "{{ (detected_middleware_list | length) + (detected_services_list | length) }}"
+
+- name: "Affichage du résumé de détection (CORRIGÉ)"
+  ansible.builtin.debug:
+    msg:
+      - "========================================================="
+      - "DÉTECTION MIDDLEWARES ET SERVICES - VERSION CORRIGÉE"
+      - "========================================================="
+      - "Serveur: {{ inventory_hostname }}"
+      - "OS: {{ ansible_system }} {{ ansible_distribution | default('') }}"
+      - ""
+      - "MIDDLEWARES DÉTECTÉS ({{ detected_middleware_list | length }}):"
+      - "{{ detected_middleware_list | join(', ') if detected_middleware_list else 'Aucun middleware détecté' }}"
+      - ""
+      - "SERVICES DÉTECTÉS ({{ detected_services_list | length }}):"
+      - "{{ detected_services_list | join(', ') if detected_services_list else 'Aucun service détecté' }}"
+      - ""
+      - "TOTAL COMPOSANTS: {{ total_components_detected }}"
+      - "========================================================="
+
+- name: "Enregistrement des facts pour les autres rôles"
+  ansible.builtin.set_fact:
+    detected_middleware_list: "{{ detected_middleware_list }}"
+    detected_services_list: "{{ detected_services_list }}"
+    middleware_details: "{{ middleware_details }}"
+    services_details: "{{ services_details }}"
