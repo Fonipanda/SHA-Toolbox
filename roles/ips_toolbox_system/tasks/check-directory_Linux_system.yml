@@ -7,7 +7,7 @@
       - system_codeAP != ""
       - system_code5car is defined
       - system_code5car != ""
-    fail_msg: "Variables obligatoires manquantes - system_codeAP et system_code5car requis"
+    fail_msg: "Variables obligatoires manquantes"
     success_msg: "Variables obligatoires présentes"
 
 - name: "Affichage de la configuration"
@@ -37,16 +37,16 @@
 - name: "Affichage de la version Toolbox"
   ansible.builtin.debug:
     msg:
-      - "Toolbox trouvée: {{ 'OUI ✅' if tbxcheck.matched > 0 else 'NON ❌' }}"
+      - "Toolbox trouvée: {{ 'OUI' if tbxcheck.matched > 0 else 'NON' }}"
       - "Version: {{ tbxversion.stdout_lines[0] if tbxversion.stdout_lines is defined else 'N/A' }}"
-      - "Version minimale requise: 1820 (18.2.0)"
+      - "Version minimale requise: 1820"
 
 - name: "Vérification que la version est suffisante"
   ansible.builtin.assert:
     that:
       - tbxcheck.matched > 0
       - tbxversion.stdout_lines[0] | int >= 1820
-    fail_msg: "Toolbox non trouvée ou version insuffisante - Version minimale requise: 1820"
+    fail_msg: "Toolbox non trouvée ou version insuffisante"
     success_msg: "Toolbox présente et version suffisante"
 
 - name: "Création de l'arborescence applicative via script Toolbox"
@@ -90,7 +90,7 @@
   ansible.builtin.debug:
     msg:
       - "=== Vérification filesystems créés ==="
-      - "{% for result in filesystem_check.results %}{{ result.item }}: {{ 'Présent ✅' if result.stat.exists else 'Absent ❌' }}{% endfor %}"
+      - "{% for result in filesystem_check.results %}{{ result.item }}: {{ 'Présent' if result.stat.exists else 'Absent' }}{% endfor %}"
   when:
     - filesystem_check.results is defined
 
