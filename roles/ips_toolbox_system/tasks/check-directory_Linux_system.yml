@@ -1,150 +1,89 @@
 ---
-- name: "Vérification de la présence du volume groupe vg_apps"
-  ansible.builtin.shell: |
-    vgs | grep -E "vg_apps|vg-apps" || echo "VG_APPS_MISSING"
-  register: vg_apps_check
-  changed_when: false
-  failed_when: false
 
-- name: "Vérification de l'existence du répertoire /applis"
-  ansible.builtin.stat:
-    path: /applis
-  register: applis_dir_check
+- name: "Vérification des variables obligatoires"
+  ansible.builtin.assert:
+    that:
+      - system_codeAP is defined
+      - system_codeAP != ""
+      - system_code5car is defined
+      - system_code5car != ""
+    fail_msg: "Variables obligatoires manquantes : system_codeAP et system_code5car requis"
+    success_msg: "Variables obligatoires présentes"
 
-- name: "Vérification de l'existence du répertoire /apps"
-  ansible.builtin.stat:
-    path: /apps
-  register: apps_dir_check
-
-- name: "Vérification du filesystem /applis"
-  ansible.builtin.shell: |
-    df -h /applis 2>/dev/null | grep -v "Filesystem" || echo "FS_APPLIS_MISSING"
-  register: fs_applis_check
-  changed_when: false
-  failed_when: false
-
-- name: "Vérification du filesystem /apps"
-  ansible.builtin.shell: |
-    df -h /apps 2>/dev/null | grep -v "Filesystem" || echo "FS_APPS_MISSING"
-  register: fs_apps_check
-  changed_when: false
-  failed_when: false
-
-- name: "Création du répertoire /applis si absent"
-  ansible.builtin.file:
-    path: /applis
-    state: directory
-    mode: '0775'
-    owner: root
-    group: root
-  when: not applis_dir_check.stat.exists
-
-- name: "Création du répertoire /apps si absent"
-  ansible.builtin.file:
-    path: /apps
-    state: directory
-    mode: '0775'
-    owner: root
-    group: root
-  when: not apps_dir_check.stat.exists
-
-- name: "Création du filesystem /applis si absent (sur vg_apps)"
-  ansible.builtin.shell: |
-    if [ "{{ 'VG_APPS_MISSING' not in vg_apps_check.stdout }}" = "True" ] && [ "{{ 'FS_APPLIS_MISSING' in fs_applis_check.stdout }}" = "True" ]; then
-      echo "Création du LV et FS pour /applis"
-      lvcreate -L 2G -n lv_applis vg_apps
-      mkfs.ext4 /dev/vg_apps/lv_applis
-      mount /dev/vg_apps/lv_applis /applis
-      echo "/dev/vg_apps/lv_applis /applis ext4 defaults 0 2" >> /etc/fstab
-      chmod 775 /applis
-      echo "FILESYSTEM_APPLIS_CREATED"
-    else
-      echo "FILESYSTEM_APPLIS_SKIPPED"
-    fi
-  register: fs_applis_creation
-  when: 
-    - "'VG_APPS_MISSING' not in vg_apps_check.stdout"
-    - "'FS_APPLIS_MISSING' in fs_applis_check.stdout"
-  changed_when: "'FILESYSTEM_APPLIS_CREATED' in fs_applis_creation.stdout"
-
-- name: "Création du filesystem /apps si absent (sur vg_apps)"
-  ansible.builtin.shell: |
-    if [ "{{ 'VG_APPS_MISSING' not in vg_apps_check.stdout }}" = "True" ] && [ "{{ 'FS_APPS_MISSING' in fs_apps_check.stdout }}" = "True" ]; then
-      echo "Création du LV et FS pour /apps"
-      lvcreate -L 5G -n lv_apps vg_apps
-      mkfs.ext4 /dev/vg_apps/lv_apps
-      mount /dev/vg_apps/lv_apps /apps
-      echo "/dev/vg_apps/lv_apps /apps ext4 defaults 0 2" >> /etc/fstab
-      chmod 775 /apps
-      echo "FILESYSTEM_APPS_CREATED"
-    else
-      echo "FILESYSTEM_APPS_SKIPPED"
-    fi
-  register: fs_apps_creation
-  when: 
-    - "'VG_APPS_MISSING' not in vg_apps_check.stdout"
-    - "'FS_APPS_MISSING' in fs_apps_check.stdout"
-  changed_when: "'FILESYSTEM_APPS_CREATED' in fs_apps_creation.stdout"
-
-- name: "Création de l'arborescence applicative sous /applis"
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: '0775'
-    owner: root
-    group: root
-  loop:
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}"
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}/conf"
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}/scripts"
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}/tmp"
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}/archives"
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}/transfer/in"
-    - "/applis/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}/transfer/out"
-    - "/applis/logs"
-    - "/applis/logs/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}"
-    - "/applis/delivery"
-    - "/applis/delivery/{{ system_codeAP | default('00000') }}-{{ system_code5car | default('XXXXX') }}"
-  when: 
-    - system_codeAP is defined
-    - system_code5car is defined
-
-- name: "Création de l'arborescence exploit sous /apps"
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: '0775'
-    owner: root
-    group: root
-  loop:
-    - "/apps/exploit"
-    - "/apps/exploit/autosys"
-    - "/apps/exploit/conf"
-    - "/apps/exploit/logs"
-    - "/apps/exploit/scripts"
-    - "/apps/exploit/tmp"
-    - "/apps/exploit/delivery"
-    - "/apps/toolboxes"
-
-- name: "Affichage du résumé de création des arborescences"
+- name: "Affichage de la configuration"
   ansible.builtin.debug:
     msg:
-      - "=== RÉSUMÉ CRÉATION ARBORESCENCES ==="
-      - "Volume groupe vg_apps: {{ 'PRÉSENT' if 'VG_APPS_MISSING' not in vg_apps_check.stdout else 'ABSENT' }}"
-      - "Répertoire /applis: {{ 'PRÉSENT' if applis_dir_check.stat.exists else 'CRÉÉ' }}"
-      - "Répertoire /apps: {{ 'PRÉSENT' if apps_dir_check.stat.exists else 'CRÉÉ' }}"
-      - "Filesystem /applis: {{ 'CRÉÉ' if fs_applis_creation is defined and fs_applis_creation.changed else 'PRÉSENT' }}"
-      - "Filesystem /apps: {{ 'CRÉÉ' if fs_apps_creation is defined and fs_apps_creation.changed else 'PRÉSENT' }}"
-      - "CodeAP configuré: {{ system_codeAP | default('NON DÉFINI') }}"
-      - "Code5car configuré: {{ system_code5car | default('NON DÉFINI') }}"
-      - "=== FIN RÉSUMÉ ==="
+      - "=== Création arborescence applicative via Toolbox ==="
+      - "Code Application: {{ system_codeAP }}"
+      - "Code 5 caractères: {{ system_code5car }}"
+      - "Instance ID: {{ system_iis | default('01') }}"
+      - "Volume Group: {{ system_vgName | default('vg_apps') }}"
+      - "Taille LV: {{ system_lvSize | default('1024') }} Mo"
 
-- name: "Enregistrement du résultat de création d'arborescence"
-  ansible.builtin.include_role:
-    name: ips_toolbox_set_results
-  vars:
-    set_results_state: "OK"
-    set_results_component: "system"
-    set_results_operation: "create-directory"
-    set_results_value: "Arborescence créée - /applis et /apps configurés avec droits 775"
-  ignore_errors: true
+- name: "Vérification de l'existence du script Toolbox exploit_arbo-app.ksh"
+  ansible.builtin.stat:
+    path: "/apps/toolboxes/exploit/bin/exploit_arbo-app.ksh"
+  register: toolbox_script_exists
+  changed_when: false
+
+- name: "Échec si le script Toolbox n'existe pas"
+  ansible.builtin.fail:
+    msg: |
+      ❌ Le script Toolbox /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh n'existe pas.
+      Vérifiez que la Toolbox IPS est installée sur le serveur.
+  when: not toolbox_script_exists.stat.exists
+
+- name: "Construction des paramètres pour le script Toolbox"
+  ansible.builtin.set_fact:
+    toolbox_params:
+      codeAP: "AP{{ system_codeAP }}"
+      code5car: "{{ system_code5car }}"
+      id: "{{ system_iis | default('01') }}"
+      vg: "{{ system_vgName | default('vg_apps') }}"
+      lv: "lv_{{ system_code5car }}:{{ system_lvSize | default('1024') }},lv_{{ system_code5car }}_ti:{{ system_lvSize | default('1024') }},lv_{{ system_code5car }}_to:{{ system_lvSize | default('1024') }}"
+
+- name: "Affichage des paramètres Toolbox"
+  ansible.builtin.debug:
+    msg:
+      - "=== Paramètres pour exploit_arbo-app.ksh ==="
+      - "codeAP={{ toolbox_params.codeAP }}"
+      - "code5car={{ toolbox_params.code5car }}"
+      - "id={{ toolbox_params.id }}"
+      - "vg={{ toolbox_params.vg }}"
+      - "lv={{ toolbox_params.lv }}"
+
+- name: "Exécution du script Toolbox exploit_arbo-app.ksh"
+  ansible.builtin.shell: |
+    /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh \
+      codeAP={{ toolbox_params.codeAP }} \
+      code5car={{ toolbox_params.code5car }} \
+      id={{ toolbox_params.id }} \
+      vg={{ toolbox_params.vg }} \
+      lv={{ toolbox_params.lv }}
+  register: toolbox_execution
+  changed_when: toolbox_execution.rc == 0
+  failed_when: toolbox_execution.rc != 0
+
+- name: "Affichage du résultat de l'exécution Toolbox"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat exploit_arbo-app.ksh ==="
+      - "Code retour: {{ toolbox_execution.rc }}"
+      - "Sortie standard:"
+      - "{{ toolbox_execution.stdout_lines }}"
+
+- name: "Vérification de la création de l'arborescence /applis"
+  ansible.builtin.stat:
+    path: "/applis/{{ toolbox_params.codeAP }}-{{ toolbox_params.code5car }}-{{ toolbox_params.id }}"
+  register: applis_directory
+  changed_when: false
+
+- name: "Affichage du statut de création"
+  ansible.builtin.debug:
+    msg:
+      - "=== Statut de création ==="
+      - "Répertoire /applis/{{ toolbox_params.codeAP }}-{{ toolbox_params.code5car }}-{{ toolbox_params.id }}: {{ 'CRÉÉ ✅' if applis_directory.stat.exists else 'NON CRÉÉ ❌' }}"
+      - "Permissions: {{ applis_directory.stat.mode | default('N/A') }}"
+      - "Propriétaire: {{ applis_directory.stat.pw_name | default('N/A') }}"
+      - "Groupe: {{ applis_directory.stat.gr_name | default('N/A') }}"
+
