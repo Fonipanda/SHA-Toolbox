@@ -1,0 +1,19 @@
+---
+# roles/ips_toolbox_banner/defaults/main.yml
+# Variables par défaut pour le rôle banner
+
+banner_component: "banner"
+banner_operation: "create"
+banner_role_name: "ips_toolbox_banner"
+banner_result_name: "banner_creation"
+
+# Chemins des fichiers de bannière
+banner_motd_path: "/etc/motd"
+banner_issue_path: "/etc/issue"
+banner_issue_net_path: "/etc/issue.net"
+banner_sshd_config_path: "/etc/ssh/sshd_config"
+
+# Configuration SSH
+banner_configure_ssh: true
+banner_restart_sshd: true
+
