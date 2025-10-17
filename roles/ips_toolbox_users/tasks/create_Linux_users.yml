@@ -1,6 +1,4 @@
 ---
-# roles/ips_toolbox_users/tasks/create_Linux_users.yml
-# Création des utilisateurs techniques selon le middleware détecté
 
 - name: "Affichage des middlewares détectés"
   ansible.builtin.debug:
