@@ -1,0 +1,24 @@
+================================================================================
+SYSTÈME D'HÉBERGEMENT APPLICATIF (SHA)
+================================================================================
+
+Serveur: {{ ansible_hostname }}
+FQDN: {{ ansible_fqdn }}
+Système: {{ ansible_distribution }} {{ ansible_distribution_version }}
+Architecture: {{ ansible_architecture }}
+Kernel: {{ ansible_kernel }}
+
+Environnement: {{ environnement | default('PRODUCTION') }}
+Code Application: {{ codeAP | default('N/A') }}
+Code 5 caractères: {{ code5car | default('N/A') }}
+
+Middlewares détectés: {{ detected_middlewares | default([]) | join(', ') | default('Aucun') }}
+Services actifs: {{ detected_services | default([]) | join(', ') | default('Aucun') }}
+
+ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
+Toute tentative d'accès non autorisée sera enregistrée et poursuivie.
+
+================================================================================
+Dernière mise à jour: {{ ansible_date_time.iso8601 }}
+================================================================================
+
