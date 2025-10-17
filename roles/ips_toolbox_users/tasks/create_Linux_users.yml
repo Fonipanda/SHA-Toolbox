@@ -1,0 +1,146 @@
+---
+# roles/ips_toolbox_users/tasks/create_Linux_users.yml
+# Création des utilisateurs techniques selon le middleware détecté
+
+- name: "Affichage des middlewares détectés"
+  ansible.builtin.debug:
+    msg:
+      - "=== Création des utilisateurs techniques ==="
+      - "Middlewares détectés: {{ detected_middlewares | default([]) | join(', ') }}"
+      - "Services détectés: {{ detected_services | default([]) | join(', ') }}"
+
+- name: "Définition de la liste des utilisateurs à créer"
+  ansible.builtin.set_fact:
+    users_to_create: []
+
+- name: "Ajout de l'utilisateur Oracle si middleware détecté"
+  ansible.builtin.set_fact:
+    users_to_create: "{{ users_to_create + [{'name': 'oracle', 'group': 'dba', 'groups': ['oinstall'], 'home': '/home/oracle', 'shell': '/bin/bash', 'comment': 'Oracle Database Administrator'}] }}"
+  when:
+    - detected_middlewares is defined
+    - "'Oracle' in detected_middlewares"
+
+- name: "Ajout de l'utilisateur WebSphere si middleware détecté"
+  ansible.builtin.set_fact:
+    users_to_create: "{{ users_to_create + [{'name': 'wasadmin', 'group': 'wasadm', 'groups': [], 'home': '/home/wasadmin', 'shell': '/bin/bash', 'comment': 'WebSphere Administrator'}] }}"
+  when:
+    - detected_middlewares is defined
+    - "'WebSphere' in detected_middlewares or 'WAS' in detected_middlewares"
+
+- name: "Ajout de l'utilisateur Liberty si middleware détecté"
+  ansible.builtin.set_fact:
+    users_to_create: "{{ users_to_create + [{'name': 'liberty', 'group': 'liberty', 'groups': [], 'home': '/home/liberty', 'shell': '/bin/bash', 'comment': 'WebSphere Liberty Administrator'}] }}"
+  when:
+    - detected_middlewares is defined
+    - "'Liberty' in detected_middlewares"
+
+- name: "Ajout de l'utilisateur CFT si middleware détecté"
+  ansible.builtin.set_fact:
+    users_to_create: "{{ users_to_create + [{'name': 'cft', 'group': 'cft', 'groups': [], 'home': '/home/cft', 'shell': '/bin/bash', 'comment': 'CFT Transfer Administrator'}] }}"
+  when:
+    - detected_middlewares is defined
+    - "'CFT' in detected_middlewares"
+
+- name: "Ajout de l'utilisateur applicatif générique si défini"
+  ansible.builtin.set_fact:
+    users_to_create: "{{ users_to_create + [{'name': app_user, 'group': app_group, 'groups': [], 'home': '/home/' + app_user, 'shell': '/bin/bash', 'comment': 'Application User'}] }}"
+  when:
+    - app_user is defined
+    - app_user != ""
+    - app_group is defined
+    - app_group != ""
+
+- name: "Affichage de la liste des utilisateurs à créer"
+  ansible.builtin.debug:
+    msg:
+      - "Nombre d'utilisateurs à créer: {{ users_to_create | length }}"
+      - "Utilisateurs: {{ users_to_create | map(attribute='name') | list | join(', ') }}"
+
+- name: "Création des groupes principaux pour les utilisateurs"
+  ansible.builtin.group:
+    name: "{{ item.group }}"
+    state: present
+  loop: "{{ users_to_create }}"
+  when: users_to_create | length > 0
+
+- name: "Création des groupes secondaires pour les utilisateurs"
+  ansible.builtin.group:
+    name: "{{ group_item }}"
+    state: present
+  loop: "{{ users_to_create | selectattr('groups', 'defined') | map(attribute='groups') | flatten | unique | list }}"
+  loop_control:
+    loop_var: group_item
+  when:
+    - users_to_create | length > 0
+    - users_to_create | selectattr('groups', 'defined') | map(attribute='groups') | flatten | unique | list | length > 0
+
+- name: "Création des utilisateurs techniques"
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    group: "{{ item.group }}"
+    groups: "{{ item.groups | default([]) | join(',') }}"
+    home: "{{ item.home }}"
+    shell: "{{ item.shell }}"
+    comment: "{{ item.comment }}"
+    create_home: yes
+    state: present
+  loop: "{{ users_to_create }}"
+  register: users_creation
+  when: users_to_create | length > 0
+
+- name: "Création du répertoire .ssh pour chaque utilisateur"
+  ansible.builtin.file:
+    path: "{{ item.home }}/.ssh"
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.group }}"
+    mode: '0700'
+  loop: "{{ users_to_create }}"
+  when: users_to_create | length > 0
+
+- name: "Déploiement des clés SSH publiques si définies"
+  ansible.builtin.authorized_key:
+    user: "{{ item.name }}"
+    key: "{{ lookup('file', 'files/' + item.name + '_id_rsa.pub') }}"
+    state: present
+  loop: "{{ users_to_create }}"
+  when:
+    - users_to_create | length > 0
+    - lookup('fileglob', 'files/' + item.name + '_id_rsa.pub', errors='ignore') | length > 0
+  ignore_errors: yes
+
+- name: "Configuration sudo pour les utilisateurs admin si nécessaire"
+  ansible.builtin.lineinfile:
+    path: "/etc/sudoers.d/{{ item.name }}"
+    line: "{{ item.name }} ALL=(ALL) NOPASSWD: ALL"
+    create: yes
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  loop: "{{ users_to_create }}"
+  when:
+    - users_to_create | length > 0
+    - item.name in ['wasadmin', 'oracle', 'liberty']
+  ignore_errors: yes
+
+- name: "Affichage du résultat de création des utilisateurs"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat création utilisateurs ==="
+      - "Utilisateurs créés: {{ users_creation.results | selectattr('changed', 'equalto', true) | map(attribute='name') | list | join(', ') if users_creation.results is defined else 'Aucun' }}"
+      - "Utilisateurs déjà existants: {{ users_creation.results | selectattr('changed', 'equalto', false) | map(attribute='name') | list | join(', ') if users_creation.results is defined else 'Aucun' }}"
+  when: users_creation is defined
+
+- name: "Enregistrement du résultat de création des utilisateurs"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "created"
+    set_results_item: "users"
+    set_results_value: "Utilisateurs créés: {{ users_to_create | map(attribute='name') | list | join(', ') if users_to_create | length > 0 else 'Aucun' }}"
+    set_results_component: "{{ users_component | default('users') }}"
+    set_results_operation: "{{ users_operation | default('create') }}"
+    set_results_role_name: "{{ users_role_name | default('ips_toolbox_users') }}"
+    set_results_result_name: "{{ users_result_name | default('users_creation') }}"
+    set_results_status: "OK"
+  ignore_errors: yes
+

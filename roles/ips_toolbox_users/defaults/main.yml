@@ -1,0 +1,24 @@
+---
+# roles/ips_toolbox_users/defaults/main.yml
+# Variables par défaut pour le rôle users
+
+users_component: "users"
+users_operation: "create"
+users_role_name: "ips_toolbox_users"
+users_result_name: "users_creation"
+
+# Utilisateur applicatif générique (optionnel)
+app_user: ""
+app_group: ""
+
+# Configuration sudo pour les utilisateurs admin
+users_configure_sudo: true
+users_admin_list:
+  - oracle
+  - wasadmin
+  - liberty
+
+# Configuration SSH
+users_deploy_ssh_keys: true
+users_ssh_keys_dir: "files"
+
