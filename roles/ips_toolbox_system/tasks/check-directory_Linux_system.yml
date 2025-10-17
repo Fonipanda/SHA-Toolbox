@@ -7,83 +7,103 @@
       - system_codeAP != ""
       - system_code5car is defined
       - system_code5car != ""
-    fail_msg: "Variables obligatoires manquantes : system_codeAP et system_code5car requis"
+    fail_msg: "Variables obligatoires manquantes - system_codeAP et system_code5car requis"
     success_msg: "Variables obligatoires présentes"
 
 - name: "Affichage de la configuration"
   ansible.builtin.debug:
     msg:
       - "=== Création arborescence applicative via Toolbox ==="
-      - "Code Application: {{ system_codeAP }}"
-      - "Code 5 caractères: {{ system_code5car }}"
-      - "Instance ID: {{ system_iis | default('01') }}"
-      - "Volume Group: {{ system_vgName | default('vg_apps') }}"
-      - "Taille LV: {{ system_lvSize | default('1024') }} Mo"
+      - "Code Application: {{ system_Appli_Code }}"
+      - "Code 5 caractères: {{ system_Appli_5_car }}"
+      - "Instance ID: {{ system_Appli_id | default('id=01') }}"
+      - "Volume Group: {{ system_Appli_vg | default('vg=vg_apps') }}"
+      - "Script Toolbox: /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh"
 
-- name: "Vérification de l'existence du script Toolbox exploit_arbo-app.ksh"
-  ansible.builtin.stat:
-    path: "/apps/toolboxes/exploit/bin/exploit_arbo-app.ksh"
-  register: toolbox_script_exists
+- name: "Vérification de la présence de la Toolbox"
+  ansible.builtin.find:
+    paths: "/apps/toolboxes/exploit/bin"
+    patterns: "exploit_arbo-app.ksh"
+  register: tbxcheck
+
+- name: "Vérification de la version de la Toolbox"
+  ansible.builtin.shell: |
+    cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g'
+  register: tbxversion
   changed_when: false
+  when:
+    - tbxcheck.matched > 0
 
-- name: "Échec si le script Toolbox n'existe pas"
-  ansible.builtin.fail:
-    msg: |
-      ❌ Le script Toolbox /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh n'existe pas.
-      Vérifiez que la Toolbox IPS est installée sur le serveur.
-  when: not toolbox_script_exists.stat.exists
-
-- name: "Construction des paramètres pour le script Toolbox"
-  ansible.builtin.set_fact:
-    toolbox_params:
-      codeAP: "AP{{ system_codeAP }}"
-      code5car: "{{ system_code5car }}"
-      id: "{{ system_iis | default('01') }}"
-      vg: "{{ system_vgName | default('vg_apps') }}"
-      lv: "lv_{{ system_code5car }}:{{ system_lvSize | default('1024') }},lv_{{ system_code5car }}_ti:{{ system_lvSize | default('1024') }},lv_{{ system_code5car }}_to:{{ system_lvSize | default('1024') }}"
-
-- name: "Affichage des paramètres Toolbox"
+- name: "Affichage de la version Toolbox"
   ansible.builtin.debug:
     msg:
-      - "=== Paramètres pour exploit_arbo-app.ksh ==="
-      - "codeAP={{ toolbox_params.codeAP }}"
-      - "code5car={{ toolbox_params.code5car }}"
-      - "id={{ toolbox_params.id }}"
-      - "vg={{ toolbox_params.vg }}"
-      - "lv={{ toolbox_params.lv }}"
+      - "Toolbox trouvée: {{ 'OUI ✅' if tbxcheck.matched > 0 else 'NON ❌' }}"
+      - "Version: {{ tbxversion.stdout_lines[0] if tbxversion.stdout_lines is defined else 'N/A' }}"
+      - "Version minimale requise: 1820 (18.2.0)"
 
-- name: "Exécution du script Toolbox exploit_arbo-app.ksh"
+- name: "Vérification que la version est suffisante"
+  ansible.builtin.assert:
+    that:
+      - tbxcheck.matched > 0
+      - tbxversion.stdout_lines[0] | int >= 1820
+    fail_msg: "Toolbox non trouvée ou version insuffisante - Version minimale requise: 1820"
+    success_msg: "Toolbox présente et version suffisante"
+
+- name: "Création de l'arborescence applicative via script Toolbox"
   ansible.builtin.shell: |
     /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh \
-      codeAP={{ toolbox_params.codeAP }} \
-      code5car={{ toolbox_params.code5car }} \
-      id={{ toolbox_params.id }} \
-      vg={{ toolbox_params.vg }} \
-      lv={{ toolbox_params.lv }}
-  register: toolbox_execution
-  changed_when: toolbox_execution.rc == 0
-  failed_when: toolbox_execution.rc != 0
+      codeAP={{ system_Appli_Code }} \
+      code5car={{ system_Appli_5_car }} \
+      {{ system_Appli_id }} \
+      {{ system_Appli_vg }} \
+      {{ system_Appli_lv }} \
+      {{ system_Appli_lvex }}{{ system_Appli_lvex1 }}{{ system_Appli_lvex2 }} \
+      {{ system_Appli_user }}
+  register: resultarbo
+  ignore_errors: yes
+  changed_when:
+    - '"-I- Creation du FS" in resultarbo.stdout'
+    - resultarbo.rc == 0
+  when:
+    - tbxversion.stdout_lines[0] | int >= 1820
 
-- name: "Affichage du résultat de l'exécution Toolbox"
+- name: "Affichage du résultat de création"
   ansible.builtin.debug:
     msg:
-      - "=== Résultat exploit_arbo-app.ksh ==="
-      - "Code retour: {{ toolbox_execution.rc }}"
-      - "Sortie standard:"
-      - "{{ toolbox_execution.stdout_lines }}"
+      - "=== Résultat création arborescence ==="
+      - "{{ resultarbo.stdout_lines if resultarbo.stdout_lines is defined else ['Erreur lors de la création'] }}"
 
-- name: "Vérification de la création de l'arborescence /applis"
+- name: "Vérification de la présence des filesystems créés"
   ansible.builtin.stat:
-    path: "/applis/{{ toolbox_params.codeAP }}-{{ toolbox_params.code5car }}-{{ toolbox_params.id }}"
-  register: applis_directory
-  changed_when: false
+    path: "{{ item }}"
+  loop:
+    - "/applis/{{ system_Appli_Code }}-{{ system_Appli_5_car }}-{{ system_iis | default('01') }}"
+    - "/applis/shared"
+    - "/applis/logs"
+    - "/applis/delivery"
+  register: filesystem_check
+  when:
+    - resultarbo.rc is defined
+    - resultarbo.rc == 0
 
-- name: "Affichage du statut de création"
+- name: "Affichage de la vérification des filesystems"
   ansible.builtin.debug:
     msg:
-      - "=== Statut de création ==="
-      - "Répertoire /applis/{{ toolbox_params.codeAP }}-{{ toolbox_params.code5car }}-{{ toolbox_params.id }}: {{ 'CRÉÉ ✅' if applis_directory.stat.exists else 'NON CRÉÉ ❌' }}"
-      - "Permissions: {{ applis_directory.stat.mode | default('N/A') }}"
-      - "Propriétaire: {{ applis_directory.stat.pw_name | default('N/A') }}"
-      - "Groupe: {{ applis_directory.stat.gr_name | default('N/A') }}"
+      - "=== Vérification filesystems créés ==="
+      - "{% for result in filesystem_check.results %}{{ result.item }}: {{ 'Présent ✅' if result.stat.exists else 'Absent ❌' }}{% endfor %}"
+  when:
+    - filesystem_check.results is defined
 
+- name: "Enregistrement du résultat de création d'arborescence"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'created' if (resultarbo.rc is defined and resultarbo.rc == 0) else 'failed' }}"
+    set_results_item: "arborescence"
+    set_results_value: "Arborescence {{ system_Appli_Code }}-{{ system_Appli_5_car }}-{{ system_iis | default('01') }}"
+    set_results_component: "{{ system_component | default('system') }}"
+    set_results_operation: "{{ system_operation | default('create-directory') }}"
+    set_results_role_name: "{{ system_role_name | default('ips_toolbox_system') }}"
+    set_results_result_name: "{{ system_result_name | default('create_directory') }}"
+    set_results_status: "{{ 'OK' if (resultarbo.rc is defined and resultarbo.rc == 0) else 'KO' }}"
+  ignore_errors: yes
