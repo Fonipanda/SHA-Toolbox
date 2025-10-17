@@ -1,6 +1,5 @@
 ---
-# roles/ips_toolbox_banner/tasks/main.yml
-# Rôle principal pour la création de bannières de connexion
+
 - name: "Initialisation du rôle ips_toolbox_banner"
   ansible.builtin.set_fact:
     banner_component: "banner"
