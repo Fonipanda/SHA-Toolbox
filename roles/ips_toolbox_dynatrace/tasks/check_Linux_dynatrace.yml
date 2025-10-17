@@ -1,118 +1,142 @@
 ---
-- name: "Vérification de l'installation du service Dynatrace OneAgent"
-  ansible.builtin.shell: |
-    systemctl list-units --all | grep -i oneagent && echo "SERVICE_FOUND" || echo "SERVICE_MISSING"
-  register: dynatrace_service_check
-  changed_when: false
-  failed_when: false
+# roles/ips_toolbox_dynatrace/tasks/check_Linux_dynatrace.yml
+# Vérification et configuration de Dynatrace OneAgent
 
-- name: "Vérification du binaire OneAgent"
+- name: "Vérification de l'existence de l'agent Dynatrace"
   ansible.builtin.stat:
-    path: /opt/dynatrace/oneagent/agent/bin/oneagentctl
-  register: dynatrace_binary_check
+    path: "/apps/dynatrace/oneagent/agent/tools/oneagentctl"
+  register: dynatrace_agent_check
 
-- name: "Vérification des processus OneAgent actifs"
+- name: "Affichage du statut de détection Dynatrace"
+  ansible.builtin.debug:
+    msg:
+      - "=== Vérification Dynatrace OneAgent ==="
+      - "Agent installé: {{ 'OUI ✅' if dynatrace_agent_check.stat.exists else 'NON ❌' }}"
+      - "Chemin: /apps/dynatrace/oneagent/agent/tools/oneagentctl"
+
+- name: "Vérification de la version de Dynatrace OneAgent"
   ansible.builtin.shell: |
-    ps -ef | grep -i oneagent | grep -v grep | head -5 || echo "Aucun processus OneAgent"
-  register: dynatrace_processes
+    /apps/dynatrace/oneagent/agent/tools/oneagentctl --version
+  register: dynatrace_version
   changed_when: false
-  failed_when: false
+  when: dynatrace_agent_check.stat.exists
 
-- name: "Obtention du statut complet OneAgent (si installé)"
+- name: "Affichage de la version Dynatrace"
+  ansible.builtin.debug:
+    msg:
+      - "Version Dynatrace: {{ dynatrace_version.stdout if dynatrace_version.stdout is defined else 'Non disponible' }}"
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Vérification du statut de l'agent Dynatrace"
   ansible.builtin.shell: |
-    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
-      echo "=== Statut complet Dynatrace OneAgent ==="
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl --get-server-config 2>/dev/null || echo "Configuration serveur non disponible"
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl --get-connectivity-info 2>/dev/null || echo "Info connectivité non disponible"
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl --version 2>/dev/null || echo "Version non disponible"
-      echo "=== Fin statut OneAgent ==="
-    else
-      echo "Binaire OneAgent non trouvé"
-    fi
+    /apps/dynatrace/oneagent/agent/tools/oneagentctl status
   register: dynatrace_status
   changed_when: false
   failed_when: false
+  when: dynatrace_agent_check.stat.exists
 
-- name: "Vérification du mode Full Stack"
+- name: "Affichage du statut Dynatrace"
+  ansible.builtin.debug:
+    msg: "{{ dynatrace_status.stdout_lines if dynatrace_status.stdout_lines is defined else ['Statut non disponible'] }}"
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Vérification si l'agent Dynatrace est actif"
+  ansible.builtin.set_fact:
+    dynatrace_is_running: "{{ 'running' in dynatrace_status.stdout | lower if dynatrace_status.stdout is defined else false }}"
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Démarrage de l'agent Dynatrace si arrêté"
   ansible.builtin.shell: |
-    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
-      echo "=== Vérification mode Full Stack ==="
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl --get-service-status 2>/dev/null | grep -E "(Infrastructure|Application|Network)" || echo "Statut services non disponible"
-      echo "=== Fin vérification Full Stack ==="
-    else
-      echo "OneAgent non installé - vérification Full Stack impossible"
-    fi
-  register: dynatrace_fullstack_check
-  changed_when: false
-  failed_when: false
+    /apps/dynatrace/oneagent/agent/tools/oneagentctl start
+  register: dynatrace_start
+  when:
+    - dynatrace_agent_check.stat.exists
+    - not (dynatrace_is_running | default(false))
+  ignore_errors: yes
 
-- name: "Vérification de la surveillance des bases de données Oracle"
-  ansible.builtin.shell: |
-    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
-      echo "=== Vérification surveillance Oracle ==="
-      # Vérifier si OneAgent surveille les processus Oracle
-      ps -ef | grep -E "(oracle|tnslsnr)" | grep -v grep && echo "ORACLE_PROCESSES_FOUND" || echo "ORACLE_PROCESSES_MISSING"
-      
-      # Vérifier la configuration du monitoring Oracle dans OneAgent
-      if [ -d "/opt/dynatrace/oneagent/agent/conf" ]; then
-        find /opt/dynatrace/oneagent/agent/conf -name "*.cfg" -exec grep -l -i oracle {} \; 2>/dev/null || echo "Configuration Oracle non trouvée"
-      fi
-      echo "=== Fin vérification Oracle ==="
-    else
-      echo "OneAgent non disponible pour vérifier Oracle"
-    fi
-  register: dynatrace_oracle_check
-  changed_when: false
-  failed_when: false
-
-- name: "Configuration OneAgent en mode Full Stack si nécessaire"
-  ansible.builtin.shell: |
-    if [ -f "/opt/dynatrace/oneagent/agent/bin/oneagentctl" ]; then
-      echo "Configuration OneAgent en mode Full Stack"
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl --set-infra-only=false 2>/dev/null || echo "Configuration Full Stack échouée"
-      /opt/dynatrace/oneagent/agent/bin/oneagentctl --restart-service 2>/dev/null || echo "Redémarrage service échoué"
-      echo "ONEAGENT_CONFIGURED_FULLSTACK"
-    else
-      echo "ONEAGENT_NOT_AVAILABLE"
-    fi
-  register: dynatrace_configure
-  when: dynatrace_binary_check.stat.exists
-  changed_when: "'ONEAGENT_CONFIGURED_FULLSTACK' in dynatrace_configure.stdout"
-
-- name: "Affichage du résumé complet Dynatrace"
+- name: "Affichage du résultat de démarrage Dynatrace"
   ansible.builtin.debug:
     msg:
-      - "=== RÉSUMÉ DYNATRACE ONEAGENT ==="
-      - "Service détecté: {{ 'Oui' if 'SERVICE_FOUND' in dynatrace_service_check.stdout else 'Non' }}"
-      - "Binaire présent: {{ 'Oui' if dynatrace_binary_check.stat.exists else 'Non' }}"
-      - "Processus actifs: {{ dynatrace_processes.stdout_lines | length }} processus"
-      - ""
-      - "STATUT ONEAGENT:"
-      - "{{ dynatrace_status.stdout_lines | default(['Statut non disponible']) }}"
-      - ""
-      - "MODE FULL STACK:"
-      - "{{ dynatrace_fullstack_check.stdout_lines | default(['Vérification Full Stack non disponible']) }}"
-      - ""
-      - "SURVEILLANCE ORACLE:"
-      - "{{ dynatrace_oracle_check.stdout_lines | default(['Vérification Oracle non disponible']) }}"
-      - "=== FIN RÉSUMÉ ==="
+      - "=== Résultat démarrage Dynatrace ==="
+      - "{{ dynatrace_start.stdout_lines if dynatrace_start.stdout_lines is defined else ['Déjà en cours d\\'exécution'] }}"
+  when:
+    - dynatrace_agent_check.stat.exists
+    - dynatrace_start is defined
 
-- name: "Enregistrement du résultat Dynatrace"
+- name: "Vérification du mode de connexion Dynatrace (FullStack)"
+  ansible.builtin.shell: |
+    /apps/dynatrace/oneagent/agent/tools/oneagentctl --get-mode
+  register: dynatrace_mode
+  changed_when: false
+  failed_when: false
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Affichage du mode Dynatrace"
+  ansible.builtin.debug:
+    msg:
+      - "Mode Dynatrace: {{ dynatrace_mode.stdout if dynatrace_mode.stdout is defined else 'Non disponible' }}"
+      - "Mode attendu: FullStack"
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Vérification de la connexion au serveur Dynatrace"
+  ansible.builtin.shell: |
+    /apps/dynatrace/oneagent/agent/tools/oneagentctl --get-server
+  register: dynatrace_server
+  changed_when: false
+  failed_when: false
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Affichage du serveur Dynatrace"
+  ansible.builtin.debug:
+    msg:
+      - "Serveur Dynatrace: {{ dynatrace_server.stdout if dynatrace_server.stdout is defined else 'Non configuré' }}"
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Vérification du statut final de l'agent Dynatrace"
+  ansible.builtin.shell: |
+    /apps/dynatrace/oneagent/agent/tools/oneagentctl status
+  register: dynatrace_final_status
+  changed_when: false
+  failed_when: false
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Affichage du statut final Dynatrace"
+  ansible.builtin.debug:
+    msg:
+      - "=== Statut final Dynatrace ==="
+      - "{{ dynatrace_final_status.stdout_lines if dynatrace_final_status.stdout_lines is defined else ['Statut non disponible'] }}"
+  when: dynatrace_agent_check.stat.exists
+
+- name: "Enregistrement du résultat de vérification Dynatrace"
   ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
     set_results_state: >-
-      {% if dynatrace_binary_check.stat.exists %}
+      {% if not dynatrace_agent_check.stat.exists %}
+      not installed
+      {% elif dynatrace_is_running | default(false) or (dynatrace_start is defined and dynatrace_start.rc == 0) %}
+      running
+      {% else %}
+      stopped
+      {% endif %}
+    set_results_item: "dynatrace"
+    set_results_value: >-
+      {% if not dynatrace_agent_check.stat.exists %}
+      Agent Dynatrace non installé
+      {% else %}
+      Version: {{ dynatrace_version.stdout | default('N/A') }}, Mode: {{ dynatrace_mode.stdout | default('N/A') }}, Serveur: {{ dynatrace_server.stdout | default('N/A') }}
+      {% endif %}
+    set_results_component: "{{ dynatrace_component | default('dynatrace') }}"
+    set_results_operation: "{{ dynatrace_operation | default('check') }}"
+    set_results_role_name: "{{ dynatrace_role_name | default('ips_toolbox_dynatrace') }}"
+    set_results_result_name: "{{ dynatrace_result_name | default('dynatrace_check') }}"
+    set_results_status: >-
+      {% if not dynatrace_agent_check.stat.exists %}
+      KO
+      {% elif dynatrace_is_running | default(false) or (dynatrace_start is defined and dynatrace_start.rc == 0) %}
       OK
       {% else %}
-      INFO
+      KO
       {% endif %}
-    set_results_component: "dynatrace"
-    set_results_operation: "check"
-    set_results_value: >-
-      {% if dynatrace_binary_check.stat.exists %}
-      Dynatrace OneAgent installé et configuré en mode Full Stack
-      {% else %}
-      Dynatrace OneAgent non installé - normal sur serveur sans Dynatrace
-      {% endif %}
-  ignore_errors: true
+  ignore_errors: yes
+
