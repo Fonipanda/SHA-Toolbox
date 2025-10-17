@@ -1,6 +1,4 @@
 ---
-# roles/ips_toolbox_banner/handlers/main.yml
-# Handlers pour le rôle banner
 
 - name: "Restart sshd"
   ansible.builtin.systemd:
