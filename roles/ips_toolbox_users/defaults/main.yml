@@ -1,6 +1,4 @@
 ---
-# roles/ips_toolbox_users/defaults/main.yml
-# Variables par défaut pour le rôle users
 
 users_component: "users"
 users_operation: "create"
