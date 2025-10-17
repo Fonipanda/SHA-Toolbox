@@ -1,27 +1,168 @@
 ---
+# roles/ips_toolbox_illumio/tasks/check_Linux_illumio.yml
+# Vérification et configuration d'Illumio VEN en mode Enforced
 
-- name: check illumio
-  illumio:
-    action: check
+- name: "Vérification de l'existence de l'agent Illumio VEN"
+  ansible.builtin.stat:
+    path: "/opt/illumio_ven/illumio-ven-ctl"
+  register: illumio_agent_check
+
+- name: "Affichage du statut de détection Illumio"
+  ansible.builtin.debug:
+    msg:
+      - "=== Vérification Illumio VEN ==="
+      - "Agent installé: {{ 'OUI ✅' if illumio_agent_check.stat.exists else 'NON ❌' }}"
+      - "Chemin: /opt/illumio_ven/illumio-ven-ctl"
+
+- name: "Vérification de la version d'Illumio VEN"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl version
+  register: illumio_version
+  changed_when: false
+  failed_when: false
+  when: illumio_agent_check.stat.exists
+
+- name: "Affichage de la version Illumio"
+  ansible.builtin.debug:
+    msg:
+      - "Version Illumio: {{ illumio_version.stdout if illumio_version.stdout is defined else 'Non disponible' }}"
+  when: illumio_agent_check.stat.exists
+
+- name: "Vérification du statut de l'agent Illumio"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl status
+  register: illumio_status
+  changed_when: false
+  failed_when: false
+  when: illumio_agent_check.stat.exists
+
+- name: "Affichage du statut Illumio"
+  ansible.builtin.debug:
+    msg: "{{ illumio_status.stdout_lines if illumio_status.stdout_lines is defined else ['Statut non disponible'] }}"
+  when: illumio_agent_check.stat.exists
+
+- name: "Vérification si l'agent Illumio est actif"
+  ansible.builtin.set_fact:
+    illumio_is_running: "{{ 'running' in illumio_status.stdout | lower or 'active' in illumio_status.stdout | lower if illumio_status.stdout is defined else false }}"
+  when: illumio_agent_check.stat.exists
+
+- name: "Démarrage de l'agent Illumio si arrêté"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl start
+  register: illumio_start
+  when:
+    - illumio_agent_check.stat.exists
+    - not (illumio_is_running | default(false))
   ignore_errors: yes
-  register: result
 
-- name: set results
+- name: "Affichage du résultat de démarrage Illumio"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat démarrage Illumio ==="
+      - "{{ illumio_start.stdout_lines if illumio_start.stdout_lines is defined else ['Déjà en cours d\\'exécution'] }}"
+  when:
+    - illumio_agent_check.stat.exists
+    - illumio_start is defined
+
+- name: "Vérification du mode actuel d'Illumio VEN"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl status -v | grep -i "mode" || /opt/illumio_ven/illumio-ven-ctl status
+  register: illumio_current_mode
+  changed_when: false
+  failed_when: false
+  when: illumio_agent_check.stat.exists
+
+- name: "Affichage du mode actuel Illumio"
+  ansible.builtin.debug:
+    msg:
+      - "Mode actuel Illumio: {{ illumio_current_mode.stdout if illumio_current_mode.stdout is defined else 'Non disponible' }}"
+      - "Mode attendu: Enforced"
+  when: illumio_agent_check.stat.exists
+
+- name: "Détection si le mode est Enforced"
+  ansible.builtin.set_fact:
+    illumio_is_enforced: "{{ 'enforced' in illumio_current_mode.stdout | lower if illumio_current_mode.stdout is defined else false }}"
+  when: illumio_agent_check.stat.exists
+
+- name: "Passage en mode Enforced si nécessaire"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl set-mode enforced
+  register: illumio_set_enforced
+  when:
+    - illumio_agent_check.stat.exists
+    - not (illumio_is_enforced | default(false))
+  ignore_errors: yes
+
+- name: "Affichage du résultat de passage en mode Enforced"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat passage en mode Enforced ==="
+      - "{{ illumio_set_enforced.stdout_lines if illumio_set_enforced.stdout_lines is defined else ['Déjà en mode Enforced'] }}"
+  when:
+    - illumio_agent_check.stat.exists
+    - illumio_set_enforced is defined
+
+- name: "Vérification de la connectivité au PCE (Policy Compute Engine)"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl status -v | grep -i "pce" || echo "PCE info non disponible"
+  register: illumio_pce_status
+  changed_when: false
+  failed_when: false
+  when: illumio_agent_check.stat.exists
+
+- name: "Affichage du statut PCE"
+  ansible.builtin.debug:
+    msg:
+      - "Statut PCE: {{ illumio_pce_status.stdout if illumio_pce_status.stdout is defined else 'Non disponible' }}"
+  when: illumio_agent_check.stat.exists
+
+- name: "Vérification du statut final de l'agent Illumio"
+  ansible.builtin.shell: |
+    /opt/illumio_ven/illumio-ven-ctl status -v
+  register: illumio_final_status
+  changed_when: false
+  failed_when: false
+  when: illumio_agent_check.stat.exists
+
+- name: "Affichage du statut final Illumio"
+  ansible.builtin.debug:
+    msg:
+      - "=== Statut final Illumio ==="
+      - "{{ illumio_final_status.stdout_lines if illumio_final_status.stdout_lines is defined else ['Statut non disponible'] }}"
+  when: illumio_agent_check.stat.exists
+
+- name: "Enregistrement du résultat de vérification Illumio"
   ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-    set_results_state: "info"
-    set_results_item: ""
-    set_results_value: "{{ result.check | default(result.msg) }}"
-    set_results_component: "{{ illumio_component }}"
-    set_results_operation: "{{ illumio_operation }}"
-    set_results_role_name: "{{ illumio_role_name }}"
-    set_results_result_name: "{{ illumio_result_name }}"
+    set_results_state: >-
+      {% if not illumio_agent_check.stat.exists %}
+      not installed
+      {% elif illumio_is_enforced | default(false) or (illumio_set_enforced is defined and illumio_set_enforced.rc == 0) %}
+      enforced
+      {% elif illumio_is_running | default(false) %}
+      running
+      {% else %}
+      stopped
+      {% endif %}
+    set_results_item: "illumio"
+    set_results_value: >-
+      {% if not illumio_agent_check.stat.exists %}
+      Agent Illumio non installé
+      {% else %}
+      Version: {{ illumio_version.stdout | default('N/A') }}, Mode: {{ 'Enforced' if (illumio_is_enforced | default(false) or (illumio_set_enforced is defined and illumio_set_enforced.rc == 0)) else 'Non-Enforced' }}, PCE: {{ illumio_pce_status.stdout | default('N/A') }}
+      {% endif %}
+    set_results_component: "{{ illumio_component | default('illumio') }}"
+    set_results_operation: "{{ illumio_operation | default('check') }}"
+    set_results_role_name: "{{ illumio_role_name | default('ips_toolbox_illumio') }}"
+    set_results_result_name: "{{ illumio_result_name | default('illumio_check') }}"
     set_results_status: >-
-        {% if result.failed == False %}
-        SUCCESS
-        {% else %}
-        FAILED
-        {% endif %}
-
+      {% if not illumio_agent_check.stat.exists %}
+      KO
+      {% elif illumio_is_enforced | default(false) or (illumio_set_enforced is defined and illumio_set_enforced.rc == 0) %}
+      OK
+      {% else %}
+      WARNING
+      {% endif %}
+  ignore_errors: yes
 
