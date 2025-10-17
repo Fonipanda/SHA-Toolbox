@@ -1,0 +1,180 @@
+---
+# roles/ips_toolbox_backup/tasks/check_Linux_tsm.yml
+# Vérification et configuration du client TSM (Tivoli Storage Manager)
+
+- name: "Vérification de l'existence du client TSM"
+  ansible.builtin.stat:
+    path: "/opt/tivoli/tsm/client/ba/bin/dsmc"
+  register: tsm_client_check
+
+- name: "Affichage du statut de détection TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Vérification TSM Client ==="
+      - "Client installé: {{ 'OUI ✅' if tsm_client_check.stat.exists else 'NON ❌' }}"
+      - "Chemin: /opt/tivoli/tsm/client/ba/bin/dsmc"
+
+- name: "Vérification de la version du client TSM"
+  ansible.builtin.shell: |
+    /opt/tivoli/tsm/client/ba/bin/dsmc -version | head -1
+  register: tsm_version
+  changed_when: false
+  failed_when: false
+  when: tsm_client_check.stat.exists
+
+- name: "Affichage de la version TSM"
+  ansible.builtin.debug:
+    msg:
+      - "Version TSM: {{ tsm_version.stdout if tsm_version.stdout is defined else 'Non disponible' }}"
+  when: tsm_client_check.stat.exists
+
+- name: "Vérification de l'existence du daemon dsmcad"
+  ansible.builtin.stat:
+    path: "/opt/tivoli/tsm/client/ba/bin/dsmcad"
+  register: dsmcad_check
+
+- name: "Vérification du statut du service dsmcad"
+  ansible.builtin.systemd:
+    name: dsmcad
+  register: dsmcad_service_status
+  failed_when: false
+  when: dsmcad_check.stat.exists
+
+- name: "Affichage du statut du service dsmcad"
+  ansible.builtin.debug:
+    msg:
+      - "Service dsmcad: {{ dsmcad_service_status.status.ActiveState if dsmcad_service_status.status is defined else 'Non disponible' }}"
+  when: dsmcad_check.stat.exists
+
+- name: "Vérification si le service dsmcad est actif"
+  ansible.builtin.set_fact:
+    dsmcad_is_running: "{{ dsmcad_service_status.status.ActiveState == 'active' if dsmcad_service_status.status is defined else false }}"
+  when: dsmcad_check.stat.exists
+
+- name: "Démarrage du service dsmcad si arrêté"
+  ansible.builtin.systemd:
+    name: dsmcad
+    state: started
+    enabled: yes
+  register: dsmcad_start
+  when:
+    - dsmcad_check.stat.exists
+    - not (dsmcad_is_running | default(false))
+  ignore_errors: yes
+
+- name: "Affichage du résultat de démarrage dsmcad"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat démarrage dsmcad ==="
+      - "{{ 'Service démarré avec succès ✅' if (dsmcad_start is defined and dsmcad_start.changed) else 'Déjà en cours d\\'exécution' }}"
+  when:
+    - dsmcad_check.stat.exists
+    - dsmcad_start is defined
+
+- name: "Vérification de l'existence du fichier de configuration dsm.opt"
+  ansible.builtin.stat:
+    path: "/opt/tivoli/tsm/client/ba/bin/dsm.opt"
+  register: dsm_opt_check
+
+- name: "Lecture du fichier de configuration dsm.opt"
+  ansible.builtin.command: cat /opt/tivoli/tsm/client/ba/bin/dsm.opt
+  register: dsm_opt_content
+  changed_when: false
+  when: dsm_opt_check.stat.exists
+
+- name: "Affichage de la configuration TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Configuration TSM (dsm.opt) ==="
+      - "{{ dsm_opt_content.stdout_lines if dsm_opt_content.stdout_lines is defined else ['Fichier non trouvé'] }}"
+  when: dsm_opt_check.stat.exists
+
+- name: "Vérification de la connectivité au serveur TSM"
+  ansible.builtin.shell: |
+    /opt/tivoli/tsm/client/ba/bin/dsmc query session
+  register: tsm_query_session
+  changed_when: false
+  failed_when: false
+  when: tsm_client_check.stat.exists
+
+- name: "Affichage de la connectivité TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Connectivité serveur TSM ==="
+      - "{{ tsm_query_session.stdout_lines if tsm_query_session.stdout_lines is defined else ['Erreur de connexion'] }}"
+  when: tsm_client_check.stat.exists
+
+- name: "Vérification du statut du scheduler TSM"
+  ansible.builtin.shell: |
+    /opt/tivoli/tsm/client/ba/bin/dsmc query schedule
+  register: tsm_schedule_status
+  changed_when: false
+  failed_when: false
+  when: tsm_client_check.stat.exists
+
+- name: "Affichage du statut du scheduler TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Statut scheduler TSM ==="
+      - "{{ tsm_schedule_status.stdout_lines if tsm_schedule_status.stdout_lines is defined else ['Scheduler non configuré'] }}"
+  when: tsm_client_check.stat.exists
+
+- name: "Vérification de l'existence du script REAR"
+  ansible.builtin.stat:
+    path: "/apps/sys/admin/rear-bp2i.sh"
+  register: rear_script_check
+
+- name: "Affichage du statut REAR"
+  ansible.builtin.debug:
+    msg:
+      - "Script REAR: {{ 'Présent ✅' if rear_script_check.stat.exists else 'Absent ❌' }}"
+      - "Chemin: /apps/sys/admin/rear-bp2i.sh"
+
+- name: "Vérification de l'existence du répertoire de sauvegarde REAR"
+  ansible.builtin.stat:
+    path: "/apps/sys/back"
+  register: rear_backup_dir_check
+
+- name: "Création du répertoire de sauvegarde REAR si absent"
+  ansible.builtin.file:
+    path: "/apps/sys/back"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: not rear_backup_dir_check.stat.exists
+  ignore_errors: yes
+
+- name: "Enregistrement du résultat de vérification TSM"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: >-
+      {% if not tsm_client_check.stat.exists %}
+      not installed
+      {% elif dsmcad_is_running | default(false) or (dsmcad_start is defined and dsmcad_start.changed) %}
+      running
+      {% else %}
+      stopped
+      {% endif %}
+    set_results_item: "tsm"
+    set_results_value: >-
+      {% if not tsm_client_check.stat.exists %}
+      Client TSM non installé
+      {% else %}
+      Version: {{ tsm_version.stdout | default('N/A') }}, Service dsmcad: {{ 'Running' if (dsmcad_is_running | default(false) or (dsmcad_start is defined and dsmcad_start.changed)) else 'Stopped' }}, REAR: {{ 'Présent' if rear_script_check.stat.exists else 'Absent' }}
+      {% endif %}
+    set_results_component: "{{ tsm_component | default('tsm') }}"
+    set_results_operation: "{{ tsm_operation | default('check') }}"
+    set_results_role_name: "{{ tsm_role_name | default('ips_toolbox_backup') }}"
+    set_results_result_name: "{{ tsm_result_name | default('tsm_check') }}"
+    set_results_status: >-
+      {% if not tsm_client_check.stat.exists %}
+      KO
+      {% elif dsmcad_is_running | default(false) or (dsmcad_start is defined and dsmcad_start.changed) %}
+      OK
+      {% else %}
+      KO
+      {% endif %}
+  ignore_errors: yes
+
