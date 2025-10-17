@@ -1,9 +1,10 @@
 ---
 # roles/ips_toolbox_banner/handlers/main.yml
-# Handlers pour le rôle ips_toolbox_banner
-- name: "Redémarrer sshd"
+# Handlers pour le rôle banner
+
+- name: "Restart sshd"
   ansible.builtin.systemd:
     name: sshd
     state: restarted
-  when: ansible_os_family != "Windows"
+  listen: "Restart sshd"
 
