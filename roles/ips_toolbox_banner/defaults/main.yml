@@ -1,6 +1,4 @@
 ---
-# roles/ips_toolbox_banner/defaults/main.yml
-# Variables par défaut pour le rôle banner
 
 banner_component: "banner"
 banner_operation: "create"
