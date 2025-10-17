@@ -1,6 +1,5 @@
 ---
-# roles/ips_toolbox_banner/tasks/create_generic_banner.yml
-# Tâche générique de création de bannière (fallback)
+
 - name: "Avertissement - Tâche générique utilisée"
   ansible.builtin.debug:
     msg:
