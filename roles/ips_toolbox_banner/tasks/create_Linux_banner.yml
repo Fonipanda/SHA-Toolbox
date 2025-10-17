@@ -1,6 +1,4 @@
 ---
-# roles/ips_toolbox_banner/tasks/create_Linux_banner.yml
-# Création de la bannière de connexion sur Linux
 
 - name: "Vérification de l'existence du répertoire /etc"
   ansible.builtin.stat:
