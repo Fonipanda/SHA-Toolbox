@@ -9,25 +9,26 @@
       - system_code5car != ""
       - system_lvSize is defined
     fail_msg: |
-      ❌ Variables requises manquantes (CodeAP, Code5car, LVSize)
+      ❌ Variables requises manquantes pour création FS
       CodeAP: {{ system_codeAP | default('N/A') }}
       Code5car: {{ system_code5car | default('N/A') }}
       LV Size: {{ system_lvSize | default('N/A') }}
     success_msg: |
       ✅ Variables de création valides
 
-- name: "Vérification de la présence du script Toolbox createfs"
+- name: "Vérification de la présence du script Toolbox"
   ansible.builtin.stat:
-    path: /apps/toolboxes/exploit/bin/createfs.ksh
-  register: tbx_createfs
+    path: /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh
+  register: tbx_script
 
 - name: "Arrêt si le script Toolbox est introuvable"
   ansible.builtin.fail:
-    msg: "❌ Le script /apps/toolboxes/exploit/bin/createfs.ksh est introuvable"
-  when: not tbx_createfs.stat.exists
+    msg: "❌ Script Toolbox introuvable : /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh"
+  when: not tbx_script.stat.exists
 
 - name: "Lecture de la version de la Toolbox"
-  ansible.builtin.shell: "cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\\.//g'"
+  ansible.builtin.shell: |
+    cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g'
   register: tbx_version
   changed_when: false
   failed_when: false
@@ -42,42 +43,53 @@
     success_msg: |
       ✅ Version Toolbox suffisante : {{ tbx_version.stdout }}
 
-- name: "Création du filesystem applicatif"
+- name: "Affichage des paramètres de création"
+  ansible.builtin.debug:
+    msg:
+      - "=== Création filesystems via Toolbox ==="
+      - "Code Application: {{ system_codeAP }}"
+      - "Code 5 caractères: {{ system_code5car }}"
+      - "Volume Group: {{ system_vgName | default('vg_apps') }}"
+      - "Taille LV: {{ system_lvSize }}"
+
+- name: "Création des filesystems via script Toolbox"
   ansible.builtin.shell: |
-    /apps/toolboxes/exploit/bin/createfs.ksh \
+    /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh \
       codeAP={{ system_codeAP }} \
       code5car={{ system_code5car }} \
-      lvsize={{ system_lvSize }} \
-      vg={{ system_vgName | default('vg_apps') }}
+      {{ 'vg=' + system_vgName if system_vgName is defined else 'vg=vg_apps' }} \
+      lv=lv_{{ system_code5car }}:{{ system_lvSize }},lv_{{ system_code5car }}_ti:{{ system_lvSize }},lv_{{ system_code5car }}_to:{{ system_lvSize }},lv_{{ system_code5car }}_tmp:{{ system_lvSize }},lv_{{ system_code5car }}_arch:{{ system_lvSize }}
   register: fs_creation
-  changed_when: "'-I-' in fs_creation.stdout"
-  failed_when: fs_creation.rc != 0
+  ignore_errors: yes
+  changed_when: "'-I- Creation du FS' in fs_creation.stdout"
 
 - name: "Affichage du résultat de création"
   ansible.builtin.debug:
     msg:
-      - "📦 Résultat création : {{ fs_creation.stdout_lines | default(['Aucune sortie']) }}"
+      - "📦 Résultat création FS :"
+      - "{{ fs_creation.stdout_lines | default(['Aucune sortie']) }}"
 
-- name: "Vérification du montage du FS /applis"
+- name: "Vérification du montage des filesystems"
   ansible.builtin.shell: |
-    df -h | grep -E "/applis|/apps" || true
+    df -h | grep -E "/applis|/apps" || echo "Aucun FS monté"
   register: fs_state
   changed_when: false
 
-- name: "Affichage de l'état du filesystem monté"
+- name: "Affichage de l'état des filesystems"
   ansible.builtin.debug:
     msg:
-      - "🧩 Sortie de vérification du montage :"
-      - "{{ fs_state.stdout_lines | default(['Aucun FS détecté']) }}"
+      - "🗂️ État des filesystems :"
+      - "{{ fs_state.stdout_lines }}"
 
-- name: "Enregistrement du résultat via rôle set_results"
+- name: "Enregistrement du résultat"
   ansible.builtin.include_role:
     name: ips_toolbox_set_results
   vars:
-    set_results_state: "{{ 'created' if fs_creation.rc == 0 else 'failed' }}"
+    set_results_state: "{{ 'created' if fs_creation.rc is defined and fs_creation.rc == 0 else 'failed' }}"
     set_results_item: "filesystem"
-    set_results_value: "{{ system_codeAP }}-{{ system_code5car }}"
+    set_results_value: "FS {{ system_codeAP }}-{{ system_code5car }}"
     set_results_component: "{{ system_component | default('system') }}"
     set_results_operation: "{{ system_operation | default('create-fs') }}"
     set_results_result_name: "{{ system_result_name | default('create_fs') }}"
-    set_results_status: "{{ 'OK' if fs_creation.rc == 0 else 'KO' }}"
+    set_results_status: "{{ 'OK' if fs_creation.rc is defined and fs_creation.rc == 0 else 'KO' }}"
+  ignore_errors: yes
