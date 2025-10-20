@@ -1,122 +1,83 @@
 ---
 
-- name: stop play when a mandatory variable is missing
+- name: "Validation des variables de création de filesystems"
   ansible.builtin.assert:
     that:
-      - system_create_lvname != ""
-      - system_create_fsname != ""
-      - system_create_lvsize != ""
-    msg: "One of this mandatory variable is missing: system_create_lvname, system_create_fsname, system_create_lvsize"
-  when:
-    - system_create_filename == ""
+      - system_codeAP is defined
+      - system_codeAP != ""
+      - system_code5car is defined
+      - system_code5car != ""
+      - system_lvSize is defined
+    fail_msg: |
+      ❌ Variables requises manquantes (CodeAP, Code5car, LVSize)
+      CodeAP: {{ system_codeAP | default('N/A') }}
+      Code5car: {{ system_code5car | default('N/A') }}
+      LV Size: {{ system_lvSize | default('N/A') }}
+    success_msg: |
+      ✅ Variables de création valides
 
-- name: stop play when incompatible variables are used
+- name: "Vérification de la présence du script Toolbox createfs"
+  ansible.builtin.stat:
+    path: /apps/toolboxes/exploit/bin/createfs.ksh
+  register: tbx_createfs
+
+- name: "Arrêt si le script Toolbox est introuvable"
+  ansible.builtin.fail:
+    msg: "❌ Le script /apps/toolboxes/exploit/bin/createfs.ksh est introuvable"
+  when: not tbx_createfs.stat.exists
+
+- name: "Lecture de la version de la Toolbox"
+  ansible.builtin.shell: "cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\\.//g'"
+  register: tbx_version
+  changed_when: false
+  failed_when: false
+
+- name: "Vérification de la version minimale"
   ansible.builtin.assert:
     that:
-      - system_create_lvname == ""
-      - system_create_fsname == ""
-      - system_create_lvsize == ""
-    msg: "system_create_filename must be the only variable when it is used"
-  when:
-    - system_create_filename != ""
+      - "tbx_version.stdout | int >= 1820"
+    fail_msg: |
+      ❌ Version Toolbox insuffisante : {{ tbx_version.stdout | default('N/A') }}
+      Minimum requis : 1820 (v18.2.0)
+    success_msg: |
+      ✅ Version Toolbox suffisante : {{ tbx_version.stdout }}
 
-- name: set configuration file name
-  ansible.builtin.set_fact:
-    system_create_conffile: "/apps/toolboxes/exploit/conf/exploit_create-fs_tbxng_{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}.conf"
+- name: "Création du filesystem applicatif"
+  ansible.builtin.shell: |
+    /apps/toolboxes/exploit/bin/createfs.ksh \
+      codeAP={{ system_codeAP }} \
+      code5car={{ system_code5car }} \
+      lvsize={{ system_lvSize }} \
+      vg={{ system_vgName | default('vg_apps') }}
+  register: fs_creation
+  changed_when: "'-I-' in fs_creation.stdout"
+  failed_when: fs_creation.rc != 0
 
-- name: Begin create filesystems
-  block:
+- name: "Affichage du résultat de création"
+  ansible.builtin.debug:
+    msg:
+      - "📦 Résultat création : {{ fs_creation.stdout_lines | default(['Aucune sortie']) }}"
 
-  - name: create configuration file
-    shell: echo "{{ system_create_vg }}:{{ system_create_lvname }}:{{ system_create_fsname }}:{{ system_create_lvsize }}:{{ system_create_user }}:{{ system_create_group }}:{{ system_create_ftype }}:{{ system_create_mwtype }}" >> {{ system_create_conffile }}
-    when: 
-      - system_create_filename == ""
-    changed_when: false
-  
-  - name: copy configuration file on the remote server
-    ansible.builtin.copy:
-      src: "{{ system_create_filename }}"
-      dest: "{{ system_create_conffile }}"
-      owner: 0
-      group: 0
-      mode: u=r,g=r,o=r
-    register: copyfile
-    when:
-      - system_create_filename != ""
-    changed_when: false
-  
-  - name: create filesystems
-  command: "{{ item }}"
-  with_items:
-    - "{{ system_create_fsname }}"
-    - "{{ system_create_lvname }}"
-    - "{{ system_create_vgname }}"
-    - "{{ system_create_lvsize }}"
-    - "{{ system_create_username }}"
-    - "{{ system_create_groupname }}"
-  register: fs_creation_result
-  ignore_errors: yes
+- name: "Vérification du montage du FS /applis"
+  ansible.builtin.shell: |
+    df -h | grep -E "/applis|/apps" || true
+  register: fs_state
+  changed_when: false
 
-- name: working filesystems creation
-  ansible.builtin.set_fact:
-    system_status: "OK"
-    system_value: "{% if createfslog.message is defined %}{{ createfslog.message }}{% endif %}"
-    system_state: "{% if createfslog.state is defined %}{{ createfslog.state }}{% endif %}"
+- name: "Affichage de l'état du filesystem monté"
+  ansible.builtin.debug:
+    msg:
+      - "🧩 Sortie de vérification du montage :"
+      - "{{ fs_state.stdout_lines | default(['Aucun FS détecté']) }}"
 
-  rescue:
-    - name: ansible failure
-      ansible.builtin.set_fact:
-        system_status: "KO"
-        system_value: "{% if createfslog is defined %}\
-
-                          {% if createfslog.msg is defined %}\
-
-                            {{ createfslog.msg }}\
-
-                          {% endif %}\
-
-                      {% else%}\
-
-                          {% if copyfile is defined %}\
-
-                            {% if copyfile.msg is defined %}\
-
-                                {{ copyfile.msg }}\
-
-                            {% endif %}\
-
-                          {% endif %}\
-
-                      {% endif %}"
-        system_state: "{% if createfslog is defined %}\
-
-                          {% if createfslog.state is defined %}\
-
-                            {{ createfslog.state }}\
-
-                          {% else %}\
-
-                            Unknown\
-
-                          {% endif %}\
-
-                      {% else %}\
-
-                          Unknown\
-
-                      {% endif %}"
-
-  always:
-    - name: End filesystem creation
-      ansible.builtin.include_role:
-        name: ips_toolbox_set_results
-      vars:
-        set_results_state: "{{ system_state }}"
-        set_results_item: "{% if createfslog is defined %}{% if createfslog.list_fs is defined %}{{ createfslog.list_fs }}{% endif %}{% endif %}"
-        set_results_component: "{{ system_component }}"
-        set_results_operation: "{{ system_operation }}"
-        set_results_role_name: "{{ system_role_name }}"
-        set_results_value: "{{ system_value }}"
-        set_results_result_name: "{{ system_result_name }}"
-        set_results_status: "{{ system_status }}"
-
+- name: "Enregistrement du résultat via rôle set_results"
+  ansible.builtin.include_role:
+    name: ips_toolbox_set_results
+  vars:
+    set_results_state: "{{ 'created' if fs_creation.rc == 0 else 'failed' }}"
+    set_results_item: "filesystem"
+    set_results_value: "{{ system_codeAP }}-{{ system_code5car }}"
+    set_results_component: "{{ system_component | default('system') }}"
+    set_results_operation: "{{ system_operation | default('create-fs') }}"
+    set_results_result_name: "{{ system_result_name | default('create_fs') }}"
+    set_results_status: "{{ 'OK' if fs_creation.rc == 0 else 'KO' }}"
