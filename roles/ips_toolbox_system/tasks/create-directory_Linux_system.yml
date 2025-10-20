@@ -1,6 +1,4 @@
 ---
-# roles/ips_toolbox_system/tasks/create-directory_Linux_system.yml
-# Création de l'arborescence applicative via le script Toolbox exploit_arbo-app.ksh
 
 - name: "Vérification des variables obligatoires"
   ansible.builtin.assert:
@@ -42,20 +40,20 @@
   register: tbxversion
   changed_when: false
   when:
-    - tbxcheck.matched > 0
+    - "tbxcheck.matched | int > 0"
 
 - name: "Affichage de la version Toolbox"
   ansible.builtin.debug:
     msg:
-      - "Toolbox trouvée: {{ 'OUI ✅' if tbxcheck.matched > 0 else 'NON ❌' }}"
+      - "Toolbox trouvée: {{ 'OUI ✅' if tbxcheck.matched | int > 0 else 'NON ❌' }}"
       - "Version: {{ tbxversion.stdout_lines[0] if tbxversion.stdout_lines is defined else 'N/A' }}"
       - "Version minimale requise: 1820 (18.2.0)"
 
 - name: "Vérification que la version est suffisante"
   ansible.builtin.assert:
     that:
-      - tbxcheck.matched > 0
-      - tbxversion.stdout_lines[0] | int >= 1820
+      - "tbxcheck.matched | int > 0"
+      - "tbxversion.stdout_lines[0] | int >= 1820"
     fail_msg: |
       ❌ Toolbox non trouvée ou version insuffisante
       Version actuelle: {{ tbxversion.stdout_lines[0] | default('N/A') }}
@@ -80,7 +78,7 @@
     - '"-I- Creation du FS" in resultarbo.stdout'
     - resultarbo.rc == 0
   when:
-    - tbxversion.stdout_lines[0] | int >= 1820
+    - "tbxversion.stdout_lines[0] | int >= 1820"
 
 - name: "Affichage du résultat de création"
   ansible.builtin.debug:
@@ -122,4 +120,3 @@
     set_results_result_name: "{{ system_result_name | default('create_directory') }}"
     set_results_status: "{{ 'OK' if (resultarbo.rc is defined and resultarbo.rc == 0) else 'KO' }}"
   ignore_errors: yes
-
