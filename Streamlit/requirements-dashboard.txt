@@ -1,0 +1,5 @@
+supabase==2.11.0
+streamlit==1.40.2
+pandas==2.2.3
+plotly==5.17.0
+datetime
