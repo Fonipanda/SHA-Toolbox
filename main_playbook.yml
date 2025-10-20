@@ -223,13 +223,23 @@
               - "Consultez les logs dans {{ report_dir }}"
               
       always:
+        - name: "[HORSPROD] Création du répertoire de rapports si nécessaire"
+          ansible.builtin.file:
+            path: "{{ report_dir }}"
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+          ignore_errors: true
+      
         - name: "[HORSPROD] Finalisation du rapport d'exécution"
           ansible.builtin.lineinfile:
             path: "{{ report_dir }}/execution_{{ execution_id }}.log"
             line: |
-              ===================================================================
+              ===============================================
               FIN D'EXÉCUTION: {{ ansible_date_time.iso8601 }}
-              ===================================================================
+              ===============================================
             insertafter: EOF
+            create: yes
+            mode: '0644'
           ignore_errors: true
-
