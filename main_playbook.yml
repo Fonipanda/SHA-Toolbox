@@ -150,10 +150,10 @@
           block:
             - name: "07 - NTP (Uptime) - Vérifier et redémarrer Chrony"
               ansible.builtin.include_role:
-                name: ips_toolbox_uptime
+                name: ips_toolbox_system
               vars:
-                uptime_operation: "check"
-                uptime_limit_days: "{{ system_uptime_limit }}"
+                system_operation: "uptime"
+                system_uptime_limit: "{{ system_uptime_limit }}"
               tags: [uptime, ntp]
               ignore_errors: true
               
