@@ -1,6 +1,6 @@
 ---
 
-- name: "Toolbox Application Environment Builder"
+- name: "Application Environment Builder"
   hosts: "{{ Hostname | default('all') }}"
   gather_facts: true
   become: true
@@ -72,6 +72,13 @@
               tags: [facts, detection]
               ignore_errors: true
             
+            - name: "Détection du middleware installé (AVANT création arborescence)"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: detect_middleware
+              tags: [middleware, detection]
+              ignore_errors: true
+            
             - name: "02 - Banner - Création bannière login"
               ansible.builtin.include_role:
                 name: ips_toolbox_banner
@@ -98,14 +105,6 @@
               vars:
                 toolboxes_operation: "verify"
               tags: [toolbox]
-              ignore_errors: true
-            
-            # Détection du middleware (AVANT launcher)
-            - name: "Détection du middleware installé"
-              ansible.builtin.include_role:
-                name: app_environment_builder
-                tasks_from: detect_middleware
-              tags: [middleware, detection]
               ignore_errors: true
 
         # ===== PHASE 2 : ARBORESCENCE ET FILESYSTEMS =====
@@ -137,16 +136,16 @@
               ignore_errors: true
 
         # ===== PHASE 3 : VÉRIFICATIONS SYSTÈME =====
-        - name: "Phase 3 - Vérifications système"
+        - name: "Phase 3 - Vérifications système et conformité"
           block:
-            - name: "07 - Uptime - Vérification et information"
+            - name: "07 - Uptime - Vérification et information NTP/Chrony"
               ansible.builtin.include_role:
                 name: ips_toolbox_system
               vars:
                 system_operation: "uptime"
                 system_uptime_limit: "{{ system_uptime_limit }}"
                 system_component: "system"
-              tags: [uptime]
+              tags: [uptime, ntp]
               ignore_errors: true
             
             - name: "08 - Dynatrace - Vérification agent (si présent)"
@@ -165,10 +164,10 @@
               tags: [illumio]
               ignore_errors: true
 
-        # ===== PHASE 4 : SAUVEGARDE =====
+        # ===== PHASE 4 : SAUVEGARDE ET TSM =====
         - name: "Phase 4 - Configuration sauvegarde"
           block:
-            - name: "11 - Sauvegarde - Vérification TSM/Backup (si présent)"
+            - name: "10 - Sauvegarde - Vérification TSM/Backup (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_backup
               vars:
@@ -177,18 +176,26 @@
               tags: [backup, tsm]
               ignore_errors: true
             
-            - name: "12 - Autosys - Vérification (si présent)"
+            - name: "11 - Autosys - Vérification backup applicatif (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_autosys
               vars:
                 autosys_operation: "check"
               tags: [autosys, backup]
               ignore_errors: true
+            
+            - name: "12 - Backup système - Vérification complète TSM"
+              ansible.builtin.include_role:
+                name: ips_toolbox_backup
+              vars:
+                backup_operation: "check_system"
+              tags: [backup]
+              ignore_errors: true
 
         # ===== PHASE 5 : LOGS ET MAINTENANCE =====
-        - name: "Phase 5 - Configuration logs"
+        - name: "Phase 5 - Configuration logs et maintenance"
           block:
-            - name: "14 - Logs - Configuration purge /applis/logs"
+            - name: "13 - Logs - Configuration purge /applis/logs"
               ansible.builtin.include_role:
                 name: ips_toolbox_logs
               vars:
@@ -204,7 +211,7 @@
               - "Une erreur s'est produite lors de l'exécution du workflow"
               - "Consultez les logs dans {{ report_dir }}"
       
-            always:
+      always:
         - name: "Création du répertoire de rapports si nécessaire"
           ansible.builtin.file:
             path: "{{ report_dir }}"
@@ -212,9 +219,10 @@
             mode: '0755'
           ignore_errors: true
         
-        - name: "Génération du récapitulatif final d'exécution"
+        - name: "14 - Génération du récapitulatif final d'exécution"
           ansible.builtin.include_role:
             name: report_generator
+          tags: [report, summary]
           ignore_errors: yes
         
         - name: "Finalisation du rapport d'exécution"
