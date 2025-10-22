@@ -7,7 +7,6 @@
   serial: 1
   
   vars:
-    environment_type: "HORSPROD"
     code_ap: "{{ CodeAP }}"
     code5car: "{{ code5car }}"
     hostname_target: "{{ Hostname }}"
@@ -153,7 +152,8 @@
                 name: ips_toolbox_system
               vars:
                 system_operation: "uptime"
-                system_uptime_limit: "{{ system_uptime_limit }}"
+                system_uptime_limit: 90
+                system_component: "system"
               tags: [uptime, ntp]
               ignore_errors: true
               
