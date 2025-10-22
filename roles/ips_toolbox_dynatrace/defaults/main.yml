@@ -1,0 +1,5 @@
+---
+
+dynatrace_operation: "check"
+dynatrace_fullstack_required: true
+dynatrace_component: "dynatrace"
