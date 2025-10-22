@@ -1,24 +1,17 @@
 ================================================================================
-SYSTÈME D'HÉBERGEMENT APPLICATIF (SHA)
+BANNER - APPLICATION ENVIRONMENT
 ================================================================================
 
-Serveur: {{ ansible_hostname }}
-FQDN: {{ ansible_fqdn }}
-Système: {{ ansible_distribution }} {{ ansible_distribution_version }}
-Architecture: {{ ansible_architecture }}
-Kernel: {{ ansible_kernel }}
-
-Environnement: {{ environnement | default('PRODUCTION') }}
-Code Application: {{ codeAP | default('N/A') }}
-Code 5 caractères: {{ code5car | default('N/A') }}
-
-Middlewares détectés: {{ detected_middlewares | default([]) | join(', ') | default('Aucun') }}
-Services actifs: {{ detected_services | default([]) | join(', ') | default('Aucun') }}
+Serveur: {{ ansible_hostname | default('Unknown') }}
+Système: {{ ansible_distribution | default('Unknown') }} {{ ansible_distribution_version | default('') }}
+Architecture: {{ ansible_architecture | default('Unknown') }}
+Code Application: {{ banner_codeAP | default('N/A') }}
+{% if banner_middlewares is defined and banner_middlewares != "" -%}
+Middlewares détectés: {{ banner_middlewares }}
+{% endif -%}
 
 ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
-Toute tentative d'accès non autorisée sera enregistrée et poursuivie.
+
+Date: {{ ansible_date_time.iso8601 | default('N/A') }}
 
 ================================================================================
-Dernière mise à jour: {{ ansible_date_time.iso8601 }}
-================================================================================
-
