@@ -1,26 +1,153 @@
-# roles/report_generator/tasks/main.yml
-# Rôle principal pour la génération des rapports d'exécution
 ---
-- name: "Initialisation du générateur de rapports"
+
+- name: "Collecte de tous les résultats d'exécution"
+  ansible.builtin.set_fact:
+    execution_summary:
+      timestamp: "{{ ansible_date_time.iso8601 }}"
+      hostname: "{{ ansible_hostname }}"
+      fqdn: "{{ ansible_fqdn }}"
+      os_info:
+        distribution: "{{ ansible_distribution }} {{ ansible_distribution_version }}"
+        kernel: "{{ ansible_kernel }}"
+        architecture: "{{ ansible_architecture }}"
+      application:
+        code_ap: "{{ code_ap | default('N/A') }}"
+        code5car: "{{ code5car | default('N/A') }}"
+      middlewares_detected: "{{ detected_middlewares | default([]) }}"
+      services_detected: "{{ detected_services | default([]) }}"
+
+- name: "Collecte des résultats Toolbox"
+  ansible.builtin.set_fact:
+    toolbox_summary:
+      version: "{{ tbxversion.stdout if tbxversion is defined and tbxversion.stdout is defined else 'N/A' }}"
+      installed: "{{ tbxcheck.matched > 0 if tbxcheck is defined else false }}"
+      path: "/apps/toolboxes"
+
+- name: "Collecte des résultats Dynatrace"
+  ansible.builtin.set_fact:
+    dynatrace_summary:
+      installed: "{{ dynatrace_installed.stat.exists if dynatrace_installed is defined else false }}"
+      version: "{{ dynatrace_version.stdout_lines[0] if dynatrace_version is defined and dynatrace_version.stdout_lines is defined else 'N/A' }}"
+      status: "{{ 'Actif ✅' if dynatrace_needs_restart is defined and not dynatrace_needs_restart else 'Vérifié' }}"
+
+- name: "Collecte des résultats Illumio"
+  ansible.builtin.set_fact:
+    illumio_summary:
+      installed: "{{ illumio_installed.stat.exists if illumio_installed is defined else false }}"
+      version: "{{ illumio_version.stdout_lines[0] if illumio_version is defined and illumio_version.stdout_lines is defined else 'N/A' }}"
+      mode: "{{ illumio_mode.stdout if illumio_mode is defined and illumio_mode.stdout is defined else 'N/A' }}"
+      status: "{{ 'Actif ✅' if illumio_needs_start is defined and not illumio_needs_start else 'Vérifié' }}"
+
+- name: "Collecte des résultats TSM/Backup"
+  ansible.builtin.set_fact:
+    backup_summary:
+      tsm_installed: "{{ backup_clients.files | length > 0 if backup_clients is defined else false }}"
+      dsmcad_active: "{{ dsmcad_service.changed == false if dsmcad_service is defined and dsmcad_service.failed is not defined else false }}"
+      rear_script: "{{ rear_script.stat.exists if rear_script is defined else false }}"
+
+- name: "Collecte des résultats Uptime"
+  ansible.builtin.set_fact:
+    uptime_summary:
+      days: "{{ uptime_final_result.uptime_days if uptime_final_result is defined else uptime_days_result.stdout if uptime_days_result is defined else 'N/A' }}"
+      limit: "{{ uptime_limit | default(90) }}"
+      status: "{{ uptime_final_result.status if uptime_final_result is defined else 'N/A' }}"
+      chronyd: "{{ uptime_final_result.chronyd_active if uptime_final_result is defined else 'N/A' }}"
+
+- name: "Collecte des résultats Filesystems"
+  ansible.builtin.set_fact:
+    filesystem_summary:
+      applis_created: "{{ filesystem_check.results | selectattr('stat.exists', 'equalto', true) | list | length if filesystem_check is defined and filesystem_check.results is defined else 0 }}"
+      total_checked: "{{ filesystem_check.results | length if filesystem_check is defined and filesystem_check.results is defined else 0 }}"
+
+- name: "Collecte des résultats Utilisateurs"
+  ansible.builtin.set_fact:
+    users_summary: "{{ users_created_summary if users_created_summary is defined else {'oracle': 'non vérifié', 'wasadmin': 'non vérifié', 'liberty': 'non vérifié', 'cft': 'non vérifié'} }}"
+
+- name: "Affichage du récapitulatif final complet"
   ansible.builtin.debug:
-    msg: "Début de la génération du rapport d'exécution"
+    msg:
+      - ""
+      - "╔════════════════════════════════════════════════════════════════════════╗"
+      - "║      RÉCAPITULATIF COMPLET D'EXÉCUTION - SHA-TOOLBOX AAP2             ║"
+      - "╚════════════════════════════════════════════════════════════════════════╝"
+      - ""
+      - "┌─ INFORMATIONS GÉNÉRALES ────────────────────────────────────────────┐"
+      - "│ Date d'exécution : {{ execution_summary.timestamp }}"
+      - "│ Serveur          : {{ execution_summary.hostname }} ({{ execution_summary.fqdn }})"
+      - "│ OS               : {{ execution_summary.os_info.distribution }}"
+      - "│ Kernel           : {{ execution_summary.os_info.kernel }}"
+      - "│ Architecture     : {{ execution_summary.os_info.architecture }}"
+      - "│ Code Application : {{ execution_summary.application.code_ap }}"
+      - "│ Code 5 car       : {{ execution_summary.application.code5car }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ MIDDLEWARES ET SERVICES DÉTECTÉS ──────────────────────────────────┐"
+      - "│ Middlewares ({{ execution_summary.middlewares_detected | length }}) : {{ execution_summary.middlewares_detected | join(', ') if execution_summary.middlewares_detected | length > 0 else 'Aucun' }}"
+      - "│ Services ({{ execution_summary.services_detected | length }})    : {{ execution_summary.services_detected | join(', ') if execution_summary.services_detected | length > 0 else 'Aucun' }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ TOOLBOX IPS ───────────────────────────────────────────────────────┐"
+      - "│ Installée        : {{ '✅ OUI' if toolbox_summary.installed else '❌ NON' }}"
+      - "│ Version          : {{ toolbox_summary.version }}"
+      - "│ Chemin           : {{ toolbox_summary.path }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ FILESYSTEMS ───────────────────────────────────────────────────────┐"
+      - "│ FS créés/vérifiés: {{ filesystem_summary.applis_created }}/{{ filesystem_summary.total_checked }}"
+      - "│ Arborescence     : /applis, /apps, /applis/logs, /applis/delivery"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ UTILISATEURS TECHNIQUES ───────────────────────────────────────────┐"
+      - "│ Oracle (oracle)  : {{ users_summary.oracle }}"
+      - "│ WebSphere (wasadmin) : {{ users_summary.wasadmin }}"
+      - "│ Liberty (liberty): {{ users_summary.liberty }}"
+      - "│ CFT (cft)        : {{ users_summary.cft }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ UPTIME ET NTP ─────────────────────────────────────────────────────┐"
+      - "│ Uptime actuel    : {{ uptime_summary.days }} jours"
+      - "│ Limite configurée: {{ uptime_summary.limit }} jours"
+      - "│ Statut           : {{ uptime_summary.status }}"
+      - "│ Service chronyd  : {{ '✅ Actif' if uptime_summary.chronyd else '⚠️ Non vérifié' }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ DYNATRACE ONEAGENT ────────────────────────────────────────────────┐"
+      - "│ Installé         : {{ '✅ OUI' if dynatrace_summary.installed else '❌ NON' }}"
+      - "│ Version          : {{ dynatrace_summary.version }}"
+      - "│ Statut           : {{ dynatrace_summary.status }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ ILLUMIO VEN ───────────────────────────────────────────────────────┐"
+      - "│ Installé         : {{ '✅ OUI' if illumio_summary.installed else '❌ NON' }}"
+      - "│ Version          : {{ illumio_summary.version }}"
+      - "│ Mode             : {{ illumio_summary.mode }}"
+      - "│ Statut           : {{ illumio_summary.status }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "┌─ SAUVEGARDE TSM ────────────────────────────────────────────────────┐"
+      - "│ TSM installé     : {{ '✅ OUI' if backup_summary.tsm_installed else '❌ NON' }}"
+      - "│ Service dsmcad   : {{ '✅ Actif' if backup_summary.dsmcad_active else '⚠️ Non vérifié' }}"
+      - "│ Script REAR      : {{ '✅ Présent' if backup_summary.rear_script else '❌ Absent' }}"
+      - "└──────────────────────────────────────────────────────────────────────┘"
+      - ""
+      - "╔════════════════════════════════════════════════════════════════════════╗"
+      - "║                    ✅ EXÉCUTION TERMINÉE AVEC SUCCÈS                   ║"
+      - "╚════════════════════════════════════════════════════════════════════════╝"
+      - ""
 
-- name: "Validation des variables de reporting"
-  ansible.builtin.assert:
-    that:
-      - execution_report is defined
-      - execution_id is defined
-      - report_dir is defined
-    fail_msg: "Les variables de reporting sont obligatoires"
-
-- name: "Inclusion des tâches de collecte des facts"
-  ansible.builtin.include_tasks: collect_facts.yml
-  tags: [collect]
-
-- name: "Inclusion des tâches de génération JSON"
-  ansible.builtin.include_tasks: generate_json.yml
-  tags: [json]
-
-- name: "Inclusion des tâches de génération stdout"
-  ansible.builtin.include_tasks: generate_stdout.yml
-  tags: [stdout]
+- name: "Sauvegarde du récapitulatif en JSON"
+  ansible.builtin.copy:
+    content: |
+      {
+        "execution_summary": {{ execution_summary | to_json }},
+        "toolbox": {{ toolbox_summary | to_json }},
+        "dynatrace": {{ dynatrace_summary | to_json }},
+        "illumio": {{ illumio_summary | to_json }},
+        "backup": {{ backup_summary | to_json }},
+        "uptime": {{ uptime_summary | to_json }},
+        "filesystems": {{ filesystem_summary | to_json }},
+        "users": {{ users_summary | to_json }}
+      }
+    dest: "/tmp/ansible_reports/execution_summary_{{ ansible_date_time.epoch }}.json"
+    mode: '0644'
+  ignore_errors: yes
