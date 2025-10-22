@@ -1,0 +1,86 @@
+---
+
+- name: "Initialisation du rôle users"
+  ansible.builtin.set_fact:
+    users_component: "users"
+    users_operation: "{{ users_operation | default('create') }}"
+
+- name: "Détection des middlewares pour création d'utilisateurs"
+  ansible.builtin.set_fact:
+    middlewares_detected: "{{ users_middlewares | default(detected_middlewares) | default([]) }}"
+
+- name: "Affichage des middlewares détectés pour création users"
+  ansible.builtin.debug:
+    msg:
+      - "👥 Middlewares détectés : {{ middlewares_detected | join(', ') if middlewares_detected | length > 0 else 'Aucun' }}"
+      - "📝 Création des utilisateurs techniques associés"
+
+- name: "Création de l'utilisateur Oracle si middleware détecté"
+  ansible.builtin.user:
+    name: oracle
+    comment: "Oracle Database User"
+    group: dba
+    groups: oinstall
+    create_home: yes
+    home: /home/oracle
+    shell: /bin/bash
+    state: present
+  when: "'Oracle' in middlewares_detected"
+  register: oracle_user_created
+  ignore_errors: yes
+
+- name: "Création de l'utilisateur WebSphere si middleware détecté"
+  ansible.builtin.user:
+    name: wasadmin
+    comment: "WebSphere Administrator"
+    group: wasadm
+    create_home: yes
+    home: /home/wasadmin
+    shell: /bin/bash
+    state: present
+  when: "'WebSphere' in middlewares_detected or 'WAS' in middlewares_detected"
+  register: was_user_created
+  ignore_errors: yes
+
+- name: "Création de l'utilisateur Liberty si middleware détecté"
+  ansible.builtin.user:
+    name: liberty
+    comment: "Liberty Profile User"
+    group: liberty
+    create_home: yes
+    home: /home/liberty
+    shell: /bin/bash
+    state: present
+  when: "'Liberty' in middlewares_detected"
+  register: liberty_user_created
+  ignore_errors: yes
+
+- name: "Création de l'utilisateur CFT si middleware détecté"
+  ansible.builtin.user:
+    name: cft
+    comment: "Axway CFT User"
+    group: cft
+    create_home: yes
+    home: /home/cft
+    shell: /bin/bash
+    state: present
+  when: "'CFT' in middlewares_detected"
+  register: cft_user_created
+  ignore_errors: yes
+
+- name: "Récapitulatif des utilisateurs créés"
+  ansible.builtin.set_fact:
+    users_created_summary:
+      oracle: "{{ 'créé ✅' if oracle_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
+      wasadmin: "{{ 'créé ✅' if was_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
+      liberty: "{{ 'créé ✅' if liberty_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
+      cft: "{{ 'créé ✅' if cft_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
+
+- name: "Affichage du récapitulatif création utilisateurs"
+  ansible.builtin.debug:
+    msg:
+      - "=== RÉCAPITULATIF CRÉATION UTILISATEURS ==="
+      - "Oracle (oracle) : {{ users_created_summary.oracle }}"
+      - "WebSphere (wasadmin) : {{ users_created_summary.wasadmin }}"
+      - "Liberty (liberty) : {{ users_created_summary.liberty }}"
+      - "CFT (cft) : {{ users_created_summary.cft }}"
