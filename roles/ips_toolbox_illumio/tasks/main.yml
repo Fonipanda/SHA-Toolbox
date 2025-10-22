@@ -1,31 +1,118 @@
 ---
-- name: "Initialisation du rôle ips_toolbox_illumio"
-  ansible.builtin.set_fact:
-    illumio_component: "illumio"
-    illumio_role_name: "ips_toolbox_illumio"
 
-- name: "Construction du nom de fichier de tâche selon l'OS"
-  ansible.builtin.set_fact:
-    illumio_task_file: "{{ illumio_operation | default('configure') }}_{{ ansible_system }}_illumio.yml"
-
-- name: "Vérification de l'existence du fichier de tâche"
+- name: "Vérification de l'installation d'Illumio VEN"
   ansible.builtin.stat:
-    path: "{{ role_path }}/tasks/{{ illumio_task_file }}"
-  register: illumio_task_exists
-  delegate_to: localhost
+    path: /opt/illumio_ven/illumio-ven-ctl
+  register: illumio_installed
 
-- name: "Exécution de la tâche Illumio spécifique à l'OS"
-  ansible.builtin.include_tasks: "{{ illumio_task_file }}"
-  when: illumio_task_exists.stat.exists
-
-- name: "Fallback - Tâche générique si fichier spécifique introuvable"
-  ansible.builtin.include_tasks: "configure_generic_illumio.yml"
-  when: not illumio_task_exists.stat.exists
-
-- name: "Affichage du statut d'exécution"
+- name: "Arrêt si Illumio non installé"
   ansible.builtin.debug:
-    msg:
-      - "Rôle Illumio exécuté"
-      - "Fichier: {{ illumio_task_file if illumio_task_exists.stat.exists else 'configure_generic_illumio.yml' }}"
-      - "OS: {{ ansible_system }}"
-      - "Opération: {{ illumio_operation | default('configure') }}"
+    msg: "⚠️ Illumio VEN non installé sur ce serveur"
+  when: not illumio_installed.stat.exists
+
+- name: "Bloc de vérification Illumio"
+  block:
+    - name: "Vérification de la version d'Illumio"
+      ansible.builtin.shell: |
+        /opt/illumio_ven/illumio-ven-ctl version
+      register: illumio_version
+      changed_when: false
+      failed_when: false
+
+    - name: "Vérification du statut de l'agent Illumio"
+      ansible.builtin.shell: |
+        /opt/illumio_ven/illumio-ven-ctl status
+      register: illumio_status
+      changed_when: false
+      failed_when: false
+
+    - name: "Affichage de la version et du statut"
+      ansible.builtin.debug:
+        msg:
+          - "🛡️ Version Illumio : {{ illumio_version.stdout_lines[0] if illumio_version.stdout_lines is defined else 'N/A' }}"
+          - "🛡️ Statut : {{ illumio_status.stdout_lines | default(['Statut inconnu']) | join(' ') }}"
+
+    - name: "Détection si l'agent est arrêté"
+      ansible.builtin.set_fact:
+        illumio_is_stopped: "{{ 'not running' in illumio_status.stdout or 'stopped' in illumio_status.stdout }}"
+
+    - name: "Démarrage de l'agent Illumio si arrêté"
+      ansible.builtin.shell: |
+        /opt/illumio_ven/illumio-ven-ctl start
+      register: illumio_start
+      when: illumio_is_stopped | bool
+      changed_when: true
+      failed_when: false
+
+    - name: "Affichage du résultat de démarrage Illumio"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Agent Illumio démarré avec succès"
+          - "{{ illumio_start.stdout_lines if illumio_start.stdout_lines is defined else ['Agent deja actif'] }}"
+      when: 
+        - illumio_is_stopped | bool
+        - illumio_start is defined
+
+    - name: "Vérification du mode actuel d'Illumio"
+      ansible.builtin.shell: |
+        /opt/illumio_ven/illumio-ven-ctl get-mode
+      register: illumio_mode
+      changed_when: false
+      failed_when: false
+
+    - name: "Passage en mode Enforced si nécessaire"
+      ansible.builtin.shell: |
+        /opt/illumio_ven/illumio-ven-ctl set-mode enforced
+      register: illumio_enforce
+      when: "'enforced' not in illumio_mode.stdout"
+      changed_when: true
+      failed_when: false
+
+    - name: "Affichage du mode final"
+      ansible.builtin.debug:
+        msg: 
+          - "🔒 Mode Illumio final : {{ illumio_mode.stdout | default('Mode inconnu') }}"
+          - "{{ 'Mode changé vers Enforced ✅' if illumio_enforce is defined and illumio_enforce.changed else 'Mode déjà correct ✅' }}"
+
+    - name: "Test de connectivité au PCE"
+      ansible.builtin.shell: |
+        /opt/illumio_ven/illumio-ven-ctl test-connection
+      register: illumio_connection
+      changed_when: false
+      failed_when: false
+
+    - name: "Affichage du test de connectivité"
+      ansible.builtin.debug:
+        msg: "🌐 Test PCE : {{ 'Connexion OK ✅' if illumio_connection.rc == 0 else 'Connexion KO ❌' }}"
+
+    - name: "Enregistrement du résultat"
+      ansible.builtin.include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "checked"
+        set_results_item: "illumio"
+        set_results_value: "Agent Illumio - Mode {{ illumio_mode.stdout | default('unknown') }}"
+        set_results_component: "illumio"
+        set_results_operation: "check"
+        set_results_status: "{{ 'OK' if illumio_connection.rc == 0 else 'WARNING' }}"
+      ignore_errors: yes
+
+  when: illumio_installed.stat.exists
+  rescue:
+    - name: "Gestion des erreurs Illumio"
+      ansible.builtin.debug:
+        msg:
+          - "❌ Erreur lors de la vérification d'Illumio"
+          - "Vérifiez l'installation et les permissions"
+
+    - name: "Enregistrement de l'erreur"
+      ansible.builtin.include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "failed"
+        set_results_item: "illumio"
+        set_results_value: "Erreur lors de la vérification Illumio"
+        set_results_component: "illumio"
+        set_results_operation: "check"
+        set_results_status: "KO"
+      ignore_errors: yes
