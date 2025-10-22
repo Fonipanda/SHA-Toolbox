@@ -5,9 +5,9 @@
     path: /apps/dynatrace/oneagent/agent/tools/oneagentctl
   register: dynatrace_installed
 
-- name: "Arrêt si Dynatrace non installé"
+- name: "Information si Dynatrace non installé"
   ansible.builtin.debug:
-    msg: "⚠️ Dynatrace OneAgent non installé sur ce serveur"
+    msg: "ℹ️ Dynatrace OneAgent non détecté sur ce serveur - Ignoré"
   when: not dynatrace_installed.stat.exists
 
 - name: "Bloc de vérification Dynatrace"
@@ -26,32 +26,33 @@
       changed_when: false
       failed_when: false
 
-    - name: "Affichage de la version et du statut"
+    - name: "Affichage des informations Dynatrace"
       ansible.builtin.debug:
         msg:
-          - "📊 Version Dynatrace : {{ dynatrace_version.stdout_lines[0] if dynatrace_version.stdout_lines is defined else 'N/A' }}"
-          - "📊 Statut : {{ dynatrace_status.stdout_lines | default(['Statut inconnu']) | join(' ') }}"
+          - "📊 Dynatrace OneAgent détecté"
+          - "Version : {{ dynatrace_version.stdout_lines[0] if dynatrace_version.stdout_lines is defined else 'N/A' }}"
+          - "Statut : {{ dynatrace_status.stdout | default('Statut inconnu') }}"
 
     - name: "Détection si l'agent est arrêté"
       ansible.builtin.set_fact:
-        dynatrace_is_stopped: "{{ 'not running' in dynatrace_status.stdout or 'stopped' in dynatrace_status.stdout }}"
+        dynatrace_needs_restart: "{{ 'not running' in dynatrace_status.stdout or 'stopped' in dynatrace_status.stdout }}"
 
-    - name: "Démarrage de l'agent Dynatrace si arrêté"
+    - name: "Redémarrage de l'agent Dynatrace si nécessaire"
       ansible.builtin.shell: |
         /apps/dynatrace/oneagent/agent/tools/oneagentctl restart
-      register: dynatrace_start_result
-      when: dynatrace_is_stopped | bool
+      register: dynatrace_restart_result
+      when: dynatrace_needs_restart | bool
       changed_when: true
       failed_when: false
 
-    - name: "Affichage du résultat de démarrage"
+    - name: "Affichage du résultat de redémarrage"
       ansible.builtin.debug:
         msg:
-          - "✅ Agent Dynatrace démarré avec succès"
-          - "{{ dynatrace_start_result.stdout_lines | default(['Aucune sortie']) }}"
+          - "✅ Agent Dynatrace redémarré avec succès"
+          - "{{ dynatrace_restart_result.stdout | default('Aucune sortie') }}"
       when: 
-        - dynatrace_is_stopped | bool
-        - dynatrace_start_result is defined
+        - dynatrace_needs_restart | bool
+        - dynatrace_restart_result is defined
 
     - name: "Vérification du mode Dynatrace"
       ansible.builtin.shell: |
@@ -60,26 +61,14 @@
       changed_when: false
       failed_when: false
 
-    - name: "Affichage du mode actuel"
+    - name: "Affichage du mode final"
       ansible.builtin.debug:
         msg: "🔧 Mode Dynatrace : {{ dynatrace_mode.stdout | default('Mode inconnu') }}"
 
-    - name: "Enregistrement du résultat"
-      ansible.builtin.include_role:
-        name: ips_toolbox_set_results
-      vars:
-        set_results_state: "checked"
-        set_results_item: "dynatrace"
-        set_results_value: "Agent Dynatrace actif - Mode {{ dynatrace_mode.stdout | default('unknown') }}"
-        set_results_component: "dynatrace"
-        set_results_operation: "check"
-        set_results_status: "{{ 'OK' if not (dynatrace_is_stopped | bool) else 'RESTARTED' }}"
-      ignore_errors: yes
-
   when: dynatrace_installed.stat.exists
   rescue:
-    - name: "Gestion des erreurs Dynatrace"
+    - name: "Gestion des erreurs Dynatrace (non bloquante)"
       ansible.builtin.debug:
         msg:
-          - "❌ Erreur lors de la vérification de Dynatrace"
-          - "Vérifiez les logs dans /var/log/dynatrace/"
+          - "⚠️ Erreur lors de la vérification de Dynatrace (non critique)"
+          - "Le workflow continue normalement"
