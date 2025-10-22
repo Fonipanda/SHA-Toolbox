@@ -1,12 +1,13 @@
 ---
 
-- name: "Application Environment Builder"
+- name: "Toolbox Application Environment Builder"
   hosts: "{{ Hostname | default('all') }}"
   gather_facts: true
   become: true
   serial: 1
   
   vars:
+    # Variables de base (collectées via Survey AAP2)
     code_ap: "{{ CodeAP }}"
     code5car: "{{ code5car }}"
     hostname_target: "{{ Hostname }}"
@@ -16,30 +17,24 @@
     execution_id: "{{ ansible_date_time.epoch }}"
     report_dir: "/tmp/ansible_reports"
     
-    # Variables spécifiques HORSPROD
-    validation_level: "low"
-    allow_testing_features: true
-    allow_experimental_features: true
-    skip_backup: false
+    # Configuration universelle (sans distinction d'environnement)
     enable_debug_mode: true
-    
-    # Limites et seuils
-    system_uptime_limit: 90  # jours
-    dynatrace_required: true
+    system_uptime_limit: 90
+    dynatrace_required: false
     illumio_enforcement_mode: "enforced"
-    
+  
   pre_tasks:
-    - name: "[HORSPROD] Validation des variables obligatoires du Survey AAP2"
+    - name: "Validation des variables obligatoires du Survey AAP2"
       ansible.builtin.assert:
         that:
           - CodeAP is defined and CodeAP != ""
           - code5car is defined and code5car != ""
           - Hostname is defined and Hostname != ""
-          - CodeAP | regex_search('^[0-9]{5}$')
-          - code5car | regex_search('^[A-Za-z0-9]{5}$')
+          - "CodeAP | regex_search('^[0-9]{5}$')"
+          - "code5car | regex_search('^[A-Za-z0-9]{5}$')"
         fail_msg: "Variables Survey AAP2 invalides. CodeAP (5 chiffres) et code5car (5 alphanum) requis"
     
-    - name: "[HORSPROD] Création du répertoire de rapports"
+    - name: "Création du répertoire de rapports"
       ansible.builtin.file:
         path: "{{ report_dir }}"
         state: directory
@@ -47,29 +42,28 @@
         owner: root
         group: root
       ignore_errors: true
-      
-    - name: "[HORSPROD] Initialisation du rapport d'exécution"
+    
+    - name: "Initialisation du rapport d'exécution"
       ansible.builtin.copy:
         content: |
-          ===================================================================
-          RAPPORT D'EXÉCUTION - APPLICATION ENVIRONMENT BUILDER
-          ===================================================================
+          ================================================================
+          RAPPORT D'EXÉCUTION - SHA-TOOLBOX APPLICATION ENVIRONMENT BUILDER
+          ================================================================
           Date d'exécution: {{ execution_timestamp }}
           ID d'exécution: {{ execution_id }}
           Serveur cible: {{ Hostname }}
           Code Application: {{ CodeAP }}
           Code 5 caractères: {{ code5car }}
-          Environnement: {{ environment_type }}
-          ===================================================================
+          ================================================================
         dest: "{{ report_dir }}/execution_{{ execution_id }}.log"
         mode: '0644'
       ignore_errors: true
 
   tasks:
-    - name: "[HORSPROD] Exécution du workflow complet"
+    - name: "Exécution du workflow complet"
       block:
         # ===== PHASE 1 : DÉTECTION ET AUDIT SYSTÈME =====
-        - name: "[HORSPROD] Phase 1 - Détection et audit système complet"
+        - name: "Phase 1 - Détection et audit système"
           block:
             - name: "01 - Mise à jour Facts - Collecte des facts système étendus"
               ansible.builtin.include_role:
@@ -77,19 +71,18 @@
                 tasks_from: detect_os
               tags: [facts, detection]
               ignore_errors: true
-              
+            
             - name: "02 - Banner - Création bannière login"
               ansible.builtin.include_role:
                 name: ips_toolbox_banner
               vars:
                 banner_operation: "create"
-                banner_environment: "{{ environment_type }}"
                 banner_hostname: "{{ ansible_hostname }}"
                 banner_codeAP: "{{ code_ap }}"
                 banner_middlewares: "{{ detected_middlewares | default([]) | join(', ') }}"
               tags: [banner]
               ignore_errors: true
-              
+            
             - name: "03 - Users - Création d'utilisateurs techniques"
               ansible.builtin.include_role:
                 name: ips_toolbox_users
@@ -98,26 +91,25 @@
                 users_middlewares: "{{ detected_middlewares | default([]) }}"
               tags: [users]
               ignore_errors: true
-              
+            
             - name: "04 - Toolbox - Vérification interface Toolbox"
               ansible.builtin.include_role:
                 name: ips_toolbox_toolboxes
               vars:
                 toolboxes_operation: "verify"
-                toolboxes_environment: "{{ environment_type }}"
               tags: [toolbox]
               ignore_errors: true
-              
-        # ===== DÉTECTION MIDDLEWARE =====
-        - name: "Détection du middleware installé (AVANT launcher)"
-          ansible.builtin.include_role:
-            name: app_environment_builder
-            tasks_from: detect_middleware
-          tags: [middleware, detection]
-          ignore_errors: true
-          
+            
+            # Détection du middleware (AVANT launcher)
+            - name: "Détection du middleware installé"
+              ansible.builtin.include_role:
+                name: app_environment_builder
+                tasks_from: detect_middleware
+              tags: [middleware, detection]
+              ignore_errors: true
+
         # ===== PHASE 2 : ARBORESCENCE ET FILESYSTEMS =====
-        - name: "[HORSPROD] Phase 2 - Création arborescence et filesystems"
+        - name: "Phase 2 - Création arborescence et filesystems"
           block:
             - name: "05 - Arborescence - Création /applis + /apps"
               ansible.builtin.include_role:
@@ -131,7 +123,7 @@
                 system_iis: "01"
               tags: [arborescence, filesystem]
               ignore_errors: true
-              
+            
             - name: "06 - FileSystems - Création automatique"
               ansible.builtin.include_role:
                 name: ips_toolbox_system
@@ -143,102 +135,90 @@
                 system_lvSize: "1024"
               tags: [filesystem]
               ignore_errors: true
-              
-        # ===== PHASE 3 : VÉRIFICATIONS SYSTÈME ET CONFORMITÉ =====
-        - name: "[HORSPROD] Phase 3 - Vérifications système et conformité"
+
+        # ===== PHASE 3 : VÉRIFICATIONS SYSTÈME =====
+        - name: "Phase 3 - Vérifications système"
           block:
-            - name: "07 - NTP (Uptime) - Vérifier et redémarrer Chrony"
+            - name: "07 - Uptime - Vérification et information"
               ansible.builtin.include_role:
                 name: ips_toolbox_system
               vars:
                 system_operation: "uptime"
-                system_uptime_limit: 90
+                system_uptime_limit: "{{ system_uptime_limit }}"
                 system_component: "system"
-              tags: [uptime, ntp]
+              tags: [uptime]
               ignore_errors: true
-              
-            - name: "08 - Dynatrace - Agent fullstack configuré"
+            
+            - name: "08 - Dynatrace - Vérification agent (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_dynatrace
               vars:
                 dynatrace_operation: "check"
-                dynatrace_fullstack_required: "{{ dynatrace_required }}"
               tags: [dynatrace]
               ignore_errors: true
-              
-            - name: "09 - Illumio - Check statut Full/Enforced"
+            
+            - name: "09 - Illumio - Vérification statut (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_illumio
               vars:
                 illumio_operation: "check"
-                illumio_enforcement_mode: "{{ illumio_enforcement_mode }}"
               tags: [illumio]
               ignore_errors: true
-              
-        # ===== PHASE 4 : SAUVEGARDE ET TSM =====
-        - name: "[HORSPROD] Phase 4 - Configuration sauvegarde et TSM"
+
+        # ===== PHASE 4 : SAUVEGARDE =====
+        - name: "Phase 4 - Configuration sauvegarde"
           block:
-            - name: "11 - Sauvegarde TSM/netBackup - Démarrage sauvegarde"
+            - name: "11 - Sauvegarde - Vérification TSM/Backup (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_backup
               vars:
-                backup_operation: "run_incr"
+                backup_operation: "check"
                 backup_type: "system"
               tags: [backup, tsm]
               ignore_errors: true
-              
-            - name: "12 - Backup applicatif - Config via Autosys"
+            
+            - name: "12 - Autosys - Vérification (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_autosys
               vars:
                 autosys_operation: "check"
               tags: [autosys, backup]
               ignore_errors: true
-              
-            - name: "13 - Backup système - Vérif TSM/netBackup"
-              ansible.builtin.include_role:
-                name: ips_toolbox_backup
-              vars:
-                backup_operation: "chk_bkp_sys"
-              tags: [backup]
-              ignore_errors: true
-              
+
         # ===== PHASE 5 : LOGS ET MAINTENANCE =====
-        - name: "[HORSPROD] Phase 5 - Configuration logs et maintenance"
+        - name: "Phase 5 - Configuration logs"
           block:
-            - name: "14 - Purge logs - Nettoyage FS /applis/logs"
+            - name: "14 - Logs - Configuration purge /applis/logs"
               ansible.builtin.include_role:
                 name: ips_toolbox_logs
               vars:
-                logs_operation: "purge"
+                logs_operation: "setup"
                 logs_directory: "/applis/logs"
               tags: [logs, purge]
               ignore_errors: true
-              
+      
       rescue:
-        - name: "[HORSPROD] Gestion des erreurs du workflow"
+        - name: "Gestion des erreurs du workflow"
           ansible.builtin.debug:
             msg:
               - "Une erreur s'est produite lors de l'exécution du workflow"
               - "Consultez les logs dans {{ report_dir }}"
-              
+      
       always:
-        - name: "[HORSPROD] Création du répertoire de rapports si nécessaire"
+        - name: "Création du répertoire de rapports si nécessaire"
           ansible.builtin.file:
             path: "{{ report_dir }}"
             state: directory
             mode: '0755'
-            owner: root
-            group: root
           ignore_errors: true
-      
-        - name: "[HORSPROD] Finalisation du rapport d'exécution"
+        
+        - name: "Finalisation du rapport d'exécution"
           ansible.builtin.lineinfile:
             path: "{{ report_dir }}/execution_{{ execution_id }}.log"
             line: |
-              ===============================================
+              ================================================================
               FIN D'EXÉCUTION: {{ ansible_date_time.iso8601 }}
-              ===============================================
+              ================================================================
             insertafter: EOF
             create: yes
             mode: '0644'
