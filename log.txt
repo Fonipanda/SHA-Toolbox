@@ -1,19 +1,19 @@
-PLAY [Application Environment Builder] *****************************************
+PLAY [Toolbox Application Environment Builder] *********************************
 
 TASK [Gathering Facts] *********************************************************
 ok: [s02vl9942814]
 
-TASK [[HORSPROD] Validation des variables obligatoires du Survey AAP2] *********
+TASK [Validation des variables obligatoires du Survey AAP2] ********************
 ok: [s02vl9942814] => {
     "changed": false,
     "msg": "All assertions passed"
 }
 
-TASK [[HORSPROD] Création du répertoire de rapports] ***************************
+TASK [Création du répertoire de rapports] **************************************
 ok: [s02vl9942814]
 
-TASK [[HORSPROD] Initialisation du rapport d'exécution] ************************
-ok: [s02vl9942814]
+TASK [Initialisation du rapport d'exécution] ***********************************
+changed: [s02vl9942814]
 
 TASK [01 - Mise à jour Facts - Collecte des facts système étendus] *************
 
@@ -88,15 +88,33 @@ ok: [s02vl9942814] => {
 TASK [app_environment_builder : Enregistrement des facts OS pour les autres rôles] ***
 ok: [s02vl9942814]
 
-TASK [02 - Banner - Création bannière login (à implémenter)] *******************
+TASK [02 - Banner - Création bannière login] ***********************************
+
+TASK [ips_toolbox_banner : Initialisation du rôle banner] **********************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Création de la bannière MOTD] ***********************
+changed: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Création de la bannière issue (console locale)] *****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Création de la bannière issue.net (SSH)] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Configuration SSH pour afficher la bannière] ********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Affichage du statut de création des bannières] ******
 ok: [s02vl9942814] => {
-    "msg": "Banner - À implémenter dans rôle spécifique"
+    "msg": [
+        "✅ Bannières créées pour s02vl9942814",
+        "Application: 12402",
+        "Middlewares détectés: "
+    ]
 }
 
-TASK [03 - Users - Création d'utilisateurs (à implémenter)] ********************
-ok: [s02vl9942814] => {
-    "msg": "Users - À implémenter dans rôle spécifique"
-}
+TASK [03 - Users - Création d'utilisateurs techniques] *************************
 
 TASK [04 - Toolbox - Vérification interface Toolbox] ***************************
 
@@ -160,7 +178,7 @@ ok: [s02vl9942814] => {
     ]
 }
 
-TASK [Détection du middleware installé (AVANT launcher)] ***********************
+TASK [Détection du middleware installé] ****************************************
 
 TASK [app_environment_builder : Initialisation de la liste des middlewares et services détectés] ***
 ok: [s02vl9942814]
@@ -242,14 +260,561 @@ TASK [ips_toolbox_system : Vérification de l'existence de la tâche système de
 ok: [s02vl9942814 -> localhost]
 
 TASK [ips_toolbox_system : Inclusion de la tâche système create-directory_Linux_system.yml] ***
-ERROR! conflicting action statements: ansible.builtin.assert, that
+included: /runner/project/roles/ips_toolbox_system/tasks/create-directory_Linux_system.yml for s02vl9942814
 
-The error appears to be in '/runner/project/roles/ips_toolbox_system/tasks/create-directory_Linux_system.yml': line 3, column 3, but may
-be elsewhere in the file depending on the exact syntax problem.
+TASK [ips_toolbox_system : Vérification des variables obligatoires] ************
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Variables obligatoires présentes :\\n- system_codeAP: 12402\\n- system_code5car: acfrb\\n"
+}
 
-The offending line appears to be:
+TASK [ips_toolbox_system : Affichage de la configuration] **********************
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Création arborescence applicative via Toolbox ===",
+        "Code Application: 12402",
+        "Code 5 caractères: acfrb",
+        "Instance ID: ",
+        "Volume Group: vg=vg_apps\\n",
+        "Script Toolbox: /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh"
+    ]
+}
 
+TASK [ips_toolbox_system : Vérification de la présence de la Toolbox] **********
+ok: [s02vl9942814]
 
-- name: stop play when a mandatory variable is missing
-  ^ here
+TASK [ips_toolbox_system : Vérification de la version de la Toolbox] ***********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage de la version Toolbox] ********************
+ok: [s02vl9942814] => {
+    "msg": [
+        "Toolbox trouvée: OUI ✅",
+        "Version: 2512",
+        "Version minimale requise: 1820 (18.2.0)"
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification que la version est suffisante] *********
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Toolbox présente et version suffisante\\nVersion: 2512\\n"
+}
+
+TASK [ips_toolbox_system : Création de l'arborescence applicative via script Toolbox] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du résultat de création] ******************
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Résultat création arborescence ===",
+        [
+            "",
+            "--------------------------------------------------------------------------------",
+            "\\u001b[0m\\u001b[37m            \\u001b[12G\\u001b[0m\\u001b[37mCREATING FS FROM : /apps/toolboxes/exploit/tmp/fs_arbo.fs\\u001b[0m\\u001b[0m\\u001b[37m            \\u001b[0m",
+            "--------------------------------------------------------------------------------",
+            "  vg_apps:lv_acfrb:/applis/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_acfrb_ti:/applis/12402-acfrb/transfer/in:1024:0:0",
+            "  vg_apps:lv_acfrb_to:/applis/12402-acfrb/transfer/out:1024:0:0",
+            "  vg_apps:lv_acfrb_tmp:/applis/12402-acfrb/tmp:1024:0:0",
+            "  vg_apps:lv_acfrb_arch:/applis/12402-acfrb/archives:1024:0:0",
+            "  vg_apps:lv_dlv_acfrb:/applis/delivery/12402-acfrb:2048:0:0",
+            "  vg_apps:lv_log_acfrb:/applis/logs/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_log_shared:/applis/logs/shared:2048:0:0",
+            "  vg_apps:lv_dlv_shared:/applis/delivery/shared:2048:0:0",
+            "  vg_apps:lv_shared:/applis/shared:1024:0:0",
+            "  vg_apps:lv_shared_tmp:/applis/shared/tmp:1024:0:0",
+            "  vg_apps:lv_shared_arch:/applis/shared/archives:1024:0:0",
+            "--------------------------------------------------------------------------------",
+            "",
+            "",
+            "\\u001b\\u001b[33m-W- L'espace disponible sur le VG vg_apps (14332 M) est inferieur a l'espace necessaire: 15360 M. Les LV de ce VG seront ignores.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb de 1024M (lv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/in de 1024M (lv_acfrb_ti1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_ti1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/out de 1024M (lv_acfrb_to1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_to1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/tmp de 1024M (lv_acfrb_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/archives de 1024M (lv_acfrb_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/12402-acfrb de 2048M (lv_dlv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/12402-acfrb de 1024M (lv_log_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/shared de 2048M (lv_log_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/shared de 2048M (lv_dlv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared de 1024M (lv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/tmp de 1024M (lv_shared_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/archives de 1024M (lv_shared_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Cleaning up ...\\u001b[0m",
+            "\\u001b[0m\\u001b[37m-I- Clean up done ... quitting.\\u001b[0m"
+        ]
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification de la présence des filesystems créés] ***
+ok: [s02vl9942814] => (item=/applis/12402-acfrb-01)
+ok: [s02vl9942814] => (item=/applis/shared)
+ok: [s02vl9942814] => (item=/applis/logs)
+ok: [s02vl9942814] => (item=/applis/delivery)
+
+TASK [ips_toolbox_system : Affichage de la vérification des filesystems] *******
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Vérification filesystems créés ===",
+        "/applis/12402-acfrb-01: Absent ❌/applis/shared: Présent ✅/applis/logs: Présent ✅/applis/delivery: Présent ✅"
+    ]
+}
+
+TASK [Enregistrement du résultat de création d'arborescence] *******************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize temp] *******************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut d'exécution du rôle système] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle système exécuté",
+        "Fichier: create-directory_Linux_system.yml",
+        "Opération: create-directory",
+        "OS: Linux"
+    ]
+}
+
+TASK [06 - FileSystems - Création automatique] *********************************
+
+TASK [ips_toolbox_system : Initialisation du rôle ips_toolbox_system] **********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Construction du nom de fichier de tâche système] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de l'existence de la tâche système demandée] ***
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_system : Inclusion de la tâche système create-fs_Linux_system.yml] ***
+included: /runner/project/roles/ips_toolbox_system/tasks/create-fs_Linux_system.yml for s02vl9942814
+
+TASK [ips_toolbox_system : Validation des variables de création de filesystems] ***
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Variables de création valides\\n"
+}
+
+TASK [ips_toolbox_system : Vérification de la présence du script Toolbox] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Lecture de la version de la Toolbox] ****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de la version minimale] ****************
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Version Toolbox suffisante : 2512\\n"
+}
+
+TASK [ips_toolbox_system : Affichage des paramètres de création] ***************
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Création filesystems via Toolbox ===",
+        "Code Application: 12402",
+        "Code 5 caractères: acfrb",
+        "Volume Group: vg_apps",
+        "Taille LV: 1024"
+    ]
+}
+
+TASK [ips_toolbox_system : Création des filesystems via script Toolbox] ********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du résultat de création] ******************
+ok: [s02vl9942814] => {
+    "msg": [
+        "📦 Résultat création FS :",
+        [
+            "",
+            "--------------------------------------------------------------------------------",
+            "\\u001b[0m\\u001b[37m            \\u001b[12G\\u001b[0m\\u001b[37mCREATING FS FROM : /apps/toolboxes/exploit/tmp/fs_arbo.fs\\u001b[0m\\u001b[0m\\u001b[37m            \\u001b[0m",
+            "--------------------------------------------------------------------------------",
+            "  vg_apps:lv_dlv_acfrb:/applis/delivery/12402-acfrb:2048:0:0",
+            "  vg_apps:lv_log_acfrb:/applis/logs/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_log_shared:/applis/logs/shared:2048:0:0",
+            "  vg_apps:lv_dlv_shared:/applis/delivery/shared:2048:0:0",
+            "  vg_apps:lv_shared:/applis/shared:1024:0:0",
+            "  vg_apps:lv_shared_tmp:/applis/shared/tmp:1024:0:0",
+            "  vg_apps:lv_shared_arch:/applis/shared/archives:1024:0:0",
+            "  vg_apps:lv_acfrb:/applis/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_acfrb_ti:/applis/12402-acfrb/transfer/in:1024:0:0",
+            "  vg_apps:lv_acfrb_to:/applis/12402-acfrb/transfer/out:1024:0:0",
+            "  vg_apps:lv_acfrb_tmp:/applis/12402-acfrb/tmp:1024:0:0",
+            "  vg_apps:lv_acfrb_arch:/applis/12402-acfrb/archives:1024:0:0",
+            "--------------------------------------------------------------------------------",
+            "",
+            "",
+            "\\u001b\\u001b[33m-W- L'espace disponible sur le VG vg_apps (14332 M) est inferieur a l'espace necessaire: 15360 M. Les LV de ce VG seront ignores.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/12402-acfrb de 2048M (lv_dlv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/12402-acfrb de 1024M (lv_log_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/shared de 2048M (lv_log_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/shared de 2048M (lv_dlv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared de 1024M (lv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/tmp de 1024M (lv_shared_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/archives de 1024M (lv_shared_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb de 1024M (lv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/in de 1024M (lv_acfrb_ti1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_ti1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/out de 1024M (lv_acfrb_to1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_to1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/tmp de 1024M (lv_acfrb_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/archives de 1024M (lv_acfrb_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Cleaning up ...\\u001b[0m",
+            "\\u001b[0m\\u001b[37m-I- Clean up done ... quitting.\\u001b[0m"
+        ]
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification du montage des filesystems] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage de l'état des filesystems] ****************
+ok: [s02vl9942814] => {
+    "msg": [
+        "🗂️ État des filesystems :",
+        [
+            "/dev/mapper/vg_apps-lv_acfrb              960M   40M  921M   5% /applis/12402-acfrb",
+            "/dev/mapper/vg_apps-lv_log_acfrb          960M   39M  922M   5% /applis/logs/12402-acfrb",
+            "/dev/mapper/vg_apps-lv_spt00ap            3.9G   24K  3.7G   1% /applis/09043-spt00",
+            "/dev/mapper/vg_apps-lv_shared             960M   40M  921M   5% /applis/shared",
+            "/dev/mapper/vg_apps-lv_spt00log           2.0G   24K  1.8G   1% /applis/logs/09043-spt00",
+            "/dev/mapper/vg_apps-lv_testsdeli          2.0G   24K  1.8G   1% /applis/delivery/12402-tests",
+            "/dev/mapper/vg_apps-lv_spt00deli          2.0G   24K  1.8G   1% /applis/delivery/09043-spt00",
+            "/dev/mapper/vg_apps-lv_testsap            3.9G   24K  3.7G   1% /applis/12402-tests",
+            "/dev/mapper/vg_apps-lv_testslog           2.0G   24K  1.8G   1% /applis/logs/12402-tests",
+            "/dev/mapper/vg_apps-lv_acfrb_tmp          960M   39M  922M   5% /applis/12402-acfrb/tmp",
+            "/dev/mapper/vg_apps-lv_acfrb_to           960M   39M  922M   5% /applis/12402-acfrb/transfer/out",
+            "/dev/mapper/vg_apps-lv_acfrb_arch         960M   39M  922M   5% /applis/12402-acfrb/archives",
+            "/dev/mapper/vg_apps-lv_acfrb_ti           960M   39M  922M   5% /applis/12402-acfrb/transfer/in",
+            "/dev/mapper/vg_apps-lv_dlv_shared         960M   40M  921M   5% /applis/delivery/shared",
+            "/dev/mapper/vg_apps-lv_shared_arch        960M   39M  922M   5% /applis/shared/archives",
+            "/dev/mapper/vg_apps-lv_log_shared         960M   39M  922M   5% /applis/logs/shared",
+            "/dev/mapper/vg_apps-lv_shared_tmp         960M   39M  922M   5% /applis/shared/tmp",
+            "/dev/mapper/rootvg-apps                  1014M   40M  975M   4% /apps",
+            "/dev/mapper/vg_apps-lv_home_bigfix        9.8G   84M  9.2G   1% /apps/BIGFIX",
+            "/dev/mapper/vg_apps-lv_appexploit         974M   12M  895M   2% /apps/exploit",
+            "/dev/mapper/vg_apps-lv_dynatrace          7.8G  1.6G  5.9G  21% /apps/dynatrace",
+            "/dev/mapper/rootvg-lv_elastic_agent       4.9G  1.1G  3.6G  22% /apps/elastic_agent",
+            "/dev/mapper/vg_apps-lv_toolboxes          974M  159M  749M  18% /apps/toolboxes",
+            "/dev/mapper/rootvg-lv_etac                2.1G  544M  1.4G  28% /apps/eTAC",
+            "/dev/mapper/rootvg-lv_filebeat--cybersoc  272M  205M   48M  82% /apps/filebeat-cybersoc",
+            "/dev/mapper/vg_apps-lv_dlv_acfrb          960M   39M  922M   5% /applis/delivery/12402-acfrb",
+            "/dev/mapper/vg_apps-lv_tanium              15G  5.0G   11G  33% /apps/Tanium",
+            "/dev/mapper/rootvg-deploy                 2.0G   48M  2.0G   3% /apps/Deploy",
+            "/dev/mapper/rootvg-sys                    2.0G   80M  2.0G   4% /apps/sys",
+            "/dev/mapper/rootvg-back                    12G  3.6G  8.4G  30% /apps/sys/back",
+            "/dev/mapper/rootvg-lv_perfs               507M   96M  412M  19% /apps/sys/log/stats"
+        ]
+    ]
+}
+
+TASK [Enregistrement du résultat] **********************************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize temp] *******************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut d'exécution du rôle système] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle système exécuté",
+        "Fichier: create-fs_Linux_system.yml",
+        "Opération: create-fs",
+        "OS: Linux"
+    ]
+}
+
+TASK [07 - Uptime - Vérification et information] *******************************
+
+TASK [ips_toolbox_system : Initialisation du rôle ips_toolbox_system] **********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Construction du nom de fichier de tâche système] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de l'existence de la tâche système demandée] ***
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_system : Inclusion de la tâche système uptime_Linux_system.yml] ***
+included: /runner/project/roles/ips_toolbox_system/tasks/uptime_Linux_system.yml for s02vl9942814
+
+TASK [ips_toolbox_system : Récupération de l'uptime du serveur] ****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage de l'uptime] ******************************
+fatal: [s02vl9942814]: FAILED! => {"msg": "An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: An unhandled exception occurred while templating '{{ system_uptime_limit }}'. Error was a <class 'ansible.errors.AnsibleError'>, original message: recursive loop detected in template string: {{ system_uptime_limit }}. maximum recursion depth exceeded while calling a Python object"}
+
+TASK [Gestion de l'erreur - Tâche système introuvable] *************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize result] *****************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut d'exécution du rôle système] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle système exécuté",
+        "Fichier: uptime_Linux_system.yml",
+        "Opération: uptime",
+        "OS: Linux"
+    ]
+}
+
+TASK [08 - Dynatrace - Vérification agent (si présent)] ************************
+
+TASK [ips_toolbox_dynatrace : Vérification de l'installation de Dynatrace OneAgent] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Vérification de la version de Dynatrace] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Vérification du statut de l'agent Dynatrace] *****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Affichage des informations Dynatrace] ************
+ok: [s02vl9942814] => {
+    "msg": [
+        "📊 Dynatrace OneAgent détecté",
+        "Version : 1.297.80.20250109-162423",
+        "Statut : "
+    ]
+}
+
+TASK [ips_toolbox_dynatrace : Détection si l'agent est arrêté] *****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Vérification du mode Dynatrace] ******************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Affichage du mode final] *************************
+ok: [s02vl9942814] => {
+    "msg": "🔧 Mode Dynatrace : "
+}
+
+TASK [09 - Illumio - Vérification statut (si présent)] *************************
+
+TASK [ips_toolbox_illumio : Vérification de l'installation d'Illumio VEN] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Vérification de la version d'Illumio] **************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Vérification du statut de l'agent Illumio] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Affichage des informations Illumio] ****************
+ok: [s02vl9942814] => {
+    "msg": [
+        "🛡️ Illumio VEN détecté",
+        "Version : 23.2.30-447",
+        "Statut : Checking Runtime Environment..........\\nStatus for illumio-control: \\n - Environment Illumio VEN Environment is setup\\n - venAgentMgr venAgentMgr is running\\n - IPSec IPSec feature not enabled\\n - venPlatformHandler venPlatformHandler is running\\n - venVtapServer venVtapServer is running\\n - venAgentMonitor venAgentMonitor is running\\n\\nAgent state: enforced"
+    ]
+}
+
+TASK [ips_toolbox_illumio : Détection si l'agent est arrêté] *******************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Vérification du mode actuel d'Illumio] *************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Information sur le mode Illumio] *******************
+ok: [s02vl9942814] => {
+    "msg": [
+        "🔒 Mode Illumio actuel : Usage: /opt/illumio_ven/illumio-ven-ctl {start|stop|restart|workloads|status|connectivity-test|check-env|gen-supportreport|unpair|set-proxy|reset-proxy|show-proxy|activate|prepare|version|suspend|unsuspend|backup|restore|deactivate|conncheck|configset}",
+        "Note: Mode Enforced recommandé pour la sécurité"
+    ]
+}
+
+TASK [ips_toolbox_illumio : Test de connectivité au PCE (si possible)] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Affichage du test de connectivité] *****************
+ok: [s02vl9942814] => {
+    "msg": "🌐 Connectivité PCE : KO ⚠️"
+}
+
+TASK [11 - Sauvegarde - Vérification TSM/Backup (si présent)] ******************
+
+TASK [ips_toolbox_backup : Recherche des systèmes de sauvegarde disponibles] ***
+[WARNING]: Skipped '/usr/tivoli/tsm/client/ba/bin' path due to this access
+issue: '/usr/tivoli/tsm/client/ba/bin' is not a directory
+[WARNING]: Skipped '/opt/networker/bin' path due to this access issue:
+'/opt/networker/bin' is not a directory
+[WARNING]: Skipped '/usr/openv/netbackup/bin' path due to this access issue:
+'/usr/openv/netbackup/bin' is not a directory
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Test de la commande TSM dsmc] ***********************
+ok: [s02vl9942814] => (item={'path': '/opt/tivoli/tsm/client/ba/bin/dsmc', 'mode': '0555', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 1, 'size': 15326520, 'inode': 384, 'dev': 64813, 'nlink': 1, 'atime': 1761069920.1716793, 'mtime': 1701766020.0, 'ctime': 1742393433.0437365, 'gr_name': 'bin', 'pw_name': 'root', 'wusr': False, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False})
+
+TASK [ips_toolbox_backup : Vérification du service dsmcad (Linux/AIX)] *********
+changed: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Vérification du script REAR (si présent)] ***********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Information REAR] ***********************************
+ok: [s02vl9942814] => {
+    "msg": "🔄 Script REAR : Détecté ✅"
+}
+
+TASK [12 - Autosys - Vérification (si présent)] ********************************
+
+TASK [ips_toolbox_autosys : set_fact] ******************************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_autosys : stat] **********************************************
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_autosys : include_tasks] *************************************
+included: /runner/project/roles/ips_toolbox_autosys/tasks/check_Linux_autosys.yml for s02vl9942814
+
+TASK [ips_toolbox_autosys : check Autosys version] *****************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_autosys : Format to Json when autosys is not installed] ******
+ok: [s02vl9942814]
+
+TASK [set result output for autosys check] *************************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize temp] *******************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [14 - Logs - Configuration purge /applis/logs] ****************************
+
+TASK [ips_toolbox_logs : Initialisation du rôle ips_toolbox_logs] **************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Vérification de l'existence du service purge_logs] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Vérification de l'existence du timer purge_logs] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Vérification du fichier exploit_rotate-log.conf] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Création du répertoire de logs si absent] *************
+changed: [s02vl9942814] => (item=/apps/toolboxes/exploit/conf)
+changed: [s02vl9942814] => (item=/apps/toolboxes/exploit/logs)
+changed: [s02vl9942814] => (item=/applis/logs)
+
+TASK [ips_toolbox_logs : Vérification du statut final des services de purge] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Affichage du résumé de configuration purge logs] ******
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== RÉSUMÉ PURGE LOGS ===",
+        "Service purge_logs: PRÉSENT",
+        "Timer purge_logs: PRÉSENT",
+        "Configuration exploit_rotate-log.conf: PRÉSENT",
+        "",
+        "STATUT FINAL:",
+        [
+            "=== Statut services purge logs ===",
+            "enabled",
+            "active",
+            "NEXT                         LEFT     LAST                         PASSED  UNIT             ACTIVATES",
+            "Thu 2025-10-23 01:00:00 CEST 10h left Wed 2025-10-22 01:00:01 CEST 13h ago purge_logs.timer purge_logs.service",
+            "",
+            "1 timers listed.",
+            "Pass --all to see loaded but inactive timers, too.",
+            "=== Fin statut ==="
+        ],
+        "=== FIN RÉSUMÉ ==="
+    ]
+}
+
+TASK [Enregistrement du résultat purge logs] ***********************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize result] *****************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [Création du répertoire de rapports si nécessaire] ************************
+ok: [s02vl9942814]
+
+TASK [Finalisation du rapport d'exécution] *************************************
+changed: [s02vl9942814]
+
+PLAY RECAP *********************************************************************
+s02vl9942814               : ok=132  changed=5    unreachable=0    failed=0    skipped=39   rescued=1    ignored=0   
 
