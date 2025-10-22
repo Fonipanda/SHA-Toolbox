@@ -1,0 +1,57 @@
+01 - Facts de l'hôte recueillis.
+02 - Création de la bannière.
+03 - Création d'utilisateurs techniques.
+04 - Toolbox :
+•	Vérifier la présence de la toolbox,
+•	Si absente alors la toolbox est installée,
+•	Si la version de la toolbox n'est pas la dernière alors mise à jour de la version.
+05 - Création de l'arborescence ; Répertoires spécifiques créés sous sous `/applis` et sous `/apps`.
+•	FS /applis :
+o	Check : vérification de la présence du dossier /applis et le FS associé dans le bon LV.
+o	Opération : si le dossier est absent alors le dossier est créé avec les droits 775 avec le FS associé.
+•	FS /apps :
+o	Check : vérification de la présence du dossier /apps et le FS associé dans le bon LV.
+o	Opération : si le dossier est absent le dossier est créé avec les droits 775 avec le FS associé.
+06 - Création et Check des FileSystems ; Automatisation de la création de fichiers systèmes selon les normes IT Rules.
+07 - NTP (Uptime) :
+•	Vérification de l'Uptime du serveur et redémarrage du service Chrony si nécessaire.
+•	Vérifier que la VM a un Uptime < 90 jours.
+08 - Configuration de l'agent Dynatrace :
+•	Installation et configuration de l'agent oneagent en fullstack.
+•	Si une BDD Oracle est installée, alors Dynatrace n’a pas besoin d’une installation en full stack,
+•	Sinon, vérifier que Dynatrace est installé en full stack.
+•	Vérifier que l’agent OneAgentCTL est présent.
+09 - Configuration de l'agent Illumio :
+•	Vérifier si Illumio est installé.
+•	Vérifier si Illumio est en mode Enforced (Check du statut de l'agent Illumio en mode "Full").
+10 - Démarrage d'une sauvegarde TSM ; Initiation d'une sauvegarde complète de la VM.	
+•	Check TSM :
+o	check le chemin d’installation de TSM,
+o	check les binaires de TSM,
+o	check les binaires de dsmcad,
+o	check la présence des fichiers de configuration dsm,
+o	check l’installation de TSM.
+•	Opération :
+o	lance une sauvegarde système REAR,
+o	check la connexion avec l’infra TSM,
+o	envoi la sauvegarde REAR sur TSM,
+o	check la présence du backup REAR sur TSM.
+11 - Backup applicatif ; Configuration des backups applicatifs via Autosys.
+12 - Backup system ; Vérification de la présence d'un backup système et exportation vers l'infra TSM.
+13 - Purge des logs ; Nettoyage des logs, dans le FS `/applis/logs`.
+•	Rotation des logs :
+•	Cette fonctionnalité est intégrée dans la Toolbox :
+•	La liste des répertoires à purger est dans le fichier "/apps/toolboxes/exploit/conf/exploit_rotate-log.conf"
+Si le fichier n'existe pas, un fichier est créé par défaut.
+	Path Files :
+# => purge journaliere des fichiers de plus de 7 jours
+/apps/toolboxes/.logs
+/apps/toolboxes/backup_restore/logs
+/apps/toolboxes/sgbd/oracle/log
+/apps/toolboxes/web/*/logs
+•	Le script de purge est monté en tant que service (purge_logs.service) et est automatiquement ordonnancé (purge_logs.timer).
+Si les fichiers existent, aucun traitement.
+Si les fichiers n'existent pas, ils sont créés :
+/etc/systemd/system/purge_logs.service
+/etc/systemd/system/purge_logs.timer 
+SUN *-*-* 20:00:00
