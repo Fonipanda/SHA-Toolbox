@@ -1,30 +1,85 @@
 ---
-- name: "Initialisation du rôle ips_toolbox_dynatrace"
-  ansible.builtin.set_fact:
-    dynatrace_component: "dynatrace"
-    dynatrace_role_name: "ips_toolbox_dynatrace"
 
-- name: "Construction du nom de fichier de tâche Dynatrace"
-  ansible.builtin.set_fact:
-    dynatrace_task_file: "{{ dynatrace_operation | default('check') }}_{{ ansible_system }}_dynatrace.yml"
-
-- name: "Vérification de l'existence du fichier de tâche Dynatrace"
+- name: "Vérification de l'installation de Dynatrace OneAgent"
   ansible.builtin.stat:
-    path: "{{ role_path }}/tasks/{{ dynatrace_task_file }}"
-  register: dynatrace_task_exists
-  delegate_to: localhost
+    path: /apps/dynatrace/oneagent/agent/tools/oneagentctl
+  register: dynatrace_installed
 
-- name: "Exécution de la tâche Dynatrace spécifique à l'OS"
-  ansible.builtin.include_tasks: "{{ dynatrace_task_file }}"
-  when: dynatrace_task_exists.stat.exists
-
-- name: "Fallback - Tâche générique Dynatrace"
-  ansible.builtin.include_tasks: "check_generic_dynatrace.yml"
-  when: not dynatrace_task_exists.stat.exists
-
-- name: "Affichage du statut d'exécution Dynatrace"
+- name: "Arrêt si Dynatrace non installé"
   ansible.builtin.debug:
-    msg:
-      - "Rôle Dynatrace exécuté"
-      - "Fichier: {{ dynatrace_task_file if dynatrace_task_exists.stat.exists else 'check_generic_dynatrace.yml' }}"
-      - "Opération: {{ dynatrace_operation | default('check') }}"
+    msg: "⚠️ Dynatrace OneAgent non installé sur ce serveur"
+  when: not dynatrace_installed.stat.exists
+
+- name: "Bloc de vérification Dynatrace"
+  block:
+    - name: "Vérification de la version de Dynatrace"
+      ansible.builtin.shell: |
+        /apps/dynatrace/oneagent/agent/tools/oneagentctl --version
+      register: dynatrace_version
+      changed_when: false
+      failed_when: false
+
+    - name: "Vérification du statut de l'agent Dynatrace"
+      ansible.builtin.shell: |
+        /apps/dynatrace/oneagent/agent/tools/oneagentctl status
+      register: dynatrace_status
+      changed_when: false
+      failed_when: false
+
+    - name: "Affichage de la version et du statut"
+      ansible.builtin.debug:
+        msg:
+          - "📊 Version Dynatrace : {{ dynatrace_version.stdout_lines[0] if dynatrace_version.stdout_lines is defined else 'N/A' }}"
+          - "📊 Statut : {{ dynatrace_status.stdout_lines | default(['Statut inconnu']) | join(' ') }}"
+
+    - name: "Détection si l'agent est arrêté"
+      ansible.builtin.set_fact:
+        dynatrace_is_stopped: "{{ 'not running' in dynatrace_status.stdout or 'stopped' in dynatrace_status.stdout }}"
+
+    - name: "Démarrage de l'agent Dynatrace si arrêté"
+      ansible.builtin.shell: |
+        /apps/dynatrace/oneagent/agent/tools/oneagentctl restart
+      register: dynatrace_start_result
+      when: dynatrace_is_stopped | bool
+      changed_when: true
+      failed_when: false
+
+    - name: "Affichage du résultat de démarrage"
+      ansible.builtin.debug:
+        msg:
+          - "✅ Agent Dynatrace démarré avec succès"
+          - "{{ dynatrace_start_result.stdout_lines | default(['Aucune sortie']) }}"
+      when: 
+        - dynatrace_is_stopped | bool
+        - dynatrace_start_result is defined
+
+    - name: "Vérification du mode Dynatrace"
+      ansible.builtin.shell: |
+        /apps/dynatrace/oneagent/agent/tools/oneagentctl --get-mode
+      register: dynatrace_mode
+      changed_when: false
+      failed_when: false
+
+    - name: "Affichage du mode actuel"
+      ansible.builtin.debug:
+        msg: "🔧 Mode Dynatrace : {{ dynatrace_mode.stdout | default('Mode inconnu') }}"
+
+    - name: "Enregistrement du résultat"
+      ansible.builtin.include_role:
+        name: ips_toolbox_set_results
+      vars:
+        set_results_state: "checked"
+        set_results_item: "dynatrace"
+        set_results_value: "Agent Dynatrace actif - Mode {{ dynatrace_mode.stdout | default('unknown') }}"
+        set_results_component: "dynatrace"
+        set_results_operation: "check"
+        set_results_status: "{{ 'OK' if not (dynatrace_is_stopped | bool) else 'RESTARTED' }}"
+      ignore_errors: yes
+
+  when: dynatrace_installed.stat.exists
+  rescue:
+    - name: "Gestion des erreurs Dynatrace"
+      ansible.builtin.debug:
+        msg:
+          - "❌ Erreur lors de la vérification de Dynatrace"
+          - "Vérifiez les logs dans /var/log/dynatrace/"
