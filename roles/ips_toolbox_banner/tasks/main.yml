@@ -1,34 +1,52 @@
 ---
 
-- name: "Initialisation du rôle ips_toolbox_banner"
+- name: "Initialisation du rôle banner"
   ansible.builtin.set_fact:
     banner_component: "banner"
-    banner_role_name: "ips_toolbox_banner"
     banner_operation: "{{ banner_operation | default('create') }}"
 
-- name: "Construction du nom de fichier de tâche banner"
-  ansible.builtin.set_fact:
-    banner_task_file: "{{ banner_operation }}_{{ ansible_system }}_banner.yml"
+- name: "Création de la bannière MOTD"
+  ansible.builtin.template:
+    src: motd.j2
+    dest: /etc/motd
+    mode: '0644'
+    owner: root
+    group: root
+  ignore_errors: true
 
-- name: "Vérification de l'existence du fichier de tâche banner"
-  ansible.builtin.stat:
-    path: "{{ role_path }}/tasks/{{ banner_task_file }}"
-  register: banner_task_exists
-  delegate_to: localhost
+- name: "Création de la bannière issue (console locale)"
+  ansible.builtin.template:
+    src: issue.j2
+    dest: /etc/issue
+    mode: '0644'
+    owner: root
+    group: root
+  ignore_errors: true
+  when: ansible_os_family != "Windows"
 
-- name: "Exécution de la tâche banner spécifique à l'OS"
-  ansible.builtin.include_tasks: "{{ banner_task_file }}"
-  when: banner_task_exists.stat.exists
+- name: "Création de la bannière issue.net (SSH)"
+  ansible.builtin.template:
+    src: issue.j2
+    dest: /etc/issue.net
+    mode: '0644'
+    owner: root
+    group: root
+  ignore_errors: true
+  when: ansible_os_family != "Windows"
 
-- name: "Fallback - Tâche générique banner"
-  ansible.builtin.include_tasks: "create_generic_banner.yml"
-  when: not banner_task_exists.stat.exists
+- name: "Configuration SSH pour afficher la bannière"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?Banner'
+    line: 'Banner /etc/issue.net'
+    backup: yes
+  notify: restart sshd
+  ignore_errors: true
+  when: ansible_os_family != "Windows"
 
-- name: "Affichage du statut d'exécution banner"
+- name: "Affichage du statut de création des bannières"
   ansible.builtin.debug:
     msg:
-      - "Rôle banner exécuté"
-      - "Fichier: {{ banner_task_file if banner_task_exists.stat.exists else 'create_generic_banner.yml' }}"
-      - "Opération: {{ banner_operation }}"
-      - "OS: {{ ansible_system }}"
-
+      - "✅ Bannières créées pour {{ ansible_hostname }}"
+      - "Application: {{ banner_codeAP | default('N/A') }}"
+      - "Middlewares détectés: {{ banner_middlewares | default('Aucun') }}"
