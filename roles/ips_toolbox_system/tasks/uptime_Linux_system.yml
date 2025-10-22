@@ -3,44 +3,54 @@
 - name: "Récupération de l'uptime du serveur"
   ansible.builtin.shell: |
     echo $(( ($(date +%s) - $(date -d "$(uptime -s)" +%s)) / 86400 ))
-  register: uptime_days
+  register: uptime_days_result
   changed_when: false
   failed_when: false
+
+- name: "Définition de la limite d'uptime par défaut"
+  ansible.builtin.set_fact:
+    uptime_limit: 90
+  when: system_uptime_limit is not defined
+
+- name: "Utilisation de la limite d'uptime fournie"
+  ansible.builtin.set_fact:
+    uptime_limit: "{{ system_uptime_limit }}"
+  when: system_uptime_limit is defined
 
 - name: "Affichage de l'uptime"
   ansible.builtin.debug:
     msg:
-      - "⏰ Uptime actuel : {{ uptime_days.stdout }} jours"
-      - "Limite configurée : {{ system_uptime_limit }} jours"
+      - "⏰ Uptime actuel : {{ uptime_days_result.stdout }} jours"
+      - "⏰ Limite configurée : {{ uptime_limit }} jours"
 
 - name: "Vérification du dépassement de la limite d'uptime"
   ansible.builtin.set_fact:
-    uptime_status: "{{ 'OK' if (uptime_days.stdout | int) < (system_uptime_limit | int) else 'WARNING' }}"
-    uptime_message: "{{ 'Uptime conforme' if (uptime_days.stdout | int) < (system_uptime_limit | int) else 'Uptime dépassé - Redémarrage recommandé' }}"
+    uptime_status: "{{ 'OK' if (uptime_days_result.stdout | int) < (uptime_limit | int) else 'WARNING' }}"
+    uptime_message: "{{ 'Uptime conforme' if (uptime_days_result.stdout | int) < (uptime_limit | int) else 'Uptime dépassé - Redémarrage recommandé' }}"
 
 - name: "Alerte si uptime dépasse la limite"
   ansible.builtin.debug:
     msg:
-      - "⚠️ ATTENTION : Uptime de {{ uptime_days.stdout }} jours"
-      - "Limite : {{ system_uptime_limit }} jours"
-      - "Action recommandée : Planifier un redémarrage"
-  when: "(uptime_days.stdout | int) >= (system_uptime_limit | int)"
+      - "⚠️ ATTENTION : Uptime de {{ uptime_days_result.stdout }} jours"
+      - "⚠️ Limite : {{ uptime_limit }} jours"
+      - "⚠️ Action recommandée : Planifier un redémarrage"
+  when: "(uptime_days_result.stdout | int) >= (uptime_limit | int)"
 
-- name: "Vérification du service chronyd/ntpd"
+- name: "Vérification et démarrage du service chronyd"
   block:
-    - name: "Vérification et démarrage de chronyd (RHEL)"
+    - name: "Vérification du service chronyd (RHEL/CentOS)"
       ansible.builtin.service:
         name: chronyd
         state: started
         enabled: yes
-      when: ansible_os_family == "RedHat"
       register: chronyd_service
+      when: ansible_os_family == "RedHat"
       failed_when: false
 
     - name: "Affichage du statut chronyd"
       ansible.builtin.debug:
         msg: "🕐 Service chronyd : {{ 'actif ✅' if chronyd_service.changed == false else 'démarré ✅' }}"
-      when: chronyd_service is defined
+      when: chronyd_service is defined and chronyd_service.failed is not defined
 
   rescue:
     - name: "Chronyd non disponible - Ignoré"
@@ -49,20 +59,9 @@
 
 - name: "Enregistrement du résultat uptime"
   ansible.builtin.set_fact:
-    uptime_result:
-      uptime_days: "{{ uptime_days.stdout }}"
-      uptime_limit: "{{ system_uptime_limit }}"
+    uptime_final_result:
+      uptime_days: "{{ uptime_days_result.stdout }}"
+      uptime_limit: "{{ uptime_limit }}"
       status: "{{ uptime_status }}"
       message: "{{ uptime_message }}"
-
-- name: "Enregistrement dans set_results"
-  ansible.builtin.include_role:
-    name: ips_toolbox_set_results
-  vars:
-    set_results_state: "checked"
-    set_results_item: "uptime"
-    set_results_value: "{{ uptime_days.stdout }} jours (limite: {{ system_uptime_limit }})"
-    set_results_component: "{{ system_component | default('system') }}"
-    set_results_operation: "uptime"
-    set_results_status: "{{ uptime_status }}"
-  ignore_errors: yes
+      chronyd_active: "{{ chronyd_service.changed is defined and not chronyd_service.changed }}"
