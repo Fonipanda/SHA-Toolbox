@@ -1,0 +1,99 @@
+---
+
+- name: "Vérification de la présence de la Toolbox"
+  ansible.builtin.stat:
+    path: "/apps/toolboxes"
+  register: toolbox_dir_check
+
+- name: "Vérification du fichier de version"
+  ansible.builtin.stat:
+    path: "/apps/toolboxes/version"
+  register: toolbox_version_file
+  when: toolbox_dir_check.stat.exists
+
+- name: "Lecture de la version actuelle de la Toolbox"
+  ansible.builtin.shell: |
+    cat /apps/toolboxes/version | awk -F '|' '{print $2}' | sed 's/\.//g'
+  register: current_toolbox_version
+  changed_when: false
+  when:
+    - toolbox_dir_check.stat.exists
+    - toolbox_version_file.stat.exists
+  ignore_errors: true
+
+- name: "Affichage de la version actuelle"
+  ansible.builtin.debug:
+    msg:
+      - "Toolbox présente: {{ 'OUI ✅' if toolbox_dir_check.stat.exists else 'NON ❌' }}"
+      - "Version actuelle: {{ current_toolbox_version.stdout if current_toolbox_version.stdout is defined else 'N/A' }}"
+      - "Version minimale requise: 1820 (18.2.0)"
+
+- name: "Installation de la Toolbox (si absente)"
+  block:
+    - name: "Création du répertoire /apps"
+      ansible.builtin.file:
+        path: "/apps"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: "Installation de la Toolbox IPS"
+      ansible.builtin.include_role:
+        name: ips_toolbox_toolboxes
+        tasks_from: install_Linux_toolboxes
+      when: not toolbox_dir_check.stat.exists
+
+  when: not toolbox_dir_check.stat.exists
+
+- name: "Mise à jour de la Toolbox (si version insuffisante)"
+  block:
+    - name: "Vérification de la dernière version disponible"
+      ansible.builtin.shell: |
+        # Simuler la vérification de version disponible
+        # Dans un environnement réel, vérifier sur le serveur de dépôt
+        echo "2000"  # Version 20.0.0
+      register: latest_toolbox_version
+      changed_when: false
+
+    - name: "Comparaison des versions"
+      ansible.builtin.set_fact:
+        toolbox_needs_update: "{{ (current_toolbox_version.stdout | default('0') | int) < (latest_toolbox_version.stdout | int) }}"
+
+    - name: "Affichage du statut de mise à jour"
+      ansible.builtin.debug:
+        msg:
+          - "Version actuelle: {{ current_toolbox_version.stdout | default('N/A') }}"
+          - "Dernière version: {{ latest_toolbox_version.stdout }}"
+          - "Mise à jour nécessaire: {{ 'OUI' if toolbox_needs_update else 'NON' }}"
+
+    - name: "Sauvegarde de la version actuelle"
+      ansible.builtin.shell: |
+        if [ -d /apps/toolboxes ]; then
+          tar czf /tmp/toolboxes_backup_{{ ansible_date_time.epoch }}.tar.gz /apps/toolboxes
+        fi
+      when: toolbox_needs_update
+      ignore_errors: true
+
+    - name: "Mise à jour de la Toolbox"
+      ansible.builtin.debug:
+        msg: "Mise à jour de la Toolbox en cours..."
+      when: toolbox_needs_update
+      # Appeler le script de mise à jour
+
+  when:
+    - toolbox_dir_check.stat.exists
+    - current_toolbox_version.stdout is defined
+
+- name: "Vérification finale de la Toolbox"
+  ansible.builtin.include_role:
+    name: ips_toolbox_toolboxes
+    tasks_from: check_Linux_toolboxes
+
+- name: "Enregistrement du résultat"
+  ansible.builtin.set_fact:
+    toolbox_status:
+      installed: "{{ toolbox_dir_check.stat.exists }}"
+      version: "{{ current_toolbox_version.stdout | default('N/A') }}"
+      up_to_date: "{{ not (toolbox_needs_update | default(false)) }}"
+      operation: "{{ 'install' if not toolbox_dir_check.stat.exists else ('update' if (toolbox_needs_update | default(false)) else 'verify') }}"

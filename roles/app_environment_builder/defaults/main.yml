@@ -1,0 +1,115 @@
+---
+
+# Configuration de détection OS
+detect_os_enabled: true
+detect_middleware_enabled: true
+collect_extended_facts: true
+
+# Timeout pour les commandes shell de détection (secondes)
+detection_timeout: 30
+
+# Détection middleware
+middleware_detection_patterns:
+  websphere:
+    paths:
+      - "/opt/IBM/WebSphere/AppServer"
+      - "/usr/IBM/WebSphere/AppServer"
+    processes:
+      - "dmgr"
+      - "nodeagent"
+      - "server1"
+    files:
+      - "bin/startManager.sh"
+      - "bin/startNode.sh"
+      - "bin/startServer.sh"
+
+  liberty:
+    paths:
+      - "/opt/IBM/WebSphere/Liberty"
+      - "/usr/IBM/WebSphere/Liberty"
+    processes:
+      - "java.*liberty"
+    files:
+      - "bin/server"
+
+  oracle:
+    paths:
+      - "/u01/app/oracle"
+      - "/opt/oracle"
+    processes:
+      - "ora_pmon"
+      - "ora_smon"
+    files:
+      - "/etc/oratab"
+
+  sqlserver:
+    services:
+      - "mssql-server"
+    processes:
+      - "sqlservr"
+
+  ihs:
+    paths:
+      - "/opt/IBM/HTTPServer"
+      - "/usr/IBM/HTTPServer"
+    processes:
+      - "httpd"
+    files:
+      - "bin/httpd"
+
+  mq:
+    paths:
+      - "/opt/mqm"
+      - "/usr/mqm"
+    processes:
+      - "amqzxma0"
+      - "runmqchi"
+    files:
+      - "bin/dspmq"
+
+  cft:
+    paths:
+      - "/opt/axway"
+      - "/usr/cft"
+    processes:
+      - "cftmain"
+      - "cfttcp"
+
+# Configuration spécifique Windows
+windows_detection:
+  enabled: true
+  use_winrm: true
+  collect_services: true
+  collect_programs: true
+  # Dépendance sur ansible.windows collection
+  requires_ansible_windows: true
+
+# Configuration spécifique AIX
+aix_detection:
+  enabled: true
+  collect_volume_groups: true
+  collect_oslevel: true
+  collect_hardware: true
+
+# Configuration spécifique Linux/RHEL
+linux_detection:
+  enabled: true
+  collect_partitions: true
+  collect_services: true
+  collect_packages: true
+
+# Variables pour le stockage des résultats
+detected_os_info: {}
+detected_middleware_list: []
+os_detection_completed: false
+os_family_detected: ""
+os_distribution: ""
+os_version: ""
+
+# Cache des facts
+cache_detection_results: true
+cache_timeout: 3600  # 1 heure
+
+# Logging
+detection_debug: false
+detection_verbose: false

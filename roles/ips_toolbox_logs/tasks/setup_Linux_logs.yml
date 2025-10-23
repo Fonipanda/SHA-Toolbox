@@ -1,0 +1,189 @@
+---
+
+- name: "=== CONFIGURATION PURGE DES LOGS ==="
+  ansible.builtin.debug:
+    msg: "Configuration rotation et purge automatique des logs dans /applis/logs"
+
+# ===== ROTATION DES LOGS =====
+- name: "Vérification de l'existence du fichier de configuration exploit_rotate-log.conf"
+  ansible.builtin.stat:
+    path: "/apps/toolboxes/exploit/conf/exploit_rotate-log.conf"
+  register: rotate_log_conf_check
+
+- name: "Création du répertoire de configuration (si nécessaire)"
+  ansible.builtin.file:
+    path: "/apps/toolboxes/exploit/conf"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  when: not rotate_log_conf_check.stat.exists
+
+- name: "Création du fichier exploit_rotate-log.conf par défaut"
+  ansible.builtin.copy:
+    content: |
+      # Configuration de purge des logs
+      # Path Files:
+      # => purge journaliere des fichiers de plus de 7 jours
+      /apps/toolboxes/.logs
+      /apps/toolboxes/backup_restore/logs
+      /apps/toolboxes/sgbd/oracle/log
+      /apps/toolboxes/web/*/logs
+      /applis/logs
+    dest: "/apps/toolboxes/exploit/conf/exploit_rotate-log.conf"
+    mode: '0644'
+    owner: root
+    group: root
+  when: not rotate_log_conf_check.stat.exists
+
+- name: "Affichage du statut fichier de configuration"
+  ansible.builtin.debug:
+    msg:
+      - "Fichier exploit_rotate-log.conf: {{ 'EXISTE ✅' if rotate_log_conf_check.stat.exists else 'CRÉÉ ✅' }}"
+      - "Chemin: /apps/toolboxes/exploit/conf/exploit_rotate-log.conf"
+
+# ===== SERVICE SYSTEMD PURGE_LOGS =====
+- name: "Vérification de l'existence du service purge_logs.service"
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/purge_logs.service"
+  register: purge_logs_service_check
+
+- name: "Création du fichier purge_logs.service"
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Purge automatique des logs applicatifs
+      After=network.target
+      
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/bash -c 'while read -r path; do [ -d "$path" ] && find "$path" -type f -mtime +7 -delete && echo "Purged: $path"; done < /apps/toolboxes/exploit/conf/exploit_rotate-log.conf'
+      StandardOutput=journal
+      StandardError=journal
+      
+      [Install]
+      WantedBy=multi-user.target
+    dest: "/etc/systemd/system/purge_logs.service"
+    mode: '0644'
+    owner: root
+    group: root
+  when: not purge_logs_service_check.stat.exists
+  register: purge_logs_service_created
+
+- name: "Affichage statut service"
+  ansible.builtin.debug:
+    msg:
+      - "Service purge_logs.service: {{ 'EXISTE ✅' if purge_logs_service_check.stat.exists else 'CRÉÉ ✅' }}"
+      - "Chemin: /etc/systemd/system/purge_logs.service"
+
+# ===== TIMER SYSTEMD PURGE_LOGS =====
+- name: "Vérification de l'existence du timer purge_logs.timer"
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/purge_logs.timer"
+  register: purge_logs_timer_check
+
+- name: "Création du fichier purge_logs.timer"
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Timer pour purge automatique des logs
+      Requires=purge_logs.service
+      
+      [Timer]
+      # Exécution tous les dimanches à 20h00
+      OnCalendar=Sun *-*-* 20:00:00
+      Persistent=true
+      
+      [Install]
+      WantedBy=timers.target
+    dest: "/etc/systemd/system/purge_logs.timer"
+    mode: '0644'
+    owner: root
+    group: root
+  when: not purge_logs_timer_check.stat.exists
+  register: purge_logs_timer_created
+
+- name: "Affichage statut timer"
+  ansible.builtin.debug:
+    msg:
+      - "Timer purge_logs.timer: {{ 'EXISTE ✅' if purge_logs_timer_check.stat.exists else 'CRÉÉ ✅' }}"
+      - "Chemin: /etc/systemd/system/purge_logs.timer"
+      - "Planification: Dimanche à 20h00"
+
+# ===== ACTIVATION ET DÉMARRAGE =====
+- name: "Rechargement des daemons systemd"
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: purge_logs_service_created.changed or purge_logs_timer_created.changed
+
+- name: "Activation du timer purge_logs"
+  ansible.builtin.systemd:
+    name: purge_logs.timer
+    enabled: true
+    state: started
+  ignore_errors: true
+
+- name: "Vérification du statut du timer"
+  ansible.builtin.shell: |
+    systemctl status purge_logs.timer --no-pager | head -10
+  register: timer_status
+  changed_when: false
+  ignore_errors: true
+
+- name: "Affichage du statut du timer"
+  ansible.builtin.debug:
+    msg:
+      - "=== Statut Timer purge_logs ==="
+      - "{{ timer_status.stdout_lines | default(['Erreur']) }}"
+
+- name: "Liste des prochaines exécutions planifiées"
+  ansible.builtin.shell: |
+    systemctl list-timers --all | grep purge_logs || echo "Timer non trouvé dans la liste"
+  register: next_executions
+  changed_when: false
+  ignore_errors: true
+
+- name: "Affichage prochaine exécution"
+  ansible.builtin.debug:
+    msg:
+      - "=== Prochaine Exécution ==="
+      - "{{ next_executions.stdout_lines | default(['Non planifiée']) }}"
+
+# ===== TEST MANUEL (OPTIONNEL) =====
+- name: "Test manuel du service purge_logs (optionnel)"
+  ansible.builtin.systemd:
+    name: purge_logs.service
+    state: started
+  when: logs_test_purge | default(false)
+  ignore_errors: true
+
+# ===== RÉSUMÉ FINAL =====
+- name: "Génération du résumé configuration logs"
+  ansible.builtin.set_fact:
+    logs_config_summary:
+      config_file_exists: "{{ rotate_log_conf_check.stat.exists or (not rotate_log_conf_check.stat.exists) }}"
+      service_file_exists: "{{ purge_logs_service_check.stat.exists or purge_logs_service_created.changed }}"
+      timer_file_exists: "{{ purge_logs_timer_check.stat.exists or purge_logs_timer_created.changed }}"
+      timer_enabled: true
+      schedule: "Dimanche 20:00:00"
+      directories_purged:
+        - "/apps/toolboxes/.logs"
+        - "/apps/toolboxes/backup_restore/logs"
+        - "/apps/toolboxes/sgbd/oracle/log"
+        - "/apps/toolboxes/web/*/logs"
+        - "/applis/logs"
+
+- name: "Affichage du résumé final configuration logs"
+  ansible.builtin.debug:
+    msg:
+      - "==========================================="
+      - "   RÉSUMÉ CONFIGURATION PURGE DES LOGS"
+      - "==========================================="
+      - "Fichier Configuration: {{ '✅' if logs_config_summary.config_file_exists else '❌' }}"
+      - "Service systemd: {{ '✅' if logs_config_summary.service_file_exists else '❌' }}"
+      - "Timer systemd: {{ '✅' if logs_config_summary.timer_file_exists else '❌' }}"
+      - "Timer Actif: {{ '✅' if logs_config_summary.timer_enabled else '❌' }}"
+      - "Planification: {{ logs_config_summary.schedule }}"
+      - "Répertoires surveillés:"
+      - "  {{ logs_config_summary.directories_purged | join('\n  ') }}"
+      - "==========================================="

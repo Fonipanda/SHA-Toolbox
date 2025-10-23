@@ -1,24 +1,23 @@
-# check_playbook.yml  
-# Playbook de vérifications et compliance pour les environnements SHA
+# Playbook de vérifications et de compliance
 ---
-- name: "SHA Application Environment - Vérifications et Compliance"
+- name: "Application Environment - Vérifications et Compliance"
   hosts: "{{ hostname | default('all') }}"
   gather_facts: true
   become: true
   serial: 1
-  
+
   vars:
     check_timestamp: "{{ ansible_date_time.iso8601 }}"
     check_id: "{{ ansible_date_time.epoch }}"
     check_report_dir: "/tmp/ansible_checks"
-    
+
   pre_tasks:
     - name: "Création du répertoire de rapports de vérification"
       ansible.builtin.file:
         path: "{{ check_report_dir }}"
         state: directory
         mode: '0755'
-        
+
     - name: "Initialisation du rapport de vérification"
       ansible.builtin.set_fact:
         compliance_report:
@@ -46,25 +45,25 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification de l'arborescence /apps"
           ansible.builtin.stat:
             path: "/apps"
           register: apps_dir_check
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification de l'arborescence /applis"
           ansible.builtin.stat:
             path: "/applis"
           register: applis_dir_check
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification de la Toolbox"
           ansible.builtin.stat:
             path: "/apps/toolboxes"
           register: toolbox_check
           when: ansible_os_family != "Windows"
-          
+
         - name: "Enregistrement des résultats - Vérifications de base"
           ansible.builtin.set_fact:
             compliance_report: "{{ compliance_report | combine({
@@ -85,7 +84,7 @@
           ansible.builtin.include_role:
             name: app_environment_builder
             tasks_from: detect_middleware
-            
+
         - name: "Vérification des processus WebSphere"
           ansible.builtin.shell: |
             ps -ef | grep -E "(dmgr|nodeagent|server1)" | grep -v grep || echo "no_was_processes"
@@ -93,7 +92,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification des processus Oracle"
           ansible.builtin.shell: |
             ps -ef | grep -E "(ora_pmon|ora_smon)" | grep -v grep || echo "no_oracle_processes"
@@ -101,7 +100,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Enregistrement des résultats - Middlewares"
           ansible.builtin.set_fact:
             compliance_report: "{{ compliance_report | combine({
@@ -115,8 +114,8 @@
             }) }}"
       tags: [middleware]
 
-    # Vérifications de conformité BP21
-    - name: "Vérification 3 - Conformité aux règles BP21"
+    # Vérifications de conformité IT Rules
+    - name: "Vérification 3 - Conformité aux règles IT Rules"
       block:
         - name: "Vérification des interdictions sur rootvg"
           ansible.builtin.shell: |
@@ -125,7 +124,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification des permissions sur /applis"
           ansible.builtin.shell: |
             find /applis -maxdepth 2 -type d -exec ls -ld {} \; 2>/dev/null | head -10
@@ -133,7 +132,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification de la nomenclature des répertoires"
           ansible.builtin.shell: |
             ls -1 /applis/ 2>/dev/null | grep -E "^[0-9]{5}-[A-Za-z0-9]{5}$" || echo "no_compliant_directories"
@@ -141,18 +140,18 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
-        - name: "Enregistrement des résultats - Conformité BP21"
+
+        - name: "Enregistrement des résultats - Conformité IT Rules"
           ansible.builtin.set_fact:
             compliance_report: "{{ compliance_report | combine({
-              'checks_performed': compliance_report.checks_performed + ['bp21_compliance'],
+              'checks_performed': compliance_report.checks_performed + ['it_rules_compliance'],
               'compliance_status': compliance_report.compliance_status | combine({
                 'rootvg_compliance': rootvg_compliance.stdout is defined and 'rootvg_compliance_ok' in rootvg_compliance.stdout,
                 'applis_permissions_ok': applis_permissions.rc == 0,
                 'directory_naming_compliant': directory_naming.stdout is defined and 'no_compliant_directories' not in directory_naming.stdout
               })
             }) }}"
-      tags: [bp21]
+      tags: [it_rules]
 
     # Vérifications de sécurité
     - name: "Vérification 4 - Conformité sécurité"
@@ -164,7 +163,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification des scripts dans /etc/local"
           ansible.builtin.shell: |
             ls -la /etc/local/ 2>/dev/null | wc -l
@@ -172,7 +171,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification des utilisateurs middleware"
           ansible.builtin.shell: |
             getent passwd | grep -E "(was|oracle|mqm|cft)" | wc -l
@@ -180,7 +179,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Enregistrement des résultats - Sécurité"
           ansible.builtin.set_fact:
             compliance_report: "{{ compliance_report | combine({
@@ -203,7 +202,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Vérification de la configuration TSM"
           ansible.builtin.shell: |
             find /opt/tivoli/tsm/client -name "dsm.sys" 2>/dev/null || find /usr/tivoli/tsm/client -name "dsm.sys" 2>/dev/null || echo "dsm_sys_not_found"
@@ -211,7 +210,7 @@
           changed_when: false
           failed_when: false
           when: ansible_os_family != "Windows"
-          
+
         - name: "Enregistrement des résultats - Sauvegarde"
           ansible.builtin.set_fact:
             compliance_report: "{{ compliance_report | combine({
@@ -231,27 +230,27 @@
             total_checks: "{{ compliance_report.checks_performed | length }}"
             passed_checks: "{{ compliance_report.compliance_status.values() | select('equalto', true) | list | length }}"
             compliance_percentage: "{{ ((passed_checks | int) * 100 / (total_checks | int)) | round(2) if total_checks | int > 0 else 0 }}"
-            
+
         - name: "Génération des violations"
           ansible.builtin.set_fact:
             violations_list: []
             warnings_list: []
-            
+
         - name: "Ajout des violations critiques"
           ansible.builtin.set_fact:
             violations_list: "{{ violations_list + ['Volume groupe vg_apps non trouvé - SHA non conforme'] }}"
           when: not compliance_report.compliance_status.vg_apps_exists | default(true)
-          
-        - name: "Ajout des violations BP21"
+
+        - name: "Ajout des violations IT Rules"
           ansible.builtin.set_fact:
-            violations_list: "{{ violations_list + ['Non-conformité BP21: données métier détectées sur rootvg'] }}"
+            violations_list: "{{ violations_list + ['Non-conformité IT Rules: données métier détectées sur rootvg'] }}"
           when: not compliance_report.compliance_status.rootvg_compliance | default(true)
-          
+
         - name: "Ajout des avertissements"
           ansible.builtin.set_fact:
             warnings_list: "{{ warnings_list + ['Aucun middleware détecté - vérifier l\\'installation'] }}"
           when: compliance_report.compliance_status.detected_middleware_count | default(0) == 0
-          
+
         - name: "Mise à jour finale du rapport"
           ansible.builtin.set_fact:
             compliance_report: "{{ compliance_report | combine({
@@ -269,12 +268,12 @@
         src: "compliance_report.json.j2"
         dest: "{{ check_report_dir }}/compliance_report_{{ check_id }}.json"
         mode: '0644'
-      
+
     - name: "Affichage du résumé de conformité"
       ansible.builtin.debug:
         msg: |
           =========================================================
-          RAPPORT DE CONFORMITÉ SHA
+          RAPPORT DE CONFORMITÉ
           =========================================================
           Serveur: {{ ansible_hostname }}
           Date: {{ check_timestamp }}
@@ -296,7 +295,7 @@
           
           Rapport détaillé: {{ check_report_dir }}/compliance_report_{{ check_id }}.json
           =========================================================
-        
+
     - name: "Échec si conformité insuffisante"
       ansible.builtin.fail:
         msg: "Score de conformité insuffisant ({{ compliance_percentage }}% < 80%). Consulter le rapport pour les détails."

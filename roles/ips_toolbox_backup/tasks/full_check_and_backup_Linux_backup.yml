@@ -1,0 +1,203 @@
+---
+
+- name: "=== VÉRIFICATION COMPLÈTE TSM & REAR ==="
+  ansible.builtin.debug:
+    msg: "Début de la vérification TSM et lancement sauvegarde REAR"
+
+# ===== CHECK TSM =====
+- name: "Check 1 - Vérification du chemin d'installation TSM"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "/opt/tivoli/tsm/client"
+    - "/usr/tivoli/tsm/client"
+  register: tsm_path_check
+
+- name: "Détermination du chemin TSM installé"
+  ansible.builtin.set_fact:
+    tsm_installed_path: "{{ item.item }}"
+  loop: "{{ tsm_path_check.results }}"
+  when: item.stat.exists
+  no_log: true
+
+- name: "Check 2 - Vérification des binaires TSM (dsmc)"
+  ansible.builtin.stat:
+    path: "{{ tsm_installed_path }}/ba/bin/dsmc"
+  register: tsm_dsmc_binary
+  when: tsm_installed_path is defined
+
+- name: "Check 3 - Vérification du daemon dsmcad"
+  ansible.builtin.stat:
+    path: "{{ tsm_installed_path }}/ba/bin/dsmcad"
+  register: tsm_dsmcad_binary
+  when: tsm_installed_path is defined
+
+- name: "Check 4 - Vérification de la présence des fichiers de configuration dsm"
+  ansible.builtin.find:
+    paths:
+      - "{{ tsm_installed_path }}/ba/bin"
+      - "/opt/tivoli/tsm/client/ba/bin"
+    patterns:
+      - "dsm.sys"
+      - "dsm.opt"
+  register: tsm_config_files
+  when: tsm_installed_path is defined
+
+- name: "Check 5 - Vérification de l'installation TSM (résumé)"
+  ansible.builtin.debug:
+    msg:
+      - "TSM Installé: {{ 'OUI ✅' if tsm_installed_path is defined else 'NON ❌' }}"
+      - "Chemin: {{ tsm_installed_path | default('N/A') }}"
+      - "Binaire dsmc: {{ 'OUI ✅' if tsm_dsmc_binary.stat.exists | default(false) else 'NON ❌' }}"
+      - "Binaire dsmcad: {{ 'OUI ✅' if tsm_dsmcad_binary.stat.exists | default(false) else 'NON ❌' }}"
+      - "Fichiers config: {{ tsm_config_files.matched | default(0) }} fichier(s)"
+
+- name: "Arrêt du traitement si TSM non installé"
+  ansible.builtin.fail:
+    msg: "TSM n'est pas installé sur ce serveur. Installation requise."
+  when: tsm_installed_path is not defined
+
+# ===== OPÉRATION : SAUVEGARDE REAR =====
+- name: "Opération 1 - Vérification du script REAR"
+  ansible.builtin.stat:
+    path: "/apps/sys/admin/rear-bp2i.sh"
+  register: rear_script_check
+
+- name: "Opération 1b - Vérification binaire rear alternatif"
+  ansible.builtin.shell: |
+    which rear || echo "NOT_FOUND"
+  register: rear_binary_check
+  changed_when: false
+
+- name: "Affichage statut REAR"
+  ansible.builtin.debug:
+    msg:
+      - "Script REAR BP2I: {{ 'TROUVÉ ✅' if rear_script_check.stat.exists else 'ABSENT ❌' }}"
+      - "Binaire REAR: {{ rear_binary_check.stdout if 'NOT_FOUND' not in rear_binary_check.stdout else 'NON TROUVÉ ❌' }}"
+
+- name: "Opération 2 - Lancement sauvegarde système REAR"
+  ansible.builtin.shell: |
+    if [ -f /apps/sys/admin/rear-bp2i.sh ]; then
+      /apps/sys/admin/rear-bp2i.sh
+    elif command -v rear &> /dev/null; then
+      rear -v mkbackup
+    else
+      echo "REAR non disponible"
+      exit 1
+    fi
+  register: rear_backup_result
+  ignore_errors: true
+  async: 1800  # 30 minutes max
+  poll: 10
+
+- name: "Affichage résultat sauvegarde REAR"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat Sauvegarde REAR ==="
+      - "{{ rear_backup_result.stdout_lines | default(['Aucune sortie']) }}"
+
+- name: "Opération 3 - Vérification de la connexion avec l'infra TSM"
+  ansible.builtin.shell: |
+    {{ tsm_installed_path }}/ba/bin/dsmc query session 2>&1 | head -10
+  register: tsm_connection_test
+  changed_when: false
+  ignore_errors: true
+  when: tsm_installed_path is defined
+
+- name: "Affichage statut connexion TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Test Connexion TSM ==="
+      - "{{ tsm_connection_test.stdout_lines | default(['Erreur connexion']) }}"
+
+- name: "Opération 4 - Envoi de la sauvegarde REAR sur TSM"
+  ansible.builtin.shell: |
+    # Récupération du fichier REAR le plus récent
+    REAR_FILE=$(find /var/lib/rear/output -name "*.iso" -type f -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1 | cut -f2- -d" ")
+    
+    if [ -z "$REAR_FILE" ]; then
+      echo "Aucun fichier REAR trouvé"
+      exit 1
+    fi
+    
+    echo "Envoi de $REAR_FILE vers TSM..."
+    {{ tsm_installed_path }}/ba/bin/dsmc archive "$REAR_FILE" -description="REAR Backup $(date +%Y%m%d)"
+  register: tsm_rear_upload
+  ignore_errors: true
+  when:
+    - rear_backup_result.rc is defined
+    - rear_backup_result.rc == 0
+    - tsm_connection_test.rc is defined
+    - tsm_connection_test.rc == 0
+
+- name: "Affichage résultat envoi TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Envoi REAR vers TSM ==="
+      - "{{ tsm_rear_upload.stdout_lines | default(['Non exécuté ou erreur']) }}"
+
+- name: "Opération 5 - Vérification de la présence du backup REAR sur TSM"
+  ansible.builtin.shell: |
+    {{ tsm_installed_path }}/ba/bin/dsmc query archive "*REAR*" -description="REAR*" 2>&1 | tail -20
+  register: tsm_rear_verify
+  changed_when: false
+  ignore_errors: true
+  when: tsm_installed_path is defined
+
+- name: "Affichage vérification backup sur TSM"
+  ansible.builtin.debug:
+    msg:
+      - "=== Vérification Backup REAR sur TSM ==="
+      - "{{ tsm_rear_verify.stdout_lines | default(['Erreur vérification']) }}"
+
+# ===== VÉRIFICATION DU SERVICE DSMCAD =====
+- name: "Vérification du statut du service dsmcad"
+  ansible.builtin.systemd:
+    name: dsmcad
+  register: dsmcad_service_status
+  ignore_errors: true
+
+- name: "Démarrage du service dsmcad (si arrêté)"
+  ansible.builtin.systemd:
+    name: dsmcad
+    state: started
+    enabled: true
+  when:
+    - dsmcad_service_status.status is defined
+    - dsmcad_service_status.status.ActiveState != "active"
+  ignore_errors: true
+
+- name: "Activation du service dsmcad au démarrage"
+  ansible.builtin.systemd:
+    name: dsmcad
+    enabled: true
+  ignore_errors: true
+
+# ===== RÉSUMÉ FINAL =====
+- name: "Génération du résumé TSM & REAR"
+  ansible.builtin.set_fact:
+    tsm_rear_summary:
+      tsm_installed: "{{ tsm_installed_path is defined }}"
+      tsm_path: "{{ tsm_installed_path | default('N/A') }}"
+      tsm_binaries_ok: "{{ (tsm_dsmc_binary.stat.exists | default(false)) and (tsm_dsmcad_binary.stat.exists | default(false)) }}"
+      tsm_config_files: "{{ tsm_config_files.matched | default(0) }}"
+      tsm_connection_ok: "{{ tsm_connection_test.rc | default(1) == 0 }}"
+      rear_backup_executed: "{{ rear_backup_result.rc | default(1) == 0 }}"
+      rear_sent_to_tsm: "{{ tsm_rear_upload.rc | default(1) == 0 }}"
+      rear_verified_on_tsm: "{{ 'REAR' in (tsm_rear_verify.stdout | default('')) }}"
+      dsmcad_service_running: "{{ (dsmcad_service_status.status.ActiveState | default('unknown')) == 'active' }}"
+
+- name: "Affichage du résumé final TSM & REAR"
+  ansible.builtin.debug:
+    msg:
+      - "========================================="
+      - "       RÉSUMÉ TSM & REAR BACKUP"
+      - "========================================="
+      - "TSM Installé: {{ '✅' if tsm_rear_summary.tsm_installed else '❌' }}"
+      - "TSM Binaires OK: {{ '✅' if tsm_rear_summary.tsm_binaries_ok else '❌' }}"
+      - "TSM Connexion OK: {{ '✅' if tsm_rear_summary.tsm_connection_ok else '❌' }}"
+      - "REAR Backup Exécuté: {{ '✅' if tsm_rear_summary.rear_backup_executed else '❌' }}"
+      - "REAR Envoyé TSM: {{ '✅' if tsm_rear_summary.rear_sent_to_tsm else '❌' }}"
+      - "REAR Vérifié TSM: {{ '✅' if tsm_rear_summary.rear_verified_on_tsm else '❌' }}"
+      - "Service dsmcad: {{ '✅ Running' if tsm_rear_summary.dsmcad_service_running else '⚠️ Not Running' }}"
+      - "========================================="

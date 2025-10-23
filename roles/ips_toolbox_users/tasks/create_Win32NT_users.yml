@@ -1,0 +1,115 @@
+---
+
+- name: "Affichage de la configuration création utilisateurs Windows"
+  ansible.builtin.debug:
+    msg:
+      - "=== Création utilisateurs techniques Windows ==="
+      - "Middlewares détectés: {{ users_middlewares | default([]) | join(', ') if users_middlewares | default([]) else 'Aucun' }}"
+
+- name: "Définition de la liste des utilisateurs à créer (WebSphere)"
+  ansible.builtin.set_fact:
+    windows_users_to_create: "{{ windows_users_to_create | default([]) + [{'name': 'wasadmin', 'fullname': 'WebSphere Administrator', 'description': 'WebSphere Application Server Admin', 'groups': ['Administrators'], 'password_never_expires': true}] }}"
+  when:
+    - users_middlewares is defined
+    - "'WebSphere' in users_middlewares or 'websphere' in users_middlewares"
+
+- name: "Définition de la liste des utilisateurs à créer (Liberty)"
+  ansible.builtin.set_fact:
+    windows_users_to_create: "{{ windows_users_to_create | default([]) + [{'name': 'liberty', 'fullname': 'Liberty Profile Administrator', 'description': 'WebSphere Liberty Profile Admin', 'groups': ['Administrators'], 'password_never_expires': true}] }}"
+  when:
+    - users_middlewares is defined
+    - "'Liberty' in users_middlewares or 'liberty' in users_middlewares"
+
+- name: "Définition de la liste des utilisateurs à créer (Oracle)"
+  ansible.builtin.set_fact:
+    windows_users_to_create: "{{ windows_users_to_create | default([]) + [{'name': 'oracle', 'fullname': 'Oracle Database Administrator', 'description': 'Oracle Database DBA', 'groups': ['Administrators'], 'password_never_expires': true}] }}"
+  when:
+    - users_middlewares is defined
+    - "'Oracle' in users_middlewares or 'oracle' in users_middlewares"
+
+- name: "Définition de la liste des utilisateurs à créer (SQL Server)"
+  ansible.builtin.set_fact:
+    windows_users_to_create: "{{ windows_users_to_create | default([]) + [{'name': 'sqladmin', 'fullname': 'SQL Server Administrator', 'description': 'Microsoft SQL Server Admin', 'groups': ['Administrators'], 'password_never_expires': true}] }}"
+  when:
+    - users_middlewares is defined
+    - "'SQLServer' in users_middlewares or 'sqlserver' in users_middlewares"
+
+- name: "Définition de la liste des utilisateurs à créer (CFT)"
+  ansible.builtin.set_fact:
+    windows_users_to_create: "{{ windows_users_to_create | default([]) + [{'name': 'cft', 'fullname': 'Axway CFT User', 'description': 'Axway Cross File Transfer User', 'groups': ['Users'], 'password_never_expires': true}] }}"
+  when:
+    - users_middlewares is defined
+    - "'CFT' in users_middlewares or 'cft' in users_middlewares"
+
+- name: "Affichage de la liste des utilisateurs à créer"
+  ansible.builtin.debug:
+    msg: "{{ windows_users_to_create | default([]) | map(attribute='name') | list }}"
+  when: windows_users_to_create is defined
+
+- name: "Vérification de l'existence des utilisateurs Windows"
+  ansible.windows.win_shell: |
+    $user = Get-LocalUser -Name "{{ item.name }}" -ErrorAction SilentlyContinue
+    if ($user) { Write-Output "EXISTS" } else { Write-Output "NOT_EXISTS" }
+  loop: "{{ windows_users_to_create | default([]) }}"
+  register: windows_user_check
+  changed_when: false
+  ignore_errors: true
+
+- name: "Création des utilisateurs Windows locaux"
+  ansible.windows.win_user:
+    name: "{{ item.item.name }}"
+    fullname: "{{ item.item.fullname }}"
+    description: "{{ item.item.description }}"
+    password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+    password_never_expires: "{{ item.item.password_never_expires | default(true) }}"
+    user_cannot_change_password: false
+    account_disabled: false
+    groups: "{{ item.item.groups }}"
+    state: present
+  loop: "{{ windows_user_check.results | default([]) }}"
+  when:
+    - item.stdout is defined
+    - "'NOT_EXISTS' in item.stdout"
+  register: windows_user_creation
+  ignore_errors: true
+
+- name: "Ajout des utilisateurs existants aux groupes appropriés"
+  ansible.windows.win_group_membership:
+    name: "{{ group }}"
+    members:
+      - "{{ item.item.name }}"
+    state: present
+  loop: "{{ windows_user_check.results | default([]) }}"
+  with_items: "{{ user_item.item.groups }}"
+  loop_control:
+    loop_var: group
+  when:
+    - user_item.stdout is defined
+    - "'EXISTS' in user_item.stdout"
+  ignore_errors: true
+
+- name: "Création des répertoires home Windows"
+  ansible.windows.win_file:
+    path: "C:\\Users\\{{ item.item.name }}"
+    state: directory
+  loop: "{{ windows_user_check.results | default([]) }}"
+  when:
+    - windows_user_creation is defined
+  ignore_errors: true
+
+- name: "Affichage du résultat de création des utilisateurs Windows"
+  ansible.builtin.debug:
+    msg:
+      - "=== Résultat création utilisateurs Windows ==="
+      - "Utilisateurs créés: {{ windows_user_creation.results | default([]) | selectattr('changed', 'equalto', true) | list | length }}"
+      - "Utilisateurs existants: {{ windows_user_check.results | default([]) | selectattr('stdout', 'search', 'EXISTS') | list | length }}"
+      - "Total: {{ windows_users_to_create | default([]) | length }}"
+
+- name: "Enregistrement des résultats pour rapport"
+  ansible.builtin.set_fact:
+    users_creation_results:
+      platform: "Windows"
+      users_created: "{{ windows_user_creation.results | default([]) | selectattr('changed', 'equalto', true) | list | length }}"
+      users_existing: "{{ windows_user_check.results | default([]) | selectattr('stdout', 'search', 'EXISTS') | list | length }}"
+      users_list: "{{ windows_users_to_create | default([]) | map(attribute='name') | list }}"
+      middlewares: "{{ users_middlewares | default([]) }}"

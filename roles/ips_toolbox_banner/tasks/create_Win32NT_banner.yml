@@ -1,0 +1,61 @@
+---
+
+- name: "Affichage de la configuration bannière Windows"
+  ansible.builtin.debug:
+    msg:
+      - "=== Création bannière Windows ==="
+      - "Serveur: {{ ansible_hostname }}"
+      - "Code Application: {{ banner_codeAP | default('N/A') }}"
+      - "Middlewares: {{ banner_middlewares | default('Aucun') }}"
+
+- name: "Génération du contenu de la bannière Windows"
+  ansible.builtin.set_fact:
+    windows_banner_content: |
+      ================================================================================
+      BANNER - APPLICATION ENVIRONMENT
+      ================================================================================
+      
+      Serveur: {{ ansible_hostname | default('Unknown') }}
+      Système: {{ ansible_distribution | default('Windows') }} {{ ansible_distribution_version | default('') }}
+      Architecture: {{ ansible_architecture | default('Unknown') }}
+      Code Application: {{ banner_codeAP | default('N/A') }}
+      {% if banner_middlewares is defined and banner_middlewares != "" %}
+      Middlewares détectés: {{ banner_middlewares }}
+      {% endif %}
+      
+      ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
+      
+      Date: {{ ansible_date_time.iso8601 | default('N/A') }}
+      
+      ================================================================================
+
+- name: "Configuration de la bannière de connexion Windows (Registry)"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: legalnoticetext
+    data: "{{ windows_banner_content }}"
+    type: string
+    state: present
+  ignore_errors: true
+
+- name: "Configuration du titre de la bannière Windows (Registry)"
+  ansible.windows.win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: legalnoticecaption
+    data: "SYSTÈME D'HÉBERGEMENT APPLICATIF (SHA)"
+    type: string
+    state: present
+  ignore_errors: true
+
+- name: "Création du fichier bannière dans C:\\Windows\\System32"
+  ansible.windows.win_copy:
+    content: "{{ windows_banner_content }}"
+    dest: C:\Windows\System32\banner.txt
+  ignore_errors: true
+
+- name: "Affichage du résultat de création bannière Windows"
+  ansible.builtin.debug:
+    msg:
+      - "✅ Bannière Windows créée avec succès"
+      - "Configuration : HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System"
+      - "Fichier : C:\\Windows\\System32\\banner.txt"

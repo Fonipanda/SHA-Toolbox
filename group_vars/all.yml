@@ -1,34 +1,31 @@
-# group_vars/all.yml
-# Variables globales pour tous les environnements SHA
-# Réutilise et étend les variables SHA-Toolbox existantes
+# Variables globales
 ---
-# Variables héritées de SHA-Toolbox
+# Variables de base
 ansible_become_method: sesu
 ansible_become_flags: "-"
 
-# Variables globales du projet SHA Application Environment
-project_name: "SHA Application Environment Builder"
+# Variables globales du projet Create Socle
+project_name: "Application Environment Builder"
 project_version: "1.0"
 sha_toolbox_version: "latest"
 
-# Variables de conformité BP21
-bp21_compliance: true
+# Variables de conformité IT Rules
 it_rules_compliance: true
 toolbox_integration: true
 
-# Répertoires standards selon BP21
+# Répertoires standards selon IT Rules
 standard_paths:
   apps_base: "/apps"
   applis_base: "/applis"
   toolboxes_base: "/apps/toolboxes"
   exploit_base: "/apps/exploit"
-  
+
 # Volume groupes standards
 volume_groups:
   root: "rootvg"
   apps: "vg_apps"
-  
-# Tailles par défaut des filesystems (conformément aux normes BP21)
+
+# Tailles par défaut des filesystems (conformément aux normes IT Rules)
 default_filesystem_sizes:
   app_main: "1G"
   app_transfer_in: "1G"
@@ -98,7 +95,7 @@ backup:
   retention_horsprod: "7d"
   base_dir: "/tmp/ansible_backups"
   compress: true
-  
+
 # Configuration de logging Ansible
 ansible_logging:
   enabled: true
@@ -113,11 +110,11 @@ execution_timeouts:
   filesystem_creation: 600
   middleware_config: 900
   compliance_check: 180
-  
+
 retry_settings:
   max_attempts: 3
   delay: 30
-  
+
 # Variables d'environnement spécifiques
 environment_defaults:
   prod:
@@ -136,7 +133,7 @@ environment_defaults:
     approval_required: false
     rollback_enabled: false
 
-# Intégration avec les rôles SHA-Toolbox existants
+# Intégration avec les rôles Toolbox existants
 sha_toolbox_roles:
   system: "ips_toolbox_system"
   appli: "ips_toolbox_appli"
@@ -207,7 +204,7 @@ notifications:
     slack: "webhook_slack_sha"
   events:
     - "job_start"
-    - "job_success" 
+    - "job_success"
     - "job_failure"
     - "approval_required"
 
@@ -217,7 +214,7 @@ security:
   log_commands: true
   require_tty: false
   secure_path: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-  
+
 # Configuration des facts caching
 fact_caching:
   enabled: true
@@ -230,15 +227,15 @@ validation:
   codeap_pattern: "^[0-9]{5}$"
   code5car_pattern: "^[A-Za-z0-9]{5}$"
   hostname_pattern: "^[a-zA-Z0-9][a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9]?$"
-  
-# Exclusions pour les filesystems rootvg (conformité BP21)
+
+# Exclusions pour les filesystems rootvg (conformité IT Rules)
 rootvg_exclusions:
   - "/tmp"
   - "/var/tmp"
   - "/home"
   - "/opt"
-  
-# Applications métier autorisées sur rootvg (exceptions BP21)
+
+# Applications métier autorisées sur rootvg (exceptions IT Rules)
 rootvg_exceptions:
   - "/etc/local"
   - "/opt/tivoli/tsm/client/ba/bin/dsm.sys"
