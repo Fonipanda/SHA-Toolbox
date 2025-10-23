@@ -1,0 +1,78 @@
+ansible-playbook [core 2.15.8]
+  config file = /etc/ansible/ansible.cfg
+  configured module search path = ['/home/runner/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /usr/lib/python3.9/site-packages/ansible
+  ansible collection location = /home/runner/.ansible/collections:/usr/share/ansible/collections
+  executable location = /usr/bin/ansible-playbook
+  python version = 3.9.18 (main, Sep  7 2023, 00:00:00) [GCC 11.4.1 20230605 (Red Hat 11.4.1-2)] (/usr/bin/python3)
+  jinja version = 3.1.2
+  libyaml = True
+Using /etc/ansible/ansible.cfg as config file
+host_list declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
+script declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
+auto declined parsing /runner/inventory/hosts as it did not pass its verify_file() method
+Parsed /runner/inventory/hosts inventory source with ini plugin
+Skipping callback 'awx_display', as we already have a stdout callback.
+Skipping callback 'default', as we already have a stdout callback.
+Skipping callback 'minimal', as we already have a stdout callback.
+Skipping callback 'oneline', as we already have a stdout callback.
+
+PLAYBOOK: project_update.yml ***************************************************
+3 plays in project_update.yml
+
+PLAY [Update source tree if necessary] *****************************************
+
+TASK [Update project using git] ************************************************
+task path: /runner/project/project_update.yml:41
+<127.0.0.1> ESTABLISH LOCAL CONNECTION FOR USER: root
+<127.0.0.1> EXEC /bin/sh -c 'echo ~root && sleep 0'
+<127.0.0.1> EXEC /bin/sh -c '( umask 77 && mkdir -p "` echo /home/runner/.ansible/tmp `"&& mkdir "` echo /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954 `" && echo ansible-tmp-1761254725.4912543-23-30269432438954="` echo /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954 `" ) && sleep 0'
+Using module file /usr/lib/python3.9/site-packages/ansible/modules/git.py
+<127.0.0.1> PUT /home/runner/.ansible/tmp/ansible-local-19lv9vqqx2/tmpmao1eq5s TO /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954/AnsiballZ_git.py
+<127.0.0.1> EXEC /bin/sh -c 'chmod u+x /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954/ /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954/AnsiballZ_git.py && sleep 0'
+<127.0.0.1> EXEC /bin/sh -c '/usr/bin/python3 /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954/AnsiballZ_git.py && sleep 0'
+<127.0.0.1> EXEC /bin/sh -c 'rm -f -r /home/runner/.ansible/tmp/ansible-tmp-1761254725.4912543-23-30269432438954/ > /dev/null 2>&1 && sleep 0'
+fatal: [localhost]: FAILED! => {
+    "changed": false,
+    "cmd": [
+        "/usr/bin/git",
+        "fetch",
+        "--tags",
+        "origin",
+        "refs/heads/*:refs/remotes/origin/*"
+    ],
+    "invocation": {
+        "module_args": {
+            "accept_hostkey": false,
+            "accept_newhostkey": false,
+            "archive": null,
+            "archive_prefix": null,
+            "bare": false,
+            "clone": true,
+            "depth": null,
+            "dest": "/var/lib/awx/projects/_66109__p_ap12402_create_socle_68",
+            "executable": null,
+            "force": false,
+            "gpg_whitelist": [],
+            "key_file": null,
+            "recursive": true,
+            "reference": null,
+            "refspec": "refs/heads/*:refs/remotes/origin/*",
+            "remote": "origin",
+            "repo": "https://$encrypted$:$encrypted$@gitlab-dogen.group.echonet/Production-mutualisee/IPS/upm-frb/transformation-upm/create_socle.git",
+            "separate_git_dir": null,
+            "single_branch": false,
+            "ssh_opts": null,
+            "track_submodules": false,
+            "umask": null,
+            "update": true,
+            "verify_commit": false,
+            "version": "master"
+        }
+    },
+    "msg": "Failed to download remote objects and refs:  From https://gitlab-dogen.group.echonet/Production-mutualisee/IPS/upm-frb/transformation-upm/create_socle\\n ! [rejected]        master     -> origin/master  (non-fast-forward)\\n"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=0    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+
