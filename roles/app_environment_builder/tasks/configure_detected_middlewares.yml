@@ -1,0 +1,105 @@
+---
+
+- name: "Configuration automatique des middlewares détectés"
+  block:
+    - name: "Affichage des middlewares détectés pour configuration"
+      ansible.builtin.debug:
+        msg:
+          - ""
+          - "🔧 CONFIGURATION AUTOMATIQUE DES MIDDLEWARES DÉTECTÉS"
+          - "══════════════════════════════════════════════════"
+          - "Middlewares à configurer: {{ detected_middlewares | join(', ') if detected_middlewares | length > 0 else 'Aucun' }}"
+          - ""
+
+    # ===== CONFIGURATION WEBSPHERE WASND =====
+    - name: "Configuration WebSphere WASND"
+      ansible.builtin.include_role:
+        name: ips_toolbox_wasnd
+      vars:
+        was_operation: "verify"
+      when: "'WebSphere_WASND' in detected_middlewares"
+      tags: [wasnd, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION WEBSPHERE WASBASE =====
+    - name: "Configuration WebSphere WASBASE"
+      ansible.builtin.include_role:
+        name: ips_toolbox_wasbase
+      vars:
+        was_operation: "verify"
+      when: "'WebSphere_WASND' in detected_middlewares"
+      tags: [wasbase, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION LIBERTY CORE =====
+    - name: "Configuration Liberty Core"
+      ansible.builtin.include_role:
+        name: ips_toolbox_libertycore
+      vars:
+        liberty_operation: "verify"
+      when: "'Liberty_Core' in detected_middlewares"
+      tags: [liberty_core, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION LIBERTY BASE =====
+    - name: "Configuration Liberty Base"
+      ansible.builtin.include_role:
+        name: ips_toolbox_libertybase
+      vars:
+        liberty_operation: "verify"
+      when: "'Liberty_Core' in detected_middlewares"
+      tags: [liberty_base, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION ORACLE =====
+    - name: "Configuration Oracle Database"
+      ansible.builtin.include_role:
+        name: ips_toolbox_oracle
+      vars:
+        oracle_operation: "verify"
+      when: "'Oracle_Database' in detected_middlewares"
+      tags: [oracle, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION IBM MQ =====
+    - name: "Configuration IBM MQ"
+      ansible.builtin.include_role:
+        name: ips_toolbox_mq
+      vars:
+        mq_operation: "verify"
+      when: "'IBM_MQ' in detected_middlewares"
+      tags: [mq, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION AXWAY CFT =====
+    - name: "Configuration Axway CFT"
+      ansible.builtin.include_role:
+        name: ips_toolbox_cft
+      vars:
+        cft_operation: "verify"
+      when: "'Axway_CFT' in detected_middlewares"
+      tags: [cft, middleware]
+      ignore_errors: yes
+
+    # ===== CONFIGURATION SQL SERVER =====
+    - name: "Configuration SQL Server"
+      ansible.builtin.include_role:
+        name: ips_toolbox_sqlserver
+      vars:
+        sqlserver_operation: "verify"
+      when: "'SQL_Server' in detected_middlewares"
+      tags: [sqlserver, middleware]
+      ignore_errors: yes
+
+    - name: "Affichage du résumé configuration middlewares"
+      ansible.builtin.debug:
+        msg:
+          - ""
+          - "✅ Configuration automatique des middlewares terminée"
+          - "Middlewares traités: {{ detected_middlewares | length }}"
+          - ""
+
+  rescue:
+    - name: "Gestion des erreurs configuration middlewares"
+      ansible.builtin.debug:
+        msg: "⚠️ Erreur lors de la configuration automatique des middlewares - Poursuite du workflow"
