@@ -99,6 +99,11 @@
               tags: [users]
               ignore_errors: true
             
+            - name: "03b - Configuration automatique des middlewares détectés"
+              ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/app_environment_builder/tasks/configure_detected_middlewares.yml"
+              tags: [middleware, config]
+              ignore_errors: true
+            
             - name: "04 - Toolbox - Vérification interface Toolbox"
               ansible.builtin.include_role:
                 name: ips_toolbox_toolboxes
