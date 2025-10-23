@@ -1,4 +1,0 @@
----
-- name: Libertycore tasks placeholder
-  debug:
-    msg: "Execute Libertycore Web tasks"

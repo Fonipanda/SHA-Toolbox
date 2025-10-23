@@ -1,9 +1,0 @@
----
-
-
-- name: include role launcher
-  include_role:
-    name: ips_toolbox_launcher
-  vars:
-    launcher_operation: "{{ launcher_operation }}"
-

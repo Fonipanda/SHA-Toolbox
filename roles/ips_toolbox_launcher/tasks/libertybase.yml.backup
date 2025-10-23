@@ -1,9 +1,0 @@
----
-
-
-- name: include role libertybase
-  include_role:
-    name: ips_toolbox_libertybase
-  vars:
-    libertybase_operation: "{{ launcher_operation }}"
-

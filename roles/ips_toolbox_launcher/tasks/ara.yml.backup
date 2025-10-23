@@ -1,9 +1,0 @@
----
-
-
-- name: include role ara
-  include_role:
-    name: ips_toolbox_ara
-  vars:
-    ara_operation: "{{ launcher_operation }}"
-

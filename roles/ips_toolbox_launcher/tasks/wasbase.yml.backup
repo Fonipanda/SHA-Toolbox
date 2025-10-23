@@ -1,9 +1,0 @@
----
-
-
-- name: include role wasbase
-  include_role:
-    name: ips_toolbox_wasbase
-  vars:
-    wasbase_operation: "{{ launcher_operation }}"
-

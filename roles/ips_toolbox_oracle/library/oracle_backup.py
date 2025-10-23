@@ -239,9 +239,9 @@ def replaceArchClass(instance, DefArchClass, ArchClass):
         for line in fileinput.input("/apps/toolboxes/backup_restore/conf/bt_sauvegarde.conf", inplace=True):
             if DefArchClass in line and instance in line:
                 changed = True
-                print "%s" % (re.sub(DefArchClass, ArchClass, re.sub('\n', '', line)))
+                print("%s" % (re.sub(DefArchClass, ArchClass, re.sub('\n', '', line))))
             else:
-                print "%s" % (re.sub('\n', '', line))
+                print("%s" % (re.sub('\n', '', line)))
     except Exception as err:
         shutil.move("/apps/toolboxes/backup_restore/conf/bt_sauvegarde.conf_TBXNG_" + str(DATE.strftime("%d%m%Y_%I%M%S")), "/apps/toolboxes/backup_restore/conf/bt_sauvegarde.conf")
         raise err

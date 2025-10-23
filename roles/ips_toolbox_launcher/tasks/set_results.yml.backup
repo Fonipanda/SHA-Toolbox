@@ -1,9 +1,0 @@
----
-
-
-- name: include role set_results
-  include_role:
-    name: ips_toolbox_set_results
-  vars:
-    set_results_operation: "{{ launcher_operation }}"
-

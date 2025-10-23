@@ -1,9 +1,0 @@
----
-
-
-- name: include role iis
-  include_role:
-    name: ips_toolbox_iis
-  vars:
-    iis_operation: "{{ launcher_operation }}"
-
