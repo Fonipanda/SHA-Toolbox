@@ -5,17 +5,24 @@
     users_component: "users"
     users_operation: "{{ users_operation | default('create') }}"
 
-- name: "Détection des middlewares pour création d'utilisateurs"
+- name: "Récupération des middlewares réellement détectés"
   ansible.builtin.set_fact:
-    middlewares_detected: "{{ users_middlewares | default(detected_middlewares) | default([]) }}"
+    detected_middleware_list: "{{ detected_middleware_list | default([]) }}"
+    users_middlewares: "{{ users_middlewares | default(detected_middleware_list | default([])) }}"
 
-- name: "Affichage des middlewares détectés pour création users"
+- name: "Affichage des middlewares détectés AVANT création users"
   ansible.builtin.debug:
     msg:
-      - "👥 Middlewares détectés : {{ middlewares_detected | join(', ') if middlewares_detected | length > 0 else 'Aucun' }}"
-      - "📝 Création des utilisateurs techniques associés"
+      - ""
+      - "📝 CRÉATION D'UTILISATEURS TECHNIQUES"
+      - "══════════════════════════════════════"
+      - "Middlewares détectés: {{ users_middlewares | length }}"
+      - "{{ users_middlewares | map(attribute='name', default='  - ' + item) | list | join('\n') if users_middlewares | length > 0 else '  ⚠️ Aucun middleware détecté - Pas de création utilisateur' }}"
+      - ""
 
-- name: "Création de l'utilisateur Oracle si middleware détecté"
+# ===== CRÉATION UTILISATEURS SELON MIDDLEWARES =====
+
+- name: "Création de l'utilisateur Oracle (oracle) si WebSphere détecté"
   ansible.builtin.user:
     name: oracle
     comment: "Oracle Database User"
@@ -25,11 +32,11 @@
     home: /home/oracle
     shell: /bin/bash
     state: present
-  when: "'Oracle' in middlewares_detected"
+  when: "'Oracle_Database' in users_middlewares"
   register: oracle_user_created
   ignore_errors: yes
 
-- name: "Création de l'utilisateur WebSphere si middleware détecté"
+- name: "Création de l'utilisateur WebSphere (wasadmin) si WAS détecté"
   ansible.builtin.user:
     name: wasadmin
     comment: "WebSphere Administrator"
@@ -38,11 +45,11 @@
     home: /home/wasadmin
     shell: /bin/bash
     state: present
-  when: "'WebSphere' in middlewares_detected or 'WAS' in middlewares_detected"
+  when: "'WebSphere_WASND' in users_middlewares"
   register: was_user_created
   ignore_errors: yes
 
-- name: "Création de l'utilisateur Liberty si middleware détecté"
+- name: "Création de l'utilisateur Liberty (liberty) si Liberty détecté"
   ansible.builtin.user:
     name: liberty
     comment: "Liberty Profile User"
@@ -51,11 +58,24 @@
     home: /home/liberty
     shell: /bin/bash
     state: present
-  when: "'Liberty' in middlewares_detected"
+  when: "'Liberty_Core' in users_middlewares"
   register: liberty_user_created
   ignore_errors: yes
 
-- name: "Création de l'utilisateur CFT si middleware détecté"
+- name: "Création de l'utilisateur MQ (mqm) si MQ détecté"
+  ansible.builtin.user:
+    name: mqm
+    comment: "IBM MQ User"
+    group: mqm
+    create_home: yes
+    home: /var/mqm
+    shell: /bin/bash
+    state: present
+  when: "'IBM_MQ' in users_middlewares"
+  register: mqm_user_created
+  ignore_errors: yes
+
+- name: "Création de l'utilisateur CFT (cft) si CFT détecté"
   ansible.builtin.user:
     name: cft
     comment: "Axway CFT User"
@@ -64,23 +84,32 @@
     home: /home/cft
     shell: /bin/bash
     state: present
-  when: "'CFT' in middlewares_detected"
+  when: "'Axway_CFT' in users_middlewares"
   register: cft_user_created
   ignore_errors: yes
+
+# ===== RÉCAPITULATIF =====
 
 - name: "Récapitulatif des utilisateurs créés"
   ansible.builtin.set_fact:
     users_created_summary:
-      oracle: "{{ 'créé ✅' if oracle_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
-      wasadmin: "{{ 'créé ✅' if was_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
-      liberty: "{{ 'créé ✅' if liberty_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
-      cft: "{{ 'créé ✅' if cft_user_created.changed | default(false) else 'déjà existant ou ignoré' }}"
+      oracle: "{{ 'créé ✅' if (oracle_user_created.changed | default(false)) else ('existant' if (oracle_user_created.failed is not defined or not oracle_user_created.failed) else 'erreur') }}"
+      wasadmin: "{{ 'créé ✅' if (was_user_created.changed | default(false)) else ('existant' if (was_user_created.failed is not defined or not was_user_created.failed) else 'erreur') }}"
+      liberty: "{{ 'créé ✅' if (liberty_user_created.changed | default(false)) else ('existant' if (liberty_user_created.failed is not defined or not liberty_user_created.failed) else 'erreur') }}"
+      mqm: "{{ 'créé ✅' if (mqm_user_created.changed | default(false)) else ('existant' if (mqm_user_created.failed is not defined or not mqm_user_created.failed) else 'erreur') }}"
+      cft: "{{ 'créé ✅' if (cft_user_created.changed | default(false)) else ('existant' if (cft_user_created.failed is not defined or not cft_user_created.failed) else 'erreur') }}"
 
 - name: "Affichage du récapitulatif création utilisateurs"
   ansible.builtin.debug:
     msg:
-      - "=== RÉCAPITULATIF CRÉATION UTILISATEURS ==="
-      - "Oracle (oracle) : {{ users_created_summary.oracle }}"
-      - "WebSphere (wasadmin) : {{ users_created_summary.wasadmin }}"
-      - "Liberty (liberty) : {{ users_created_summary.liberty }}"
-      - "CFT (cft) : {{ users_created_summary.cft }}"
+      - ""
+      - "╔═════════════════════════════════════════════════════════════╗"
+      - "║          RÉCAPITULATIF CRÉATION UTILISATEURS                ║"
+      - "╚═════════════════════════════════════════════════════════════╝"
+      - ""
+      - "👤 Oracle (oracle)     : {{ users_created_summary.oracle }}"
+      - "👤 WebSphere (wasadmin): {{ users_created_summary.wasadmin }}"
+      - "👤 Liberty (liberty)   : {{ users_created_summary.liberty }}"
+      - "👤 MQ (mqm)            : {{ users_created_summary.mqm }}"
+      - "👤 CFT (cft)           : {{ users_created_summary.cft }}"
+      - ""
