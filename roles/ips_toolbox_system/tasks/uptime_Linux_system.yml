@@ -3,38 +3,33 @@
 - name: "Récupération de l'uptime du serveur"
   ansible.builtin.shell: |
     echo $(( ($(date +%s) - $(date -d "$(uptime -s)" +%s)) / 86400 ))
-  register: uptime_days_result
+  register: uptime_days_raw
   changed_when: false
   failed_when: false
 
-- name: "Définition de la limite d'uptime par défaut"
+- name: "Conversion de l'uptime en variable sécurisée"
   ansible.builtin.set_fact:
-    uptime_limit: 90
-  when: system_uptime_limit is not defined
-
-- name: "Utilisation de la limite d'uptime fournie"
-  ansible.builtin.set_fact:
-    uptime_limit: "{{ system_uptime_limit }}"
-  when: system_uptime_limit is defined
+    uptime_days_count: "{{ uptime_days_raw.stdout | default('0') | int }}"
+    uptime_limit_days: 90
 
 - name: "Affichage de l'uptime"
   ansible.builtin.debug:
     msg:
-      - "⏰ Uptime actuel : {{ uptime_days_result.stdout }} jours"
-      - "⏰ Limite configurée : {{ uptime_limit }} jours"
+      - "⏰ Uptime actuel : {{ uptime_days_count }} jours"
+      - "⏰ Limite configurée : {{ uptime_limit_days }} jours"
 
-- name: "Vérification du dépassement de la limite d'uptime"
+- name: "Calcul du statut Uptime"
   ansible.builtin.set_fact:
-    uptime_status: "{{ 'OK' if (uptime_days_result.stdout | int) < (uptime_limit | int) else 'WARNING' }}"
-    uptime_message: "{{ 'Uptime conforme' if (uptime_days_result.stdout | int) < (uptime_limit | int) else 'Uptime dépassé - Redémarrage recommandé' }}"
+    uptime_check_status: "{{ 'OK' if (uptime_days_count | int) < (uptime_limit_days | int) else 'WARNING' }}"
+    uptime_check_message: "{{ 'Uptime conforme' if (uptime_days_count | int) < (uptime_limit_days | int) else 'Uptime dépassé - Redémarrage recommandé' }}"
 
 - name: "Alerte si uptime dépasse la limite"
   ansible.builtin.debug:
     msg:
-      - "⚠️ ATTENTION : Uptime de {{ uptime_days_result.stdout }} jours"
-      - "⚠️ Limite : {{ uptime_limit }} jours"
+      - "⚠️ ATTENTION : Uptime de {{ uptime_days_count }} jours"
+      - "⚠️ Limite : {{ uptime_limit_days }} jours"
       - "⚠️ Action recommandée : Planifier un redémarrage"
-  when: "(uptime_days_result.stdout | int) >= (uptime_limit | int)"
+  when: (uptime_days_count | int) >= (uptime_limit_days | int)
 
 - name: "Vérification et démarrage du service chronyd"
   block:
@@ -49,19 +44,19 @@
 
     - name: "Affichage du statut chronyd"
       ansible.builtin.debug:
-        msg: "🕐 Service chronyd : {{ 'actif ✅' if chronyd_service.changed == false else 'démarré ✅' }}"
-      when: chronyd_service is defined and chronyd_service.failed is not defined
+        msg: "🕐 Service chronyd : {{ 'actif ✅' if (chronyd_service.changed is not defined or not chronyd_service.changed) else 'démarré ✅' }}"
+      when: chronyd_service is defined and not (chronyd_service.failed | default(false))
 
   rescue:
     - name: "Chronyd non disponible - Ignoré"
       ansible.builtin.debug:
         msg: "⚠️ Service chronyd non disponible sur ce système"
 
-- name: "Enregistrement du résultat uptime"
+- name: "Enregistrement du résultat uptime pour report_generator"
   ansible.builtin.set_fact:
     uptime_final_result:
-      uptime_days: "{{ uptime_days_result.stdout }}"
-      uptime_limit: "{{ uptime_limit }}"
-      status: "{{ uptime_status }}"
-      message: "{{ uptime_message }}"
-      chronyd_active: "{{ chronyd_service.changed is defined and not chronyd_service.changed }}"
+      uptime_days: "{{ uptime_days_count }}"
+      uptime_limit: "{{ uptime_limit_days }}"
+      status: "{{ uptime_check_status }}"
+      message: "{{ uptime_check_message }}"
+      chronyd_active: "{{ (chronyd_service.changed is defined and not chronyd_service.changed) if chronyd_service is defined else false }}"
