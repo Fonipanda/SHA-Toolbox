@@ -27,7 +27,7 @@
 
     - name: "Ajout de WAS à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + ['WebSphere_WASND'] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'WebSphere_WASND', 'path': '/opt/IBM/WebSphere/AppServer', 'version': was_version.stdout | default('N/A')}] }}"
       when: 
         - was_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
         - was_version.rc == 0
@@ -54,7 +54,7 @@
 
     - name: "Ajout de Liberty à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + ['Liberty_Core'] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'Liberty_Core', 'path': '/opt/IBM/WebSphere/Liberty', 'version': liberty_version.stdout | default('N/A')}] }}"
       when: 
         - liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
         - liberty_version.rc == 0
@@ -83,9 +83,17 @@
         - /home/oracle/app/oracle/product
       register: oracle_dir_check
 
+    - name: "Récupération version Oracle si présente"
+      ansible.builtin.shell: |
+        cat /etc/oratab | grep -v "^#" | grep -v "^$" | head -1 | cut -d: -f1 || echo "Oracle"
+      register: oracle_version
+      changed_when: false
+      failed_when: false
+      when: oratab_check.stat.exists
+
     - name: "Ajout d'Oracle à la liste des MIDDLEWARES (si oratab ET processus présents)"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + ['Oracle_Database'] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'Oracle_Database', 'path': '/u01/app/oracle', 'version': oracle_version.stdout | default('N/A')}] }}"
       when:
         - oratab_check.stat.exists
         - (oracle_process_check.stdout | int) > 0
@@ -110,9 +118,17 @@
       changed_when: false
       failed_when: false
 
+    - name: "Récupération version MQ"
+      ansible.builtin.shell: |
+        /opt/mqm/bin/dspmqver 2>/dev/null | grep Version | head -1 || echo "MQ Detected"
+      register: mq_version
+      changed_when: false
+      failed_when: false
+      when: mq_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
+
     - name: "Ajout de MQ à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + ['IBM_MQ'] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_MQ', 'path': '/opt/mqm', 'version': mq_version.stdout | default('N/A')}] }}"
       when:
         - mq_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
         - (mq_process_check.stdout | int) > 0
@@ -138,39 +154,105 @@
 
     - name: "Ajout de CFT à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + ['Axway_CFT'] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'Axway_CFT', 'path': '/opt/axway', 'version': 'N/A'}] }}"
       when:
         - cft_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
         - (cft_process_check.stdout | int) > 0
 
-# ===== DÉTECTION SERVICES SYSTÈME =====
-- name: "Détection des services système activés"
+# ===== DÉTECTION SQL SERVER (Windows) =====
+- name: "Détection SQL Server (si Windows)"
   block:
-    - name: "Récupération de la liste des services actifs"
+    - name: "Vérification service SQL Server"
       ansible.builtin.shell: |
-        systemctl list-units --type=service --state=active --no-pager | grep -E "loaded|active" | awk '{print $1}' | sed 's/.service$//' | sort -u
-      register: active_services
+        pgrep -f "sqlservr" | wc -l
+      register: sqlserver_process_check
       changed_when: false
       failed_when: false
 
-    - name: "Recherche des services critiques"
+    - name: "Ajout de SQL Server à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_services: |
-          [
-          {%- set critical_services = ['chronyd', 'ntpd', 'filebeat', 'elastic-agent', 'eTAC', 'illumio-ven', 'dynatrace', 'dsmcad'] -%}
-          {%- for service in critical_services -%}
-            {%- if service in active_services.stdout -%}
-              '{{ service }}'{{ "," if not loop.last else "" }}
-            {%- endif -%}
-          {%- endfor -%}
-          ]
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'SQL_Server', 'path': '/opt/mssql', 'version': 'N/A'}] }}"
+      when:
+        - (sqlserver_process_check.stdout | int) > 0
+  when: ansible_os_family == "Windows" or ansible_distribution == "Microsoft"
+
+# ===== DÉTECTION SERVICES SYSTÈME (AMÉLIORÉE) =====
+- name: "Détection des services système activés (COMPLÈTE)"
+  block:
+    - name: "Récupération de la liste COMPLÈTE des services actifs"
+      ansible.builtin.shell: |
+        systemctl list-units --type=service --state=active --no-pager --no-legend | awk '{print $1}' | sed 's/.service$//' | sort -u
+      register: active_services_raw
+      changed_when: false
+      failed_when: false
+
+    - name: "Affichage debug services bruts"
+      ansible.builtin.debug:
+        msg: "Services actifs bruts détectés : {{ active_services_raw.stdout_lines | length }}"
+
+    - name: "Construction de la liste des services critiques détectés"
+      ansible.builtin.set_fact:
+        detected_services: >-
+          {{
+            [
+              {'name': 'chronyd', 'description': 'NTP Time Synchronization'},
+              {'name': 'ntpd', 'description': 'NTP Daemon'},
+              {'name': 'systemd-timesyncd', 'description': 'systemd Time Sync'},
+              {'name': 'sshd', 'description': 'SSH Daemon'},
+              {'name': 'firewalld', 'description': 'Firewall Service'},
+              {'name': 'iptables', 'description': 'IPTables Firewall'},
+              {'name': 'rsyslog', 'description': 'System Logging'},
+              {'name': 'auditd', 'description': 'Audit Daemon'},
+              {'name': 'crond', 'description': 'Cron Daemon'},
+              {'name': 'atd', 'description': 'AT Daemon'},
+              {'name': 'filebeat', 'description': 'Elastic Filebeat'},
+              {'name': 'elastic-agent', 'description': 'Elastic Agent'},
+              {'name': 'metricbeat', 'description': 'Elastic Metricbeat'},
+              {'name': 'eTAC', 'description': 'eTAC Service'},
+              {'name': 'illumio-ven', 'description': 'Illumio VEN'},
+              {'name': 'dynatrace', 'description': 'Dynatrace OneAgent'},
+              {'name': 'oneagent', 'description': 'Dynatrace OneAgent'},
+              {'name': 'dsmcad', 'description': 'TSM Client Daemon'},
+              {'name': 'nimbus', 'description': 'Nimsoft Monitoring'},
+              {'name': 'mcafee', 'description': 'McAfee Antivirus'},
+              {'name': 'clamav', 'description': 'ClamAV Antivirus'},
+              {'name': 'snmpd', 'description': 'SNMP Daemon'},
+              {'name': 'postfix', 'description': 'Mail Transfer Agent'},
+              {'name': 'sendmail', 'description': 'Sendmail MTA'},
+              {'name': 'httpd', 'description': 'Apache Web Server'},
+              {'name': 'nginx', 'description': 'Nginx Web Server'},
+              {'name': 'docker', 'description': 'Docker Engine'},
+              {'name': 'containerd', 'description': 'Container Runtime'},
+              {'name': 'NetworkManager', 'description': 'Network Manager'},
+              {'name': 'tuned', 'description': 'Tuning Daemon'},
+              {'name': 'multipathd', 'description': 'Multipath Daemon'},
+              {'name': 'lvm2-monitor', 'description': 'LVM2 Monitoring'},
+              {'name': 'sssd', 'description': 'System Security Services'}
+            ] | selectattr('name', 'in', active_services_raw.stdout) | list
+          }}
+
+    - name: "Ajout des services spécifiques IBM/Oracle"
+      ansible.builtin.set_fact:
+        detected_services: >-
+          {{
+            detected_services + 
+            (
+              [
+                {'name': 'was', 'description': 'WebSphere App Server'},
+                {'name': 'liberty', 'description': 'Liberty Server'},
+                {'name': 'oracleasm', 'description': 'Oracle ASM'},
+                {'name': 'oracle', 'description': 'Oracle Database'},
+                {'name': 'mqm', 'description': 'IBM MQ Manager'}
+              ] | selectattr('name', 'in', active_services_raw.stdout) | list
+            )
+          }}
 
 # ===== CONSOLIDATION FINALE =====
 - name: "Consolidation finale des middlewares et services détectés"
   ansible.builtin.set_fact:
     detected_summary:
       middlewares: "{{ detected_middlewares }}"
-      services: "{{ detected_services | default([]) }}"
+      services: "{{ detected_services }}"
       total_components: "{{ (detected_middlewares | length) + (detected_services | length) }}"
 
 - name: "Affichage du résumé de détection CORRIGÉ"
@@ -178,19 +260,21 @@
     msg:
       - ""
       - "╔═══════════════════════════════════════════════════════════════════╗"
-      - "║  DÉTECTION MIDDLEWARES ET SERVICES - VERSION CORRIGÉE              ║"
+      - "║  DÉTECTION MIDDLEWARES ET SERVICES - VERSION COMPLÈTE             ║"
       - "╚═══════════════════════════════════════════════════════════════════╝"
       - ""
       - "🖥️  Serveur: {{ ansible_hostname }}"
-      - "🐧 OS: Linux {{ ansible_distribution }}"
+      - "🐧 OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
       - ""
       - "📦 MIDDLEWARES DÉTECTÉS ({{ detected_middlewares | length }}):"
-      - "{{ detected_middlewares | map(attribute='name', default='  - ' + item) | list | join('\n') if detected_middlewares | length > 0 else '  - Aucun middleware détecté' }}"
+      - "{% if detected_middlewares | length > 0 %}{% for mw in detected_middlewares %}  - {{ mw.name }} ({{ mw.path }}){% endfor %}{% else %}  - Aucun middleware détecté{% endif %}"
       - ""
-      - "🔧 SERVICES CRITIQUES DÉTECTÉS ({{ detected_services | length }}):"
-      - "{{ detected_services | map(attribute='name', default='  - ' + item) | list | join('\n') if detected_services | length > 0 else '  - Aucun service détecté' }}"
+      - "🔧 SERVICES SYSTÈME DÉTECTÉS ({{ detected_services | length }}):"
+      - "{% if detected_services | length > 0 %}{% for svc in detected_services %}  - {{ svc.name }} : {{ svc.description }}{% endfor %}{% else %}  - Aucun service critique détecté{% endif %}"
       - ""
       - "📊 TOTAL COMPOSANTS: {{ detected_summary.total_components }}"
+      - ""
+      - "✅ Détection terminée avec succès"
       - ""
 
 - name: "Enregistrement des facts pour les autres rôles"
@@ -198,3 +282,4 @@
     detected_middleware_list: "{{ detected_middlewares }}"
     detected_service_list: "{{ detected_services }}"
     app_environment_detected: true
+    cacheable: true
