@@ -1,0 +1,39 @@
+{
+  "Synchronisation et Temps": [
+    {"name": "chronyd", "description": "NTP Time Synchronization"}
+  ],
+  "Connexion et Sécurité": [
+    {"name": "sshd", "description": "SSH Daemon"},
+    {"name": "sssd", "description": "System Security Services"}
+  ],
+  "Journalisation": [
+    {"name": "rsyslog", "description": "System Logging"},
+    {"name": "filebeat", "description": "Elastic Filebeat"}
+  ],
+  "Planification de Tâches": [
+    {"name": "crond", "description": "Cron Daemon"},
+    {"name": "atd", "description": "AT Daemon"}
+  ],
+  "Agents et Supervision": [
+    {"name": "elastic-agent", "description": "Elastic Agent"},
+    {"name": "dynatrace", "description": "Dynatrace OneAgent"},
+    {"name": "oneagent", "description": "Dynatrace OneAgent"},
+    {"name": "lvm2-monitor", "description": "LVM2 Monitoring"}
+  ],
+  "Sauvegarde et Gestion des Données": [
+    {"name": "dsmcad", "description": "TSM Client Daemon"}
+  ],
+  "Sécurité et Protection": [
+    {"name": "mcafee", "description": "McAfee Antivirus"},
+    {"name": "eTAC", "description": "eTAC Service"},
+    {"name": "illumio-ven", "description": "Illumio VEN"}
+  ],
+  "Réseau": [
+    {"name": "snmpd", "description": "SNMP Daemon"},
+    {"name": "NetworkManager", "description": "Network Manager"}
+  ],
+  "Serveurs d'Applications": [
+    {"name": "was", "description": "WebSphere App Server"}
+  ]
+}
+
