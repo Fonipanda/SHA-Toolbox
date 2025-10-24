@@ -1,0 +1,264 @@
+
+PLAY [Application Environment Builder] *****************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [s02vl9942853]
+
+TASK [Validation des variables obligatoires du Survey AAP2] ********************
+ok: [s02vl9942853] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Création du répertoire de rapports] **************************************
+ok: [s02vl9942853]
+
+TASK [Initialisation du rapport d'exécution] ***********************************
+changed: [s02vl9942853]
+
+TASK [01 - Mise à jour Facts - Collecte des facts système étendus] *************
+
+TASK [app_environment_builder : Collecte des facts système étendus] ************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Version RHEL détaillée] ************************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Informations sur les partitions] ***************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Services systemd actifs] ***********************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Packages installés critiques] ******************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Vérification de l'espace disque] ***************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Consolidation des informations OS détectées] ***
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Affichage des informations OS détectées] *******
+ok: [s02vl9942853] => {
+    "detected_os_info": {
+        "architecture": "x86_64",
+        "cpu_cores": 2,
+        "distribution": "RedHat",
+        "family": "RedHat",
+        "fqdn": "s02vl9942853.fr.net.intra",
+        "hostname": "s02vl9942853",
+        "kernel": "5.14.0-427.88.1.el9_4.x86_64",
+        "memory_mb": 3659,
+        "specific_info": {
+            "aix_kernel": "N/A",
+            "aix_oslevel": "N/A",
+            "aix_volume_groups": [],
+            "linux_packages": [],
+            "linux_services": [
+                "  UNIT                                                      LOAD   ACTIVE SUB     DESCRIPTION",
+                "  atd.service                                               loaded active running Deferred execution scheduler",
+                "  autofs.service                                            loaded active running Automounts filesystems on demand",
+                "  besclient.service                                         loaded active running BESClient daemon",
+                "  chronyd.service                                           loaded active running NTP client/server",
+                "  crond.service                                             loaded active running Command Scheduler",
+                "  dbus-broker.service                                       loaded active running D-Bus System Message Bus",
+                "  dracut-shutdown.service                                   loaded active exited  Restore /run/initramfs on shutdown",
+                "  dsmcad.service                                            loaded active running \\"IBM SP Client dsmcad service.\\"",
+                "  elastic-agent.service                                     loaded active running Elastic Agent is a unified agent to observe, monitor and protect your system.",
+                "  eTAC.service                                              loaded active running eTAC service",
+                "  filebeat-cybersoc.service                                 loaded active running Filebeat service that send events to Databus",
+                "  getty@tty1.service                                        loaded active running Getty on tty1",
+                "  illumio-ven.service                                       loaded active exited  Illumio VEN Agent top level startup",
+                "  import-state.service                                      loaded active exited  Import network configuration from initramfs",
+                "  irqbalance.service                                        loaded active running irqbalance daemon",
+                "  kdump.service                                             loaded active exited  Crash recovery kernel arming",
+                "  kmod-static-nodes.service                                 loaded active exited  Create List of Static Device Nodes",
+                "  lpar2rrd-agent.service                                    loaded active exited  Refresh system UUID for LPAR2RRD agent after a reboot",
+                "  lvm2-monitor.service                                      loaded active exited  Monitoring of LVM2 mirrors, snapshots etc. using dmeventd or progress polling"
+            ],
+            "rhel_version": "Red Hat Enterprise Linux release 9.4 (Plow)",
+            "windows_programs": [],
+            "windows_services": [],
+            "windows_version": "N/A"
+        },
+        "version": "9.4"
+    }
+}
+
+TASK [app_environment_builder : Enregistrement des facts OS pour les autres rôles] ***
+ok: [s02vl9942853]
+
+TASK [Détection du middleware installé (AVANT création arborescence)] **********
+
+TASK [app_environment_builder : Initialisation de la liste des middlewares et services détectés] ***
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Vérification des répertoires WAS WASND] ********
+ok: [s02vl9942853] => (item=/opt/IBM/WebSphere/AppServer)
+ok: [s02vl9942853] => (item=/usr/IBM/WebSphere/AppServer)
+
+TASK [app_environment_builder : Vérification des répertoires Liberty] **********
+ok: [s02vl9942853] => (item=/opt/IBM/WebSphere/Liberty)
+ok: [s02vl9942853] => (item=/usr/IBM/WebSphere/Liberty)
+ok: [s02vl9942853] => (item=/opt/wlp)
+
+TASK [app_environment_builder : Vérification du fichier oratab (fichier spécifique Oracle)] ***
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Vérification du processus Oracle smon (PMON)] ***
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Vérification du répertoire Oracle ORACLE_HOME] ***
+ok: [s02vl9942853] => (item=/u01/app/oracle/product)
+ok: [s02vl9942853] => (item=/opt/oracle/product)
+ok: [s02vl9942853] => (item=/home/oracle/app/oracle/product)
+
+TASK [app_environment_builder : Vérification des répertoires MQ] ***************
+ok: [s02vl9942853] => (item=/opt/mqm)
+ok: [s02vl9942853] => (item=/usr/mqm)
+ok: [s02vl9942853] => (item=/var/mqm)
+
+TASK [app_environment_builder : Vérification du processus MQ] ******************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Vérification des répertoires CFT] **************
+ok: [s02vl9942853] => (item=/opt/axway)
+ok: [s02vl9942853] => (item=/opt/cft)
+ok: [s02vl9942853] => (item=/opt/transfer)
+
+TASK [app_environment_builder : Vérification du processus CFT] *****************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Récupération de la liste des services actifs] ***
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Recherche des services critiques] **************
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Consolidation finale des middlewares et services détectés] ***
+ok: [s02vl9942853]
+
+TASK [app_environment_builder : Affichage du résumé de détection CORRIGÉ] ******
+fatal: [s02vl9942853]: FAILED! => {"msg": "The task includes an option with an undefined variable. The error was: 'item' is undefined. 'item' is undefined\\n\\nThe error appears to be in '/runner/project/roles/app_environment_builder/tasks/detect_middleware.yml': line 176, column 3, but may\\nbe elsewhere in the file depending on the exact syntax problem.\\n\\nThe offending line appears to be:\\n\\n\\n- name: \\"Affichage du résumé de détection CORRIGÉ\\"\\n  ^ here\\n"}
+
+TASK [Gestion des erreurs du workflow] *****************************************
+ok: [s02vl9942853] => {
+    "msg": [
+        "Une erreur s'est produite lors de l'exécution du workflow",
+        "Consultez les logs dans /tmp/ansible_reports"
+    ]
+}
+
+TASK [Création du répertoire de rapports si nécessaire] ************************
+ok: [s02vl9942853]
+
+TASK [14 - Génération du récapitulatif final d'exécution] **********************
+
+TASK [report_generator : Collecte de tous les résultats d'exécution] ***********
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats Toolbox] ***********************
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats Dynatrace] *********************
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats Illumio] ***********************
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats TSM/Backup] ********************
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats Uptime] ************************
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats Filesystems] *******************
+ok: [s02vl9942853]
+
+TASK [report_generator : Collecte des résultats Utilisateurs] ******************
+ok: [s02vl9942853]
+
+TASK [report_generator : Affichage du récapitulatif final complet] *************
+ok: [s02vl9942853] => {
+    "msg": [
+        "",
+        "╔════════════════════════════════════════════════════════════════════════╗",
+        "║      RÉCAPITULATIF COMPLET D'EXÉCUTION - SHA-TOOLBOX AAP2             ║",
+        "╚════════════════════════════════════════════════════════════════════════╝",
+        "",
+        "┌─ INFORMATIONS GÉNÉRALES ────────────────────────────────────────────┐",
+        "│ Date d'exécution : 2025-10-24T12:20:13Z",
+        "│ Serveur          : s02vl9942853 (s02vl9942853.fr.net.intra)",
+        "│ OS               : RedHat 9.4",
+        "│ Kernel           : 5.14.0-427.88.1.el9_4.x86_64",
+        "│ Architecture     : x86_64",
+        "│ Code Application : 12402",
+        "│ Code 5 car       : acfrb",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ MIDDLEWARES ET SERVICES DÉTECTÉS ──────────────────────────────────┐",
+        "│ Middlewares (0) : Aucun",
+        "│ Services (7)    : chronyd, filebeat, elastic-agent, eTAC, illumio-ven, dynatrace, dsmcad",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ TOOLBOX IPS ───────────────────────────────────────────────────────┐",
+        "│ Installée        : ❌ NON",
+        "│ Version          : N/A",
+        "│ Chemin           : /apps/toolboxes",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ FILESYSTEMS ───────────────────────────────────────────────────────┐",
+        "│ FS créés/vérifiés: 0/0",
+        "│ Arborescence     : /applis, /apps, /applis/logs, /applis/delivery",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ UTILISATEURS TECHNIQUES ───────────────────────────────────────────┐",
+        "│ Oracle (oracle)  : non vérifié",
+        "│ WebSphere (wasadmin) : non vérifié",
+        "│ Liberty (liberty): non vérifié",
+        "│ CFT (cft)        : non vérifié",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ UPTIME ET NTP ─────────────────────────────────────────────────────┐",
+        "│ Uptime actuel    : N/A jours",
+        "│ Limite configurée: 90 jours",
+        "│ Statut           : N/A",
+        "│ Service chronyd  : ✅ Actif",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ DYNATRACE ONEAGENT ────────────────────────────────────────────────┐",
+        "│ Installé         : ❌ NON",
+        "│ Version          : N/A",
+        "│ Statut           : Vérifié",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ ILLUMIO VEN ───────────────────────────────────────────────────────┐",
+        "│ Installé         : ❌ NON",
+        "│ Version          : N/A",
+        "│ Mode             : N/A",
+        "│ Statut           : Vérifié",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ SAUVEGARDE TSM ────────────────────────────────────────────────────┐",
+        "│ TSM installé     : ❌ NON",
+        "│ Service dsmcad   : ⚠️ Non vérifié",
+        "│ Script REAR      : ❌ Absent",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "╔════════════════════════════════════════════════════════════════════════╗",
+        "║                    ✅ EXÉCUTION TERMINÉE AVEC SUCCÈS                   ║",
+        "╚════════════════════════════════════════════════════════════════════════╝",
+        ""
+    ]
+}
+
+TASK [report_generator : Sauvegarde du récapitulatif en JSON] ******************
+changed: [s02vl9942853]
+
+TASK [Finalisation du rapport d'exécution] *************************************
+changed: [s02vl9942853]
+
+PLAY RECAP *********************************************************************
+s02vl9942853               : ok=39   changed=3    unreachable=0    failed=0    skipped=15   rescued=1    ignored=0   
+
