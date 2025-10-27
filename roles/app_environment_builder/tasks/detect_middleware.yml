@@ -5,7 +5,7 @@
     detected_middlewares: []
     detected_services: []
     detected_packages: []
-    middleware_to_install: []
+    middleware_to_configure: []  # Pour configuration/upgrade via rôles toolbox
     users_to_create: []
 
 # ===== DÉTECTION MIDDLEWARES (Serveurs d'Applications + Bases de Données + Messaging) =====
@@ -36,10 +36,10 @@
       failed_when: false
       when: was_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
 
-    - name: "Ajout de WAS ND à la liste des MIDDLEWARES"
+    - name: "Ajout de WAS ND à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'WebSphere_WASND', 'type': 'application_server', 'path': '/opt/IBM/WebSphere/AppServer', 'version': was_version.stdout | default('N/A'), 'status': 'installed', 'processes': was_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['wasnd'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['wasnd'] }}"
         users_to_create: "{{ users_to_create + ['wasadmin'] }}"
       when: 
         - was_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
@@ -60,10 +60,10 @@
       failed_when: false
       when: wasbase_check.stat.exists
 
-    - name: "Ajout de WAS Base à la liste des MIDDLEWARES"
+    - name: "Ajout de WAS Base à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'WebSphere_WASBASE', 'type': 'application_server', 'path': '/opt/IBM/WebSphere/AppServer', 'version': was_version.stdout | default('N/A'), 'status': 'installed', 'processes': 1}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['wasbase'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['wasbase'] }}"
       when:
         - wasbase_check.stat.exists
         - wasbase_type.stdout == "BASE"
@@ -107,10 +107,10 @@
       failed_when: false
       when: liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
 
-    - name: "Ajout de Liberty à la liste des MIDDLEWARES"
+    - name: "Ajout de Liberty à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': liberty_type.stdout | default('Liberty_Core'), 'type': 'application_server', 'path': '/opt/IBM/WebSphere/Liberty', 'version': liberty_version.stdout | default('N/A'), 'status': 'installed', 'processes': liberty_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['liberty'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['liberty'] }}"
         users_to_create: "{{ users_to_create + ['liberty'] }}"
       when: 
         - liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
@@ -146,10 +146,10 @@
       failed_when: false
       when: oratab_check.stat.exists
 
-    - name: "Ajout d'Oracle à la liste des MIDDLEWARES"
+    - name: "Ajout d'Oracle à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'Oracle_Database', 'type': 'database', 'path': '/u01/app/oracle', 'version': oracle_version.stdout | default('N/A'), 'status': 'installed', 'processes': oracle_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['oracle'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['oracle'] }}"
         users_to_create: "{{ users_to_create + ['oracle'] }}"
       when:
         - oratab_check.stat.exists
@@ -170,10 +170,10 @@
         path: /opt/mssql
       register: sqlserver_dir_check
 
-    - name: "Ajout de SQL Server à la liste des MIDDLEWARES"
+    - name: "Ajout de SQL Server à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'SQL_Server', 'type': 'database', 'path': '/opt/mssql', 'version': 'N/A', 'status': 'installed', 'processes': sqlserver_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['sqlserver'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['sqlserver'] }}"
         users_to_create: "{{ users_to_create + ['sqladmin'] }}"
       when:
         - sqlserver_process_check.stdout | int > 0
@@ -197,10 +197,10 @@
       changed_when: false
       failed_when: false
 
-    - name: "Ajout de MQ à la liste des MIDDLEWARES"
+    - name: "Ajout de MQ à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_MQ', 'type': 'messaging', 'path': '/opt/mqm', 'version': 'N/A', 'status': 'installed', 'processes': mq_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['mq'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['mq'] }}"
         users_to_create: "{{ users_to_create + ['mqm'] }}"
       when:
         - mq_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
@@ -227,7 +227,7 @@
     - name: "Ajout de CFT à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'Axway_CFT', 'type': 'file_transfer', 'path': '/opt/axway', 'version': 'N/A', 'status': 'installed', 'processes': cft_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['cft'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['cft'] }}"
         users_to_create: "{{ users_to_create + ['cft'] }}"
       when:
         - cft_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
@@ -254,7 +254,7 @@
     - name: "Ajout de IHS à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_HTTP_Server', 'type': 'web_server', 'path': '/opt/IBM/HTTPServer', 'version': 'N/A', 'status': 'installed', 'processes': ihs_process_check.stdout | int}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['ihs'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['ihs'] }}"
       when:
         - ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
         - (ihs_process_check.stdout | int) > 0
@@ -272,7 +272,7 @@
     - name: "Ajout JVM à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
         detected_middlewares: "{{ detected_middlewares + [{'name': 'JVM', 'type': 'runtime', 'path': 'N/A', 'version': jvm_version.stdout | default('N/A'), 'status': 'installed'}] }}"
-        middleware_to_install: "{{ middleware_to_install + ['jvm'] }}"
+        middleware_to_configure: "{{ middleware_to_configure + ['jvm'] }}"
       when:
         - jvm_version.rc == 0
         - "'version' in jvm_version.stdout or 'openjdk' in jvm_version.stdout"
@@ -424,7 +424,7 @@
       middlewares: "{{ detected_middlewares }}"
       services: "{{ detected_services }}"
       total_components: "{{ (detected_middlewares | length) + (detected_services | length) }}"
-      middleware_to_install: "{{ middleware_to_install | unique }}"
+      middleware_to_configure: "{{ middleware_to_configure | unique }}"
       users_to_create: "{{ users_to_create | unique }}"
 
 - name: "Affichage du résumé de détection COMPLET PAR CATÉGORIES"
@@ -560,8 +560,8 @@
       - "Total Services: {{ detected_services | length }}"
       - "Total Composants: {{ detected_summary.total_components }}"
       - ""
-      - "🔨 Middlewares à installer/configurer: {{ middleware_to_install | length }}"
-      - "   {{ middleware_to_install | join(', ') if middleware_to_install | length > 0 else 'Aucun' }}"
+      - "🔨 Middlewares à installer/configurer: {{ middleware_to_configure | length }}"
+      - "   {{ middleware_to_configure | join(', ') if middleware_to_configure | length > 0 else 'Aucun' }}"
       - ""
       - "👥 Utilisateurs techniques à créer: {{ users_to_create | length }}"
       - "   {{ users_to_create | join(', ') if users_to_create | length > 0 else 'Aucun' }}"
@@ -574,7 +574,7 @@
   ansible.builtin.set_fact:
     detected_middleware_list: "{{ detected_middlewares }}"
     detected_service_list: "{{ detected_services }}"
-    middleware_to_install_list: "{{ middleware_to_install }}"
+    middleware_to_configure_list: "{{ middleware_to_configure }}"
     users_to_create_list: "{{ users_to_create }}"
     users_middlewares: "{{ users_to_create }}"
     app_environment_detected: true
