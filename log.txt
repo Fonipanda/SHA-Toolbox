@@ -93,6 +93,20 @@ TASK [Détection du middleware installé (AVANT création arborescence)] *******
 TASK [app_environment_builder : Initialisation de la liste des middlewares et services détectés] ***
 ok: [s02vl9942814]
 
+TASK [app_environment_builder : Copie du script de détection WebSphere] ********
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Exécution du script de détection WebSphere] ****
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Enregistrement du produit WebSphere détecté] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Affichage du produit WebSphere détecté par script Python] ***
+ok: [s02vl9942814] => {
+    "msg": "Produit WebSphere détecté via script: None"
+}
+
 TASK [app_environment_builder : Vérification des répertoires WAS WASND] ********
 ok: [s02vl9942814] => (item=/opt/IBM/WebSphere/AppServer)
 ok: [s02vl9942814] => (item=/usr/IBM/WebSphere/AppServer)
@@ -321,7 +335,7 @@ TASK [ips_toolbox_banner : Initialisation du rôle banner] *********************
 ok: [s02vl9942814]
 
 TASK [ips_toolbox_banner : Création de la bannière MOTD] ***********************
-changed: [s02vl9942814]
+ok: [s02vl9942814]
 
 TASK [ips_toolbox_banner : Création de la bannière issue (console locale)] *****
 ok: [s02vl9942814]
@@ -779,7 +793,7 @@ ok: [s02vl9942814] => {
             "/dev/mapper/vg_apps-lv_spt00deli          2.0G   24K  1.8G   1% /applis/delivery/09043-spt00",
             "/dev/mapper/vg_apps-lv_testslog           2.0G   24K  1.8G   1% /applis/logs/12402-tests",
             "/dev/mapper/rootvg-apps                  1014M   40M  975M   4% /apps",
-            "/dev/mapper/vg_apps-lv_toolboxes          974M  159M  749M  18% /apps/toolboxes",
+            "/dev/mapper/vg_apps-lv_toolboxes          974M  159M  748M  18% /apps/toolboxes",
             "/dev/mapper/vg_apps-lv_log_acfrb          960M   39M  922M   5% /applis/logs/12402-acfrb",
             "/dev/mapper/vg_apps-lv_home_bigfix        9.8G   82M  9.2G   1% /apps/BIGFIX",
             "/dev/mapper/rootvg-deploy                 2.0G   49M  2.0G   3% /apps/Deploy",
@@ -791,10 +805,10 @@ ok: [s02vl9942814] => {
             "/dev/mapper/vg_apps-lv_acfrb_tmp          960M   39M  922M   5% /applis/12402-acfrb/tmp",
             "/dev/mapper/vg_apps-lv_acfrb_to           960M   39M  922M   5% /applis/12402-acfrb/transfer/out",
             "/dev/mapper/vg_apps-lv_acfrb_ti           960M   39M  922M   5% /applis/12402-acfrb/transfer/in",
-            "/dev/mapper/rootvg-lv_perfs               507M   95M  413M  19% /apps/sys/log/stats",
+            "/dev/mapper/rootvg-lv_perfs               507M   96M  412M  19% /apps/sys/log/stats",
             "/dev/mapper/rootvg-lv_elastic_agent       4.9G 1021M  3.6G  22% /apps/elastic_agent",
-            "/dev/mapper/rootvg-lv_filebeat--cybersoc  272M  199M   54M  79% /apps/filebeat-cybersoc",
-            "/dev/mapper/rootvg-lv_etac                2.1G  586M  1.4G  31% /apps/eTAC",
+            "/dev/mapper/rootvg-lv_filebeat--cybersoc  272M  200M   53M  80% /apps/filebeat-cybersoc",
+            "/dev/mapper/rootvg-lv_etac                2.1G  587M  1.4G  31% /apps/eTAC",
             "/dev/mapper/vg_apps-lv_dlv_acfrb          960M   39M  922M   5% /applis/delivery/12402-acfrb",
             "/dev/mapper/vg_apps-lv_dlv_shared         960M   40M  921M   5% /applis/delivery/shared",
             "/dev/mapper/vg_apps-lv_log_shared         960M   39M  922M   5% /applis/logs/shared",
@@ -891,12 +905,15 @@ ok: [s02vl9942814]
 TASK [ips_toolbox_dynatrace : Vérification du statut de l'agent Dynatrace] *****
 ok: [s02vl9942814]
 
+TASK [ips_toolbox_dynatrace : Détermination du statut OneAgent] ****************
+ok: [s02vl9942814]
+
 TASK [ips_toolbox_dynatrace : Affichage des informations Dynatrace] ************
 ok: [s02vl9942814] => {
     "msg": [
         "📊 Dynatrace OneAgent détecté",
         "Version : 1.297.80.20250109-162423",
-        "Statut : "
+        "Statut : Connected"
     ]
 }
 
@@ -906,9 +923,12 @@ ok: [s02vl9942814]
 TASK [ips_toolbox_dynatrace : Vérification du mode Dynatrace] ******************
 ok: [s02vl9942814]
 
+TASK [ips_toolbox_dynatrace : Détermination du mode de surveillance] ***********
+ok: [s02vl9942814]
+
 TASK [ips_toolbox_dynatrace : Affichage du mode final] *************************
 ok: [s02vl9942814] => {
-    "msg": "🔧 Mode Dynatrace : "
+    "msg": "🔧 Mode Dynatrace : Full-stack"
 }
 
 TASK [09 - Illumio - Vérification statut (si présent)] *************************
@@ -922,26 +942,27 @@ ok: [s02vl9942814]
 TASK [ips_toolbox_illumio : Vérification du statut de l'agent Illumio] *********
 ok: [s02vl9942814]
 
+TASK [ips_toolbox_illumio : Extraction du statut VEN et mode d'enforcement] ****
+ok: [s02vl9942814]
+
 TASK [ips_toolbox_illumio : Affichage des informations Illumio] ****************
 ok: [s02vl9942814] => {
     "msg": [
         "🛡️ Illumio VEN détecté",
         "Version : 23.2.30-447",
-        "Statut : Checking Runtime Environment..........\\nStatus for illumio-control: \\n - Environment Illumio VEN Environment is setup\\n - venAgentMgr venAgentMgr is running\\n - IPSec IPSec feature not enabled\\n - venPlatformHandler venPlatformHandler is running\\n - venVtapServer venVtapServer is running\\n - venAgentMonitor venAgentMonitor is running\\n\\nAgent state: enforced"
+        "Statut VEN : Active",
+        "Mode d'Enforcement : Full"
     ]
 }
 
 TASK [ips_toolbox_illumio : Détection si l'agent est arrêté] *******************
 ok: [s02vl9942814]
 
-TASK [ips_toolbox_illumio : Vérification du mode actuel d'Illumio] *************
-ok: [s02vl9942814]
-
 TASK [ips_toolbox_illumio : Information sur le mode Illumio] *******************
 ok: [s02vl9942814] => {
     "msg": [
-        "🔒 Mode Illumio actuel : Usage: /opt/illumio_ven/illumio-ven-ctl {start|stop|restart|workloads|status|connectivity-test|check-env|gen-supportreport|unpair|set-proxy|reset-proxy|show-proxy|activate|prepare|version|suspend|unsuspend|backup|restore|deactivate|conncheck|configset}",
-        "Note: Mode Enforced recommandé pour la sécurité"
+        "🔒 Mode Illumio confirmé : Full",
+        "Note: Mode Full (Enforced) est recommandé pour la sécurité maximale"
     ]
 }
 
@@ -955,13 +976,16 @@ ok: [s02vl9942814] => {
 
 TASK [10 - Sauvegarde TSM - Vérification complète et lancement REAR] ***********
 
+TASK [ips_toolbox_backup : Vérification de l'existence des répertoires de sauvegarde] ***
+ok: [s02vl9942814] => (item=/opt/tivoli/tsm/client/ba/bin)
+ok: [s02vl9942814] => (item=/usr/tivoli/tsm/client/ba/bin)
+ok: [s02vl9942814] => (item=/opt/networker/bin)
+ok: [s02vl9942814] => (item=/usr/openv/netbackup/bin)
+
+TASK [ips_toolbox_backup : Construction de la liste des répertoires existants] ***
+ok: [s02vl9942814]
+
 TASK [ips_toolbox_backup : Recherche des systèmes de sauvegarde disponibles] ***
-[WARNING]: Skipped '/usr/tivoli/tsm/client/ba/bin' path due to this access
-issue: '/usr/tivoli/tsm/client/ba/bin' is not a directory
-[WARNING]: Skipped '/opt/networker/bin' path due to this access issue:
-'/opt/networker/bin' is not a directory
-[WARNING]: Skipped '/usr/openv/netbackup/bin' path due to this access issue:
-'/usr/openv/netbackup/bin' is not a directory
 ok: [s02vl9942814]
 
 TASK [ips_toolbox_backup : Test de la commande TSM dsmc] ***********************
@@ -998,6 +1022,15 @@ TASK [ips_toolbox_set_results : add to facts] **********************************
 ok: [s02vl9942814]
 
 TASK [12 - Backup système - Vérification présence backup et export TSM] ********
+
+TASK [ips_toolbox_backup : Vérification de l'existence des répertoires de sauvegarde] ***
+ok: [s02vl9942814] => (item=/opt/tivoli/tsm/client/ba/bin)
+ok: [s02vl9942814] => (item=/usr/tivoli/tsm/client/ba/bin)
+ok: [s02vl9942814] => (item=/opt/networker/bin)
+ok: [s02vl9942814] => (item=/usr/openv/netbackup/bin)
+
+TASK [ips_toolbox_backup : Construction de la liste des répertoires existants] ***
+ok: [s02vl9942814]
 
 TASK [ips_toolbox_backup : Recherche des systèmes de sauvegarde disponibles] ***
 ok: [s02vl9942814]
@@ -1051,8 +1084,8 @@ ok: [s02vl9942814] => {
             "=== Statut services purge logs ===",
             "enabled",
             "active",
-            "NEXT                        LEFT     LAST                        PASSED UNIT             ACTIVATES",
-            "Tue 2025-10-28 01:00:00 CET 14h left Mon 2025-10-27 01:00:01 CET 9h ago purge_logs.timer purge_logs.service",
+            "NEXT                        LEFT    LAST                        PASSED  UNIT             ACTIVATES",
+            "Tue 2025-10-28 01:00:00 CET 7h left Mon 2025-10-27 01:00:01 CET 16h ago purge_logs.timer purge_logs.service",
             "",
             "1 timers listed.",
             "Pass --all to see loaded but inactive timers, too.",
@@ -1111,7 +1144,7 @@ ok: [s02vl9942814] => {
         "╚════════════════════════════════════════════════════════════════════════╝",
         "",
         "┌─ INFORMATIONS GÉNÉRALES ────────────────────────────────────────────┐",
-        "│ Date d'exécution : 2025-10-27T09:12:53Z",
+        "│ Date d'exécution : 2025-10-27T16:29:08Z",
         "│ Serveur          : s02vl9942814 (s02vl9942814.fr.net.intra)",
         "│ OS               : RedHat 9.4",
         "│ Kernel           : 5.14.0-427.88.1.el9_4.x86_64",
@@ -1159,7 +1192,7 @@ ok: [s02vl9942814] => {
         "┌─ ILLUMIO VEN ───────────────────────────────────────────────────────┐",
         "│ Installé         : ✅ OUI",
         "│ Version          : 23.2.30-447",
-        "│ Mode             : Usage: /opt/illumio_ven/illumio-ven-ctl {start|stop|restart|workloads|status|connectivity-test|check-env|gen-supportreport|unpair|set-proxy|reset-proxy|show-proxy|activate|prepare|version|suspend|unsuspend|backup|restore|deactivate|conncheck|configset}",
+        "│ Mode             : N/A",
         "│ Statut           : Actif ✅",
         "└──────────────────────────────────────────────────────────────────────┘",
         "",
@@ -1183,5 +1216,4 @@ TASK [Finalisation du rapport d'exécution] ************************************
 changed: [s02vl9942814]
 
 PLAY RECAP *********************************************************************
-s02vl9942814               : ok=191  changed=4    unreachable=0    failed=0    skipped=78   rescued=1    ignored=0   
-
+s02vl9942814               : ok=201  changed=3    unreachable=0    failed=0    skipped=80   rescued=1    ignored=0   
