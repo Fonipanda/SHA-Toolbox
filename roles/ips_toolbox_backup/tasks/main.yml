@@ -43,23 +43,32 @@
   block:
     - name: "Test de la commande TSM dsmc"
       ansible.builtin.shell: |
-        {{ item.path }} -version
+        {{ item.path }} -version 2>&1 | head -1
       register: tsm_version
       changed_when: false
       failed_when: false
       loop: "{{ backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list }}"
       when: backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list | length > 0
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: "Extraction informations TSM"
+      ansible.builtin.set_fact:
+        tsm_info:
+          installed: "{{ tsm_version.results | default([]) | selectattr('rc', 'equalto', 0) | list | length > 0 }}"
+          path: "{{ tsm_version.results | default([]) | selectattr('rc', 'equalto', 0) | map(attribute='item.path') | first | default('N/A') }}"
+          version: "{{ tsm_version.results | default([]) | selectattr('rc', 'equalto', 0) | map(attribute='stdout') | first | default('N/A') | trim }}"
+      when: tsm_version is defined
 
     - name: "Affichage des informations TSM"
       ansible.builtin.debug:
         msg:
           - "💾 Client TSM détecté"
-          - "Chemin : {{ item.item.path }}"
-          - "Version : {{ item.stdout_lines[0] if item.stdout_lines is defined else 'N/A' }}"
-      loop: "{{ tsm_version.results }}"
+          - "Chemin : {{ tsm_info.path }}"
+          - "Version : {{ tsm_info.version }}"
       when: 
-        - tsm_version is defined
-        - item.rc == 0
+        - tsm_info is defined
+        - tsm_info.installed
 
     - name: "Vérification du service dsmcad (Linux/AIX)"
       ansible.builtin.service:
