@@ -90,14 +90,25 @@
 
     - name: "Test de connectivité au PCE (si possible)"
       ansible.builtin.shell: |
-        /opt/illumio_ven/illumio-ven-ctl test-connection
+        /opt/illumio_ven/illumio-ven-ctl connectivity-test 2>&1
       register: illumio_connection
       changed_when: false
       failed_when: false
 
+    - name: "Extraction du statut de connectivité PCE"
+      ansible.builtin.set_fact:
+        illumio_pce_connectivity: >-
+          {%- if illumio_connection.rc == 0 and 'success' in illumio_connection.stdout | lower -%}
+          Connected
+          {%- elif 'paired' in illumio_status_raw.stdout and 'running' in illumio_status_raw.stdout -%}
+          Connected
+          {%- else -%}
+          Disconnected
+          {%- endif -%}
+
     - name: "Affichage du test de connectivité"
       ansible.builtin.debug:
-        msg: "🌐 Connectivité PCE : {{ 'OK ✅' if illumio_connection.rc == 0 else 'KO ⚠️' }}"
+        msg: "🌐 Connectivité PCE : {{ illumio_pce_connectivity }} {{ '✅' if illumio_pce_connectivity == 'Connected' else '⚠️' }}"
 
   when: illumio_installed.stat.exists
   rescue:
