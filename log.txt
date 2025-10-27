@@ -1,2 +1,1187 @@
+PLAY [Application Environment Builder] *****************************************
+
+TASK [Gathering Facts] *********************************************************
+ok: [s02vl9942814]
+
+TASK [Validation des variables obligatoires du Survey AAP2] ********************
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+TASK [Création du répertoire de rapports] **************************************
+ok: [s02vl9942814]
+
+TASK [Initialisation du rapport d'exécution] ***********************************
+changed: [s02vl9942814]
+
+TASK [01 - Mise à jour Facts - Collecte des facts système étendus] *************
+
+TASK [app_environment_builder : Collecte des facts système étendus] ************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Version RHEL détaillée] ************************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Informations sur les partitions] ***************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Services systemd actifs] ***********************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Packages installés critiques] ******************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification de l'espace disque] ***************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Consolidation des informations OS détectées] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Affichage des informations OS détectées] *******
+ok: [s02vl9942814] => {
+    "detected_os_info": {
+        "architecture": "x86_64",
+        "cpu_cores": 2,
+        "distribution": "RedHat",
+        "family": "RedHat",
+        "fqdn": "s02vl9942814.fr.net.intra",
+        "hostname": "s02vl9942814",
+        "kernel": "5.14.0-427.88.1.el9_4.x86_64",
+        "memory_mb": 3659,
+        "specific_info": {
+            "aix_kernel": "N/A",
+            "aix_oslevel": "N/A",
+            "aix_volume_groups": [],
+            "linux_packages": [],
+            "linux_services": [
+                "  UNIT                                                      LOAD   ACTIVE SUB     DESCRIPTION",
+                "  atd.service                                               loaded active running Deferred execution scheduler",
+                "  autofs.service                                            loaded active running Automounts filesystems on demand",
+                "  besclient.service                                         loaded active running BESClient daemon",
+                "  chronyd.service                                           loaded active running NTP client/server",
+                "  crond.service                                             loaded active running Command Scheduler",
+                "  dbus-broker.service                                       loaded active running D-Bus System Message Bus",
+                "  dracut-shutdown.service                                   loaded active exited  Restore /run/initramfs on shutdown",
+                "  dsmcad.service                                            loaded active running \\"IBM SP Client dsmcad service.\\"",
+                "  elastic-agent.service                                     loaded active running Elastic Agent is a unified agent to observe, monitor and protect your system.",
+                "  eTAC.service                                              loaded active running eTAC service",
+                "  filebeat-cybersoc.service                                 loaded active running Filebeat service that send events to Databus",
+                "  getty@tty1.service                                        loaded active running Getty on tty1",
+                "  illumio-ven.service                                       loaded active exited  Illumio VEN Agent top level startup",
+                "  import-state.service                                      loaded active exited  Import network configuration from initramfs",
+                "  irqbalance.service                                        loaded active running irqbalance daemon",
+                "  kdump.service                                             loaded active exited  Crash recovery kernel arming",
+                "  kmod-static-nodes.service                                 loaded active exited  Create List of Static Device Nodes",
+                "  lpar2rrd-agent.service                                    loaded active exited  Refresh system UUID for LPAR2RRD agent after a reboot",
+                "  lvm2-monitor.service                                      loaded active exited  Monitoring of LVM2 mirrors, snapshots etc. using dmeventd or progress polling"
+            ],
+            "rhel_version": "Red Hat Enterprise Linux release 9.4 (Plow)",
+            "windows_programs": [],
+            "windows_services": [],
+            "windows_version": "N/A"
+        },
+        "version": "9.4"
+    }
+}
+
+TASK [app_environment_builder : Enregistrement des facts OS pour les autres rôles] ***
+ok: [s02vl9942814]
+
+TASK [Détection du middleware installé (AVANT création arborescence)] **********
+
+TASK [app_environment_builder : Initialisation de la liste des middlewares et services détectés] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification des répertoires WAS WASND] ********
+ok: [s02vl9942814] => (item=/opt/IBM/WebSphere/AppServer)
+ok: [s02vl9942814] => (item=/usr/IBM/WebSphere/AppServer)
+
+TASK [app_environment_builder : Vérification processus WAS] ********************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification WAS Base (sans ND)] ***************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification des répertoires Liberty] **********
+ok: [s02vl9942814] => (item=/opt/IBM/WebSphere/Liberty)
+ok: [s02vl9942814] => (item=/usr/IBM/WebSphere/Liberty)
+ok: [s02vl9942814] => (item=/opt/wlp)
+
+TASK [app_environment_builder : Vérification processus Liberty] ****************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification du fichier oratab] ****************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification du processus Oracle PMON] *********
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification du répertoire Oracle ORACLE_HOME] ***
+ok: [s02vl9942814] => (item=/u01/app/oracle/product)
+ok: [s02vl9942814] => (item=/opt/oracle/product)
+
+TASK [app_environment_builder : Vérification service SQL Server] ***************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification répertoire SQL Server] ************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification des répertoires MQ] ***************
+ok: [s02vl9942814] => (item=/opt/mqm)
+ok: [s02vl9942814] => (item=/usr/mqm)
+
+TASK [app_environment_builder : Vérification du processus MQ] ******************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification des répertoires CFT] **************
+ok: [s02vl9942814] => (item=/opt/axway)
+ok: [s02vl9942814] => (item=/opt/cft)
+
+TASK [app_environment_builder : Vérification du processus CFT] *****************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification des répertoires IHS] **************
+ok: [s02vl9942814] => (item=/opt/IBM/HTTPServer)
+ok: [s02vl9942814] => (item=/usr/IBM/HTTPServer)
+
+TASK [app_environment_builder : Vérification processus IHS] ********************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Vérification Java installé] ********************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Récupération de la liste COMPLÈTE des services actifs] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Affichage debug services bruts] ****************
+ok: [s02vl9942814] => {
+    "msg": "Services actifs bruts détectés : 108"
+}
+
+TASK [app_environment_builder : Détection services - Synchronisation et Temps] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Connexion et Sécurité] ****
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Journalisation] ***********
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Planification de Tâches] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Agents et Supervision] ****
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Sauvegarde et Gestion des Données] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Sécurité et Protection] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Réseau] *******************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Détection services - Système] ******************
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Consolidation de tous les services détectés] ***
+ok: [s02vl9942814]
+
+TASK [app_environment_builder : Consolidation finale des middlewares et services détectés] ***
+ok: [s02vl9942814]
+
 TASK [app_environment_builder : Affichage du résumé de détection COMPLET PAR CATÉGORIES] ***
-fatal: [s02vl9942853]: FAILED! => {"msg": "template error while templating string: Unexpected end of template. Jinja was looking for the following tags: 'endfor' or 'else'. The innermost block that needs to be closed is 'for'.. String: {% if detected_middlewares | length > 0 %}{% for mw in detected_middlewares %}  {{ loop.index }}. {{ mw.name }} ({{ mw.type }}). Unexpected end of template. Jinja was looking for the following tags: 'endfor' or 'else'. The innermost block that needs to be closed is 'for'."}
+ok: [s02vl9942814] => {
+    "msg": [
+        "",
+        "╔═══════════════════════════════════════════════════════════════════╗",
+        "║  DÉTECTION MIDDLEWARES ET SERVICES - VERSION CATÉGORISÉE          ║",
+        "╚═══════════════════════════════════════════════════════════════════╝",
+        "",
+        "🖥️  Serveur: s02vl9942814",
+        "🐧 OS: RedHat 9.4",
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "📦 MIDDLEWARES DÉTECTÉS (0)",
+        "═══════════════════════════════════════════════════════════════════"
+    ]
+}
+
+TASK [app_environment_builder : Message si aucun middleware] *******************
+ok: [s02vl9942814] => {
+    "msg": "  - Aucun middleware détecté"
+}
+
+TASK [app_environment_builder : Affichage en-tête services] ********************
+ok: [s02vl9942814] => {
+    "msg": [
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "🔧 SERVICES SYSTÈME DÉTECTÉS (17)",
+        "═══════════════════════════════════════════════════════════════════",
+        ""
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Synchronisation et Temps] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Synchronisation et Temps (1):",
+        "  - chronyd: NTP Time Synchronization"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Connexion et Sécurité] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Connexion et Sécurité (2):",
+        "  - sshd: SSH Daemon  - sssd: System Security Services"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Journalisation] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Journalisation (2):",
+        "  - rsyslog: System Logging  - filebeat: Elastic Filebeat"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Planification de Tâches] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Planification de Tâches (2):",
+        "  - crond: Cron Daemon  - atd: AT Daemon"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Agents et Supervision] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Agents et Supervision (4):",
+        "  - elastic-agent: Elastic Agent  - dynatrace: Dynatrace OneAgent  - oneagent: Dynatrace OneAgent  - lvm2-monitor: LVM2 Monitoring"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Sauvegarde et Gestion des Données] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Sauvegarde et Gestion des Données (1):",
+        "  - dsmcad: TSM Client Daemon"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Sécurité et Protection] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Sécurité et Protection (3):",
+        "  - mcafee: McAfee Antivirus  - eTAC: eTAC Service  - illumio-ven: Illumio VEN"
+    ]
+}
+
+TASK [app_environment_builder : Affichage services par catégorie - Réseau] *****
+ok: [s02vl9942814] => {
+    "msg": [
+        "▶ Réseau (2):",
+        "  - snmpd: SNMP Daemon  - NetworkManager: Network Manager"
+    ]
+}
+
+TASK [app_environment_builder : Affichage résumé final] ************************
+ok: [s02vl9942814] => {
+    "msg": [
+        "",
+        "═══════════════════════════════════════════════════════════════════",
+        "📊 RÉSUMÉ",
+        "═══════════════════════════════════════════════════════════════════",
+        "Total Middlewares: 0",
+        "Total Services: 17",
+        "Total Composants: 17",
+        "",
+        "🔨 Middlewares à installer/configurer: 0",
+        "   Aucun",
+        "",
+        "👥 Utilisateurs techniques à créer: 0",
+        "   Aucun",
+        "",
+        "✅ Détection terminée avec succès",
+        "═══════════════════════════════════════════════════════════════════",
+        ""
+    ]
+}
+
+TASK [app_environment_builder : Enregistrement des facts pour les autres rôles] ***
+ok: [s02vl9942814]
+
+TASK [02 - Banner - Création bannière login] ***********************************
+
+TASK [ips_toolbox_banner : Initialisation du rôle banner] **********************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Création de la bannière MOTD] ***********************
+changed: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Création de la bannière issue (console locale)] *****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Création de la bannière issue.net (SSH)] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Configuration SSH pour afficher la bannière] ********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_banner : Affichage du statut de création des bannières] ******
+ok: [s02vl9942814] => {
+    "msg": [
+        "✅ Bannières créées pour s02vl9942814",
+        "Application: 12402",
+        "Middlewares détectés: "
+    ]
+}
+
+TASK [03 - Users - Création d'utilisateurs techniques] *************************
+
+TASK [ips_toolbox_users : Initialisation du rôle users] ************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_users : Récupération des middlewares réellement détectés] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_users : Affichage des middlewares détectés AVANT création users] ***
+ok: [s02vl9942814] => {
+    "msg": [
+        "",
+        "📝 CRÉATION D'UTILISATEURS TECHNIQUES",
+        "══════════════════════════════════════",
+        "Middlewares détectés: 0",
+        "  ⚠️ Aucun middleware détecté - Pas de création utilisateur",
+        ""
+    ]
+}
+
+TASK [ips_toolbox_users : Récapitulatif des utilisateurs créés] ****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_users : Affichage du récapitulatif création utilisateurs] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "",
+        "╔═════════════════════════════════════════════════════════════╗",
+        "║          RÉCAPITULATIF CRÉATION UTILISATEURS                ║",
+        "╚═════════════════════════════════════════════════════════════╝",
+        "",
+        "👤 Oracle (oracle)     : existant",
+        "👤 WebSphere (wasadmin): existant",
+        "👤 Liberty (liberty)   : existant",
+        "👤 MQ (mqm)            : existant",
+        "👤 CFT (cft)           : existant",
+        ""
+    ]
+}
+
+TASK [03b - Configuration automatique des middlewares détectés] ****************
+included: /runner/project/roles/app_environment_builder/tasks/configure_detected_middlewares.yml for s02vl9942814
+
+TASK [Configuration des middlewares détectés - Initialisation] *****************
+ok: [s02vl9942814] => {
+    "msg": [
+        "═══════════════════════════════════════════════════════════════════",
+        "CONFIGURATION AUTOMATIQUE DES MIDDLEWARES DÉTECTÉS",
+        "═══════════════════════════════════════════════════════════════════",
+        "Middlewares à configurer: ",
+        "Nombre: 0"
+    ]
+}
+
+TASK [Vérification de la présence de middlewares à configurer] *****************
+ok: [s02vl9942814]
+
+TASK [Aucun middleware à configurer] *******************************************
+ok: [s02vl9942814] => {
+    "msg": [
+        "ℹ️  Aucun middleware détecté nécessitant une configuration",
+        "Le serveur est soit vierge, soit déjà correctement configuré"
+    ]
+}
+
+TASK [04 - Toolbox - Vérification, Installation et Mise à jour] ****************
+
+TASK [ips_toolbox_toolboxes : Initialisation du rôle maître ips_toolbox_toolboxes] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Construction du nom de fichier de tâche toolboxes selon l'OS] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Vérification de l'existence du fichier de tâche toolboxes] ***
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_toolboxes : Exécution de la tâche toolboxes spécifique à l'OS] ***
+included: /runner/project/roles/ips_toolbox_toolboxes/tasks/install_or_update_Linux_toolboxes.yml for s02vl9942814
+
+TASK [ips_toolbox_toolboxes : Vérification de la présence de la Toolbox] *******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Vérification du fichier de version] **************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Lecture de la version actuelle de la Toolbox] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Affichage de la version actuelle] ****************
+ok: [s02vl9942814] => {
+    "msg": [
+        "Toolbox présente: OUI ✅",
+        "Version actuelle: 2512",
+        "Version minimale requise: 1820 (18.2.0)"
+    ]
+}
+
+TASK [ips_toolbox_toolboxes : Vérification de la dernière version disponible] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Comparaison des versions] ************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Affichage du statut de mise à jour] **************
+ok: [s02vl9942814] => {
+    "msg": [
+        "Version actuelle: 2512",
+        "Dernière version: 2000",
+        "Mise à jour nécessaire: NON"
+    ]
+}
+
+TASK [Vérification finale de la Toolbox] ***************************************
+
+TASK [ips_toolbox_toolboxes : Check toolbox installation] **********************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Check toolbox version] ***************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Format to Json when toolbox is installed] ********
+ok: [s02vl9942814]
+
+TASK [Set result output for toolbox check] *************************************
+
+TASK [ips_toolbox_set_results : initialize results tab] ************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize temp] *******************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Enregistrement du résultat] **********************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_toolboxes : Affichage du statut d'exécution toolboxes] *******
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle toolboxes maître exécuté",
+        "Fichier: install_or_update_Linux_toolboxes.yml",
+        "OS: Linux",
+        "Opération: install_or_update"
+    ]
+}
+
+TASK [05 - Arborescence - Création /applis + /apps] ****************************
+
+TASK [ips_toolbox_system : Initialisation du rôle ips_toolbox_system] **********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Construction du nom de fichier de tâche système] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de l'existence de la tâche système demandée] ***
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_system : Inclusion de la tâche système create-directory_Linux_system.yml] ***
+included: /runner/project/roles/ips_toolbox_system/tasks/create-directory_Linux_system.yml for s02vl9942814
+
+TASK [ips_toolbox_system : Vérification des variables obligatoires] ************
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Variables obligatoires présentes :\\n- system_codeAP: 12402\\n- system_code5car: acfrb\\n"
+}
+
+TASK [ips_toolbox_system : Affichage de la configuration] **********************
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Création arborescence applicative via Toolbox ===",
+        "Code Application: 12402",
+        "Code 5 caractères: acfrb",
+        "Instance ID: ",
+        "Volume Group: vg=vg_apps\\n",
+        "Script Toolbox: /apps/toolboxes/exploit/bin/exploit_arbo-app.ksh"
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification de la présence de la Toolbox] **********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de la version de la Toolbox] ***********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage de la version Toolbox] ********************
+ok: [s02vl9942814] => {
+    "msg": [
+        "Toolbox trouvée: OUI ✅",
+        "Version: 2512",
+        "Version minimale requise: 1820 (18.2.0)"
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification que la version est suffisante] *********
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Toolbox présente et version suffisante\\nVersion: 2512\\n"
+}
+
+TASK [ips_toolbox_system : Création de l'arborescence applicative via script Toolbox] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du résultat de création] ******************
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Résultat création arborescence ===",
+        [
+            "",
+            "--------------------------------------------------------------------------------",
+            "\\u001b[0m\\u001b[37m            \\u001b[12G\\u001b[0m\\u001b[37mCREATING FS FROM : /apps/toolboxes/exploit/tmp/fs_arbo.fs\\u001b[0m\\u001b[0m\\u001b[37m            \\u001b[0m",
+            "--------------------------------------------------------------------------------",
+            "  vg_apps:lv_acfrb:/applis/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_acfrb_ti:/applis/12402-acfrb/transfer/in:1024:0:0",
+            "  vg_apps:lv_acfrb_to:/applis/12402-acfrb/transfer/out:1024:0:0",
+            "  vg_apps:lv_acfrb_tmp:/applis/12402-acfrb/tmp:1024:0:0",
+            "  vg_apps:lv_acfrb_arch:/applis/12402-acfrb/archives:1024:0:0",
+            "  vg_apps:lv_dlv_acfrb:/applis/delivery/12402-acfrb:2048:0:0",
+            "  vg_apps:lv_log_acfrb:/applis/logs/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_log_shared:/applis/logs/shared:2048:0:0",
+            "  vg_apps:lv_dlv_shared:/applis/delivery/shared:2048:0:0",
+            "  vg_apps:lv_shared:/applis/shared:1024:0:0",
+            "  vg_apps:lv_shared_tmp:/applis/shared/tmp:1024:0:0",
+            "  vg_apps:lv_shared_arch:/applis/shared/archives:1024:0:0",
+            "--------------------------------------------------------------------------------",
+            "",
+            "",
+            "\\u001b\\u001b[33m-W- L'espace disponible sur le VG vg_apps (14332 M) est inferieur a l'espace necessaire: 15360 M. Les LV de ce VG seront ignores.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb de 1024M (lv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/in de 1024M (lv_acfrb_ti1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_ti1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/out de 1024M (lv_acfrb_to1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_to1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/tmp de 1024M (lv_acfrb_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/archives de 1024M (lv_acfrb_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/12402-acfrb de 2048M (lv_dlv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/12402-acfrb de 1024M (lv_log_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/shared de 2048M (lv_log_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/shared de 2048M (lv_dlv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared de 1024M (lv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/tmp de 1024M (lv_shared_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/archives de 1024M (lv_shared_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Cleaning up ...\\u001b[0m",
+            "\\u001b[0m\\u001b[37m-I- Clean up done ... quitting.\\u001b[0m"
+        ]
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification de la présence des filesystems créés] ***
+ok: [s02vl9942814] => (item=/applis/12402-acfrb-01)
+ok: [s02vl9942814] => (item=/applis/shared)
+ok: [s02vl9942814] => (item=/applis/logs)
+ok: [s02vl9942814] => (item=/applis/delivery)
+
+TASK [ips_toolbox_system : Affichage de la vérification des filesystems] *******
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Vérification filesystems créés ===",
+        "/applis/12402-acfrb-01: Absent ❌/applis/shared: Présent ✅/applis/logs: Présent ✅/applis/delivery: Présent ✅"
+    ]
+}
+
+TASK [Enregistrement du résultat de création d'arborescence] *******************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize temp] *******************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut d'exécution du rôle système] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle système exécuté",
+        "Fichier: create-directory_Linux_system.yml",
+        "Opération: create-directory",
+        "OS: Linux"
+    ]
+}
+
+TASK [06 - FileSystems - Création automatique] *********************************
+
+TASK [ips_toolbox_system : Initialisation du rôle ips_toolbox_system] **********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Construction du nom de fichier de tâche système] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de l'existence de la tâche système demandée] ***
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_system : Inclusion de la tâche système create-fs_Linux_system.yml] ***
+included: /runner/project/roles/ips_toolbox_system/tasks/create-fs_Linux_system.yml for s02vl9942814
+
+TASK [ips_toolbox_system : Validation des variables de création de filesystems] ***
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Variables de création valides\\n"
+}
+
+TASK [ips_toolbox_system : Vérification de la présence du script Toolbox] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Lecture de la version de la Toolbox] ****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de la version minimale] ****************
+ok: [s02vl9942814] => {
+    "changed": false,
+    "msg": "✅ Version Toolbox suffisante : 2512\\n"
+}
+
+TASK [ips_toolbox_system : Affichage des paramètres de création] ***************
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== Création filesystems via Toolbox ===",
+        "Code Application: 12402",
+        "Code 5 caractères: acfrb",
+        "Volume Group: vg_apps",
+        "Taille LV: 1024"
+    ]
+}
+
+TASK [ips_toolbox_system : Création des filesystems via script Toolbox] ********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du résultat de création] ******************
+ok: [s02vl9942814] => {
+    "msg": [
+        "📦 Résultat création FS :",
+        [
+            "",
+            "--------------------------------------------------------------------------------",
+            "\\u001b[0m\\u001b[37m            \\u001b[12G\\u001b[0m\\u001b[37mCREATING FS FROM : /apps/toolboxes/exploit/tmp/fs_arbo.fs\\u001b[0m\\u001b[0m\\u001b[37m            \\u001b[0m",
+            "--------------------------------------------------------------------------------",
+            "  vg_apps:lv_dlv_acfrb:/applis/delivery/12402-acfrb:2048:0:0",
+            "  vg_apps:lv_log_acfrb:/applis/logs/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_log_shared:/applis/logs/shared:2048:0:0",
+            "  vg_apps:lv_dlv_shared:/applis/delivery/shared:2048:0:0",
+            "  vg_apps:lv_shared:/applis/shared:1024:0:0",
+            "  vg_apps:lv_shared_tmp:/applis/shared/tmp:1024:0:0",
+            "  vg_apps:lv_shared_arch:/applis/shared/archives:1024:0:0",
+            "  vg_apps:lv_acfrb:/applis/12402-acfrb:1024:0:0",
+            "  vg_apps:lv_acfrb_ti:/applis/12402-acfrb/transfer/in:1024:0:0",
+            "  vg_apps:lv_acfrb_to:/applis/12402-acfrb/transfer/out:1024:0:0",
+            "  vg_apps:lv_acfrb_tmp:/applis/12402-acfrb/tmp:1024:0:0",
+            "  vg_apps:lv_acfrb_arch:/applis/12402-acfrb/archives:1024:0:0",
+            "--------------------------------------------------------------------------------",
+            "",
+            "",
+            "\\u001b\\u001b[33m-W- L'espace disponible sur le VG vg_apps (14332 M) est inferieur a l'espace necessaire: 15360 M. Les LV de ce VG seront ignores.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/12402-acfrb de 2048M (lv_dlv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/12402-acfrb de 1024M (lv_log_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/logs/shared de 2048M (lv_log_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_log_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/delivery/shared de 2048M (lv_dlv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_dlv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared de 1024M (lv_shared1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/tmp de 1024M (lv_shared_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/shared/archives de 1024M (lv_shared_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_shared_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb de 1024M (lv_acfrb1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/in de 1024M (lv_acfrb_ti1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_ti1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/transfer/out de 1024M (lv_acfrb_to1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_to1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/tmp de 1024M (lv_acfrb_tmp1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_tmp1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Traitement du FS /applis/12402-acfrb/archives de 1024M (lv_acfrb_arch1 sur vg_apps).\\u001b[0m",
+            "\\u001b\\u001b[33m-W- Le LV lv_acfrb_arch1 sur vg_apps sera ignore.\\u001b\\u001b[0m",
+            "",
+            "\\u001b[0m\\u001b[37m-I- Cleaning up ...\\u001b[0m",
+            "\\u001b[0m\\u001b[37m-I- Clean up done ... quitting.\\u001b[0m"
+        ]
+    ]
+}
+
+TASK [ips_toolbox_system : Vérification du montage des filesystems] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage de l'état des filesystems] ****************
+ok: [s02vl9942814] => {
+    "msg": [
+        "🗂️ État des filesystems :",
+        [
+            "/dev/mapper/vg_apps-lv_testsap            3.9G   24K  3.7G   1% /applis/12402-tests",
+            "/dev/mapper/vg_apps-lv_testsdeli          2.0G   24K  1.8G   1% /applis/delivery/12402-tests",
+            "/dev/mapper/vg_apps-lv_spt00ap            3.9G   24K  3.7G   1% /applis/09043-spt00",
+            "/dev/mapper/vg_apps-lv_spt00log           2.0G   24K  1.8G   1% /applis/logs/09043-spt00",
+            "/dev/mapper/vg_apps-lv_spt00deli          2.0G   24K  1.8G   1% /applis/delivery/09043-spt00",
+            "/dev/mapper/vg_apps-lv_testslog           2.0G   24K  1.8G   1% /applis/logs/12402-tests",
+            "/dev/mapper/rootvg-apps                  1014M   40M  975M   4% /apps",
+            "/dev/mapper/vg_apps-lv_toolboxes          974M  159M  749M  18% /apps/toolboxes",
+            "/dev/mapper/vg_apps-lv_log_acfrb          960M   39M  922M   5% /applis/logs/12402-acfrb",
+            "/dev/mapper/vg_apps-lv_home_bigfix        9.8G   82M  9.2G   1% /apps/BIGFIX",
+            "/dev/mapper/rootvg-deploy                 2.0G   49M  2.0G   3% /apps/Deploy",
+            "/dev/mapper/vg_apps-lv_appexploit         974M   12M  895M   2% /apps/exploit",
+            "/dev/mapper/vg_apps-lv_dynatrace          7.8G  1.6G  5.9G  21% /apps/dynatrace",
+            "/dev/mapper/vg_apps-lv_acfrb              960M   40M  921M   5% /applis/12402-acfrb",
+            "/dev/mapper/rootvg-sys                    2.0G   80M  2.0G   4% /apps/sys",
+            "/dev/mapper/vg_apps-lv_acfrb_arch         960M   39M  922M   5% /applis/12402-acfrb/archives",
+            "/dev/mapper/vg_apps-lv_acfrb_tmp          960M   39M  922M   5% /applis/12402-acfrb/tmp",
+            "/dev/mapper/vg_apps-lv_acfrb_to           960M   39M  922M   5% /applis/12402-acfrb/transfer/out",
+            "/dev/mapper/vg_apps-lv_acfrb_ti           960M   39M  922M   5% /applis/12402-acfrb/transfer/in",
+            "/dev/mapper/rootvg-lv_perfs               507M   95M  413M  19% /apps/sys/log/stats",
+            "/dev/mapper/rootvg-lv_elastic_agent       4.9G 1021M  3.6G  22% /apps/elastic_agent",
+            "/dev/mapper/rootvg-lv_filebeat--cybersoc  272M  199M   54M  79% /apps/filebeat-cybersoc",
+            "/dev/mapper/rootvg-lv_etac                2.1G  586M  1.4G  31% /apps/eTAC",
+            "/dev/mapper/vg_apps-lv_dlv_acfrb          960M   39M  922M   5% /applis/delivery/12402-acfrb",
+            "/dev/mapper/vg_apps-lv_dlv_shared         960M   40M  921M   5% /applis/delivery/shared",
+            "/dev/mapper/vg_apps-lv_log_shared         960M   39M  922M   5% /applis/logs/shared",
+            "/dev/mapper/rootvg-back                    12G  3.6G  8.4G  31% /apps/sys/back",
+            "/dev/mapper/vg_apps-lv_shared             960M   40M  921M   5% /applis/shared",
+            "/dev/mapper/vg_apps-lv_shared_arch        960M   39M  922M   5% /applis/shared/archives",
+            "/dev/mapper/vg_apps-lv_shared_tmp         960M   39M  922M   5% /applis/shared/tmp",
+            "/dev/mapper/vg_apps-lv_tanium              15G  4.9G   11G  33% /apps/Tanium"
+        ]
+    ]
+}
+
+TASK [Enregistrement du résultat] **********************************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize temp] *******************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut d'exécution du rôle système] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle système exécuté",
+        "Fichier: create-fs_Linux_system.yml",
+        "Opération: create-fs",
+        "OS: Linux"
+    ]
+}
+
+TASK [07 - Uptime - Vérification et information NTP/Chrony] ********************
+
+TASK [ips_toolbox_system : Initialisation du rôle ips_toolbox_system] **********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Construction du nom de fichier de tâche système] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification de l'existence de la tâche système demandée] ***
+ok: [s02vl9942814 -> localhost]
+
+TASK [ips_toolbox_system : Inclusion de la tâche système uptime_Linux_system.yml] ***
+included: /runner/project/roles/ips_toolbox_system/tasks/uptime_Linux_system.yml for s02vl9942814
+
+TASK [ips_toolbox_system : Récupération de l'uptime du serveur] ****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Conversion de l'uptime en variable sécurisée] *******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage de l'uptime] ******************************
+ok: [s02vl9942814] => {
+    "msg": [
+        "⏰ Uptime actuel : 3 jours",
+        "⏰ Limite configurée : 90 jours"
+    ]
+}
+
+TASK [ips_toolbox_system : Calcul du statut Uptime] ****************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Vérification du service chronyd (RHEL/CentOS)] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut chronyd] ************************
+ok: [s02vl9942814] => {
+    "msg": "🕐 Service chronyd : actif ✅"
+}
+
+TASK [ips_toolbox_system : Enregistrement du résultat uptime pour report_generator] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_system : Affichage du statut d'exécution du rôle système] ****
+ok: [s02vl9942814] => {
+    "msg": [
+        "Rôle système exécuté",
+        "Fichier: uptime_Linux_system.yml",
+        "Opération: uptime",
+        "OS: Linux"
+    ]
+}
+
+TASK [08 - Dynatrace - Vérification agent (si présent)] ************************
+
+TASK [ips_toolbox_dynatrace : Vérification de l'installation de Dynatrace OneAgent] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Vérification de la version de Dynatrace] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Vérification du statut de l'agent Dynatrace] *****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Affichage des informations Dynatrace] ************
+ok: [s02vl9942814] => {
+    "msg": [
+        "📊 Dynatrace OneAgent détecté",
+        "Version : 1.297.80.20250109-162423",
+        "Statut : "
+    ]
+}
+
+TASK [ips_toolbox_dynatrace : Détection si l'agent est arrêté] *****************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Vérification du mode Dynatrace] ******************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_dynatrace : Affichage du mode final] *************************
+ok: [s02vl9942814] => {
+    "msg": "🔧 Mode Dynatrace : "
+}
+
+TASK [09 - Illumio - Vérification statut (si présent)] *************************
+
+TASK [ips_toolbox_illumio : Vérification de l'installation d'Illumio VEN] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Vérification de la version d'Illumio] **************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Vérification du statut de l'agent Illumio] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Affichage des informations Illumio] ****************
+ok: [s02vl9942814] => {
+    "msg": [
+        "🛡️ Illumio VEN détecté",
+        "Version : 23.2.30-447",
+        "Statut : Checking Runtime Environment..........\\nStatus for illumio-control: \\n - Environment Illumio VEN Environment is setup\\n - venAgentMgr venAgentMgr is running\\n - IPSec IPSec feature not enabled\\n - venPlatformHandler venPlatformHandler is running\\n - venVtapServer venVtapServer is running\\n - venAgentMonitor venAgentMonitor is running\\n\\nAgent state: enforced"
+    ]
+}
+
+TASK [ips_toolbox_illumio : Détection si l'agent est arrêté] *******************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Vérification du mode actuel d'Illumio] *************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Information sur le mode Illumio] *******************
+ok: [s02vl9942814] => {
+    "msg": [
+        "🔒 Mode Illumio actuel : Usage: /opt/illumio_ven/illumio-ven-ctl {start|stop|restart|workloads|status|connectivity-test|check-env|gen-supportreport|unpair|set-proxy|reset-proxy|show-proxy|activate|prepare|version|suspend|unsuspend|backup|restore|deactivate|conncheck|configset}",
+        "Note: Mode Enforced recommandé pour la sécurité"
+    ]
+}
+
+TASK [ips_toolbox_illumio : Test de connectivité au PCE (si possible)] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_illumio : Affichage du test de connectivité] *****************
+ok: [s02vl9942814] => {
+    "msg": "🌐 Connectivité PCE : KO ⚠️"
+}
+
+TASK [10 - Sauvegarde TSM - Vérification complète et lancement REAR] ***********
+
+TASK [ips_toolbox_backup : Recherche des systèmes de sauvegarde disponibles] ***
+[WARNING]: Skipped '/usr/tivoli/tsm/client/ba/bin' path due to this access
+issue: '/usr/tivoli/tsm/client/ba/bin' is not a directory
+[WARNING]: Skipped '/opt/networker/bin' path due to this access issue:
+'/opt/networker/bin' is not a directory
+[WARNING]: Skipped '/usr/openv/netbackup/bin' path due to this access issue:
+'/usr/openv/netbackup/bin' is not a directory
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Test de la commande TSM dsmc] ***********************
+ok: [s02vl9942814] => (item={'path': '/opt/tivoli/tsm/client/ba/bin/dsmc', 'mode': '0555', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 1, 'size': 15326520, 'inode': 384, 'dev': 64813, 'nlink': 1, 'atime': 1761503650.0097003, 'mtime': 1701766020.0, 'ctime': 1742393433.0437365, 'gr_name': 'bin', 'pw_name': 'root', 'wusr': False, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False})
+
+TASK [ips_toolbox_backup : Vérification du service dsmcad (Linux/AIX)] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Vérification du script REAR (si présent)] ***********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Information REAR] ***********************************
+ok: [s02vl9942814] => {
+    "msg": "🔄 Script REAR : Détecté ✅"
+}
+
+TASK [11 - Autosys - Configuration backup applicatif] **************************
+
+TASK [ips_toolbox_autosys : set_fact] ******************************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_autosys : stat] **********************************************
+fatal: [s02vl9942814 -> localhost]: FAILED! => {"changed": false, "failed_when_result": true, "stat": {"exists": false}}
+
+TASK [set result failed operation] *********************************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize result] *****************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [12 - Backup système - Vérification présence backup et export TSM] ********
+
+TASK [ips_toolbox_backup : Recherche des systèmes de sauvegarde disponibles] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Test de la commande TSM dsmc] ***********************
+ok: [s02vl9942814] => (item={'path': '/opt/tivoli/tsm/client/ba/bin/dsmc', 'mode': '0555', 'isdir': False, 'ischr': False, 'isblk': False, 'isreg': True, 'isfifo': False, 'islnk': False, 'issock': False, 'uid': 0, 'gid': 1, 'size': 15326520, 'inode': 384, 'dev': 64813, 'nlink': 1, 'atime': 1761503650.0097003, 'mtime': 1701766020.0, 'ctime': 1742393433.0437365, 'gr_name': 'bin', 'pw_name': 'root', 'wusr': False, 'rusr': True, 'xusr': True, 'wgrp': False, 'rgrp': True, 'xgrp': True, 'woth': False, 'roth': True, 'xoth': True, 'isuid': False, 'isgid': False})
+
+TASK [ips_toolbox_backup : Vérification du service dsmcad (Linux/AIX)] *********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Vérification du script REAR (si présent)] ***********
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_backup : Information REAR] ***********************************
+ok: [s02vl9942814] => {
+    "msg": "🔄 Script REAR : Détecté ✅"
+}
+
+TASK [13 - Logs - Configuration purge automatique /applis/logs] ****************
+
+TASK [ips_toolbox_logs : Initialisation du rôle ips_toolbox_logs] **************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Vérification de l'existence du service purge_logs] ****
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Vérification de l'existence du timer purge_logs] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Vérification du fichier exploit_rotate-log.conf] ******
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Création du répertoire de logs si absent] *************
+ok: [s02vl9942814] => (item=/apps/toolboxes/exploit/conf)
+ok: [s02vl9942814] => (item=/apps/toolboxes/exploit/logs)
+ok: [s02vl9942814] => (item=/applis/logs)
+
+TASK [ips_toolbox_logs : Vérification du statut final des services de purge] ***
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_logs : Affichage du résumé de configuration purge logs] ******
+ok: [s02vl9942814] => {
+    "msg": [
+        "=== RÉSUMÉ PURGE LOGS ===",
+        "Service purge_logs: PRÉSENT",
+        "Timer purge_logs: PRÉSENT",
+        "Configuration exploit_rotate-log.conf: PRÉSENT",
+        "",
+        "STATUT FINAL:",
+        [
+            "=== Statut services purge logs ===",
+            "enabled",
+            "active",
+            "NEXT                        LEFT     LAST                        PASSED UNIT             ACTIVATES",
+            "Tue 2025-10-28 01:00:00 CET 14h left Mon 2025-10-27 01:00:01 CET 9h ago purge_logs.timer purge_logs.service",
+            "",
+            "1 timers listed.",
+            "Pass --all to see loaded but inactive timers, too.",
+            "=== Fin statut ==="
+        ],
+        "=== FIN RÉSUMÉ ==="
+    ]
+}
+
+TASK [Enregistrement du résultat purge logs] ***********************************
+
+TASK [ips_toolbox_set_results : initialize set_results_result_name] ************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : initialize result] *****************************
+ok: [s02vl9942814]
+
+TASK [ips_toolbox_set_results : add to facts] **********************************
+ok: [s02vl9942814]
+
+TASK [Création du répertoire de rapports si nécessaire] ************************
+ok: [s02vl9942814]
+
+TASK [14 - Génération du récapitulatif final d'exécution] **********************
+
+TASK [report_generator : Collecte de tous les résultats d'exécution] ***********
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats Toolbox] ***********************
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats Dynatrace] *********************
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats Illumio] ***********************
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats TSM/Backup] ********************
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats Uptime] ************************
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats Filesystems] *******************
+ok: [s02vl9942814]
+
+TASK [report_generator : Collecte des résultats Utilisateurs] ******************
+ok: [s02vl9942814]
+
+TASK [report_generator : Affichage du récapitulatif final complet] *************
+ok: [s02vl9942814] => {
+    "msg": [
+        "",
+        "╔════════════════════════════════════════════════════════════════════════╗",
+        "║      RÉCAPITULATIF COMPLET D'EXÉCUTION - SHA-TOOLBOX AAP2             ║",
+        "╚════════════════════════════════════════════════════════════════════════╝",
+        "",
+        "┌─ INFORMATIONS GÉNÉRALES ────────────────────────────────────────────┐",
+        "│ Date d'exécution : 2025-10-27T09:12:53Z",
+        "│ Serveur          : s02vl9942814 (s02vl9942814.fr.net.intra)",
+        "│ OS               : RedHat 9.4",
+        "│ Kernel           : 5.14.0-427.88.1.el9_4.x86_64",
+        "│ Architecture     : x86_64",
+        "│ Code Application : 12402",
+        "│ Code 5 car       : acfrb",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ MIDDLEWARES ET SERVICES DÉTECTÉS ──────────────────────────────────┐",
+        "│ Middlewares (0) : Aucun",
+        "│ Services (17)    : {'name': 'chronyd', 'category': 'Synchronisation et Temps', 'description': 'NTP Time Synchronization'}, {'name': 'sshd', 'category': 'Connexion et Sécurité', 'description': 'SSH Daemon'}, {'name': 'sssd', 'category': 'Connexion et Sécurité', 'description': 'System Security Services'}, {'name': 'rsyslog', 'category': 'Journalisation', 'description': 'System Logging'}, {'name': 'filebeat', 'category': 'Journalisation', 'description': 'Elastic Filebeat'}, {'name': 'crond', 'category': 'Planification de Tâches', 'description': 'Cron Daemon'}, {'name': 'atd', 'category': 'Planification de Tâches', 'description': 'AT Daemon'}, {'name': 'elastic-agent', 'category': 'Agents et Supervision', 'description': 'Elastic Agent'}, {'name': 'dynatrace', 'category': 'Agents et Supervision', 'description': 'Dynatrace OneAgent'}, {'name': 'oneagent', 'category': 'Agents et Supervision', 'description': 'Dynatrace OneAgent'}, {'name': 'lvm2-monitor', 'category': 'Agents et Supervision', 'description': 'LVM2 Monitoring'}, {'name': 'dsmcad', 'category': 'Sauvegarde et Gestion des Données', 'description': 'TSM Client Daemon'}, {'name': 'mcafee', 'category': 'Sécurité et Protection', 'description': 'McAfee Antivirus'}, {'name': 'eTAC', 'category': 'Sécurité et Protection', 'description': 'eTAC Service'}, {'name': 'illumio-ven', 'category': 'Sécurité et Protection', 'description': 'Illumio VEN'}, {'name': 'snmpd', 'category': 'Réseau', 'description': 'SNMP Daemon'}, {'name': 'NetworkManager', 'category': 'Réseau', 'description': 'Network Manager'}",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ TOOLBOX IPS ───────────────────────────────────────────────────────┐",
+        "│ Installée        : ✅ OUI",
+        "│ Version          : 2512",
+        "│ Chemin           : /apps/toolboxes",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ FILESYSTEMS ───────────────────────────────────────────────────────┐",
+        "│ FS créés/vérifiés: 3/4",
+        "│ Arborescence     : /applis, /apps, /applis/logs, /applis/delivery",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ UTILISATEURS TECHNIQUES ───────────────────────────────────────────┐",
+        "│ Oracle (oracle)  : existant",
+        "│ WebSphere (wasadmin) : existant",
+        "│ Liberty (liberty): existant",
+        "│ CFT (cft)        : existant",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ UPTIME ET NTP ─────────────────────────────────────────────────────┐",
+        "│ Uptime actuel    : 3 jours",
+        "│ Limite configurée: 90 jours",
+        "│ Statut           : OK",
+        "│ Service chronyd  : ✅ Actif",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ DYNATRACE ONEAGENT ────────────────────────────────────────────────┐",
+        "│ Installé         : ✅ OUI",
+        "│ Version          : 1.297.80.20250109-162423",
+        "│ Statut           : Actif ✅",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ ILLUMIO VEN ───────────────────────────────────────────────────────┐",
+        "│ Installé         : ✅ OUI",
+        "│ Version          : 23.2.30-447",
+        "│ Mode             : Usage: /opt/illumio_ven/illumio-ven-ctl {start|stop|restart|workloads|status|connectivity-test|check-env|gen-supportreport|unpair|set-proxy|reset-proxy|show-proxy|activate|prepare|version|suspend|unsuspend|backup|restore|deactivate|conncheck|configset}",
+        "│ Statut           : Actif ✅",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "┌─ SAUVEGARDE TSM ────────────────────────────────────────────────────┐",
+        "│ TSM installé     : ✅ OUI",
+        "│ Service dsmcad   : ⚠️ Non vérifié",
+        "│ Script REAR      : ✅ Présent",
+        "└──────────────────────────────────────────────────────────────────────┘",
+        "",
+        "╔════════════════════════════════════════════════════════════════════════╗",
+        "║                    ✅ EXÉCUTION TERMINÉE AVEC SUCCÈS                   ║",
+        "╚════════════════════════════════════════════════════════════════════════╝",
+        ""
+    ]
+}
+
+TASK [report_generator : Sauvegarde du récapitulatif en JSON] ******************
+changed: [s02vl9942814]
+
+TASK [Finalisation du rapport d'exécution] *************************************
+changed: [s02vl9942814]
+
+PLAY RECAP *********************************************************************
+s02vl9942814               : ok=191  changed=4    unreachable=0    failed=0    skipped=78   rescued=1    ignored=0   
+
