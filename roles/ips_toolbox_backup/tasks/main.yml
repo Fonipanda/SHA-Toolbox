@@ -1,12 +1,23 @@
 ---
 
+- name: "Vérification de l'existence des répertoires de sauvegarde"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: backup_dirs_check
+  loop:
+    - /opt/tivoli/tsm/client/ba/bin
+    - /usr/tivoli/tsm/client/ba/bin
+    - /opt/networker/bin
+    - /usr/openv/netbackup/bin
+  ignore_errors: true
+
+- name: "Construction de la liste des répertoires existants"
+  ansible.builtin.set_fact:
+    existing_backup_dirs: "{{ backup_dirs_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | list }}"
+
 - name: "Recherche des systèmes de sauvegarde disponibles"
   ansible.builtin.find:
-    paths:
-      - /opt/tivoli/tsm/client/ba/bin
-      - /usr/tivoli/tsm/client/ba/bin
-      - /opt/networker/bin
-      - /usr/openv/netbackup/bin
+    paths: "{{ existing_backup_dirs }}"
     patterns:
       - dsmc
       - nsrinfo
@@ -14,11 +25,19 @@
     file_type: file
   register: backup_clients
   ignore_errors: true
+  when: existing_backup_dirs | length > 0
+
+- name: "Information si aucun répertoire de sauvegarde trouvé"
+  ansible.builtin.debug:
+    msg: "ℹ️ Aucun répertoire de client de sauvegarde détecté - Ignoré"
+  when: existing_backup_dirs | length == 0
 
 - name: "Information si aucun client de sauvegarde détecté"
   ansible.builtin.debug:
     msg: "ℹ️ Aucun client de sauvegarde (TSM/NetWorker/NetBackup) détecté - Ignoré"
-  when: backup_clients.files | length == 0
+  when: 
+    - existing_backup_dirs | length > 0
+    - backup_clients.files | default([]) | length == 0
 
 - name: "Vérification TSM si présent"
   block:
@@ -28,8 +47,8 @@
       register: tsm_version
       changed_when: false
       failed_when: false
-      loop: "{{ backup_clients.files | selectattr('path', 'search', 'dsmc') | list }}"
-      when: backup_clients.files | selectattr('path', 'search', 'dsmc') | list | length > 0
+      loop: "{{ backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list }}"
+      when: backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list | length > 0
 
     - name: "Affichage des informations TSM"
       ansible.builtin.debug:
@@ -50,7 +69,7 @@
       register: dsmcad_service
       when: 
         - ansible_os_family != "Windows"
-        - backup_clients.files | selectattr('path', 'search', 'dsmc') | list | length > 0
+        - backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list | length > 0
       ignore_errors: true
 
     - name: "Information sur le service dsmcad"
@@ -58,7 +77,7 @@
         msg: "🔄 Service dsmcad : {{ 'Actif ✅' if dsmcad_service.changed == false else 'Démarré ✅' }}"
       when: dsmcad_service is defined and dsmcad_service.failed is not defined
 
-  when: backup_clients.files | length > 0
+  when: existing_backup_dirs | length > 0 and backup_clients.files | default([]) | length > 0
   rescue:
     - name: "Gestion des erreurs de sauvegarde (non bloquante)"
       ansible.builtin.debug:
