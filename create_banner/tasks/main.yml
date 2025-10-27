@@ -1,0 +1,26 @@
+---
+- name: Generate banner information
+  ansible.builtin.template:
+    src: banner/info.j2
+    dest: /tmp/banner_info.txt
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Ensure the banner script is executable
+  ansible.builtin.file:
+    path: /apps/toolboxes/exploit/banner
+    mode: '0755'
+  become: true
+
+- name: Execute banner generation script
+  ansible.builtin.shell:
+    cmd: "{{ toolbox_banner_defaults.binary | default('/apps/toolboxes/exploit/banner') }}"
+  become: true
+  register: banner_result
+  changed_when: banner_result.rc == 0
+
+- name: Debug banner result
+  debug:
+    var: banner_result
