@@ -1,0 +1,18 @@
+---
+- name: Copy websphere_manager.py to remote host
+  ansible.builtin.copy:
+    src: websphere_manager.py
+    dest: /tmp/websphere_manager.py
+    mode: '0755'
+
+- name: Execute websphere_manager.py to detect WebSphere product
+  ansible.builtin.command: python3 /tmp/websphere_manager.py
+  register: websphere_output
+
+- name: Set product based on websphere_manager.py output
+  ansible.builtin.set_fact:
+    product: "{{ websphere_output.stdout }}"
+
+- name: Display the detected product
+  ansible.builtin.debug:
+    msg: "Detected product: {{ product }}"
