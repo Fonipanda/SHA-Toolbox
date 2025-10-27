@@ -14,32 +14,45 @@
   block:
     - name: "Vérification de la version de Dynatrace"
       ansible.builtin.shell: |
-        /apps/dynatrace/oneagent/agent/tools/oneagentctl --version
+        /apps/dynatrace/oneagent/agent/tools/oneagentctl --version 2>&1 | head -1
       register: dynatrace_version
       changed_when: false
       failed_when: false
 
     - name: "Vérification du statut de l'agent Dynatrace"
       ansible.builtin.shell: |
-        /apps/dynatrace/oneagent/agent/tools/oneagentctl status
-      register: dynatrace_status
+        systemctl is-active dynatrace-oneagent 2>&1 || /apps/dynatrace/oneagent/agent/tools/oneagentctl status 2>&1
+      register: dynatrace_status_raw
       changed_when: false
       failed_when: false
+
+    - name: "Détermination du statut OneAgent"
+      ansible.builtin.set_fact:
+        dynatrace_status: >-
+          {%- if 'active' in dynatrace_status_raw.stdout or 'running' in dynatrace_status_raw.stdout -%}
+          Connected
+          {%- elif 'inactive' in dynatrace_status_raw.stdout or 'stopped' in dynatrace_status_raw.stdout -%}
+          Disconnected
+          {%- elif 'updating' in dynatrace_status_raw.stdout -%}
+          Updating
+          {%- else -%}
+          Unknown
+          {%- endif -%}
 
     - name: "Affichage des informations Dynatrace"
       ansible.builtin.debug:
         msg:
           - "📊 Dynatrace OneAgent détecté"
-          - "Version : {{ dynatrace_version.stdout_lines[0] if dynatrace_version.stdout_lines is defined else 'N/A' }}"
-          - "Statut : {{ dynatrace_status.stdout | default('Statut inconnu') }}"
+          - "Version : {{ dynatrace_version.stdout | default('N/A') | trim }}"
+          - "Statut : {{ dynatrace_status }}"
 
     - name: "Détection si l'agent est arrêté"
       ansible.builtin.set_fact:
-        dynatrace_needs_restart: "{{ 'not running' in dynatrace_status.stdout or 'stopped' in dynatrace_status.stdout }}"
+        dynatrace_needs_restart: "{{ dynatrace_status == 'Disconnected' }}"
 
     - name: "Redémarrage de l'agent Dynatrace si nécessaire"
       ansible.builtin.shell: |
-        /apps/dynatrace/oneagent/agent/tools/oneagentctl restart
+        systemctl restart dynatrace-oneagent || /apps/dynatrace/oneagent/agent/tools/oneagentctl restart
       register: dynatrace_restart_result
       when: dynatrace_needs_restart | bool
       changed_when: true
@@ -56,14 +69,25 @@
 
     - name: "Vérification du mode Dynatrace"
       ansible.builtin.shell: |
-        /apps/dynatrace/oneagent/agent/tools/oneagentctl --get-mode
-      register: dynatrace_mode
+        grep -i "mode" /apps/dynatrace/oneagent/agent/conf/ruxitagent.conf 2>/dev/null | head -1 || echo "Full-stack"
+      register: dynatrace_mode_raw
       changed_when: false
       failed_when: false
 
+    - name: "Détermination du mode de surveillance"
+      ansible.builtin.set_fact:
+        dynatrace_mode: >-
+          {%- if 'infra' in dynatrace_mode_raw.stdout | lower -%}
+          Infra-only
+          {%- elif 'log' in dynatrace_mode_raw.stdout | lower -%}
+          Logs-only
+          {%- else -%}
+          Full-stack
+          {%- endif -%}
+
     - name: "Affichage du mode final"
       ansible.builtin.debug:
-        msg: "🔧 Mode Dynatrace : {{ dynatrace_mode.stdout | default('Mode inconnu') }}"
+        msg: "🔧 Mode Dynatrace : {{ dynatrace_mode }}"
 
   when: dynatrace_installed.stat.exists
   rescue:
