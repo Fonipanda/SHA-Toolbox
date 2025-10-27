@@ -21,21 +21,49 @@
 
     - name: "Vérification du statut de l'agent Illumio"
       ansible.builtin.shell: |
-        /opt/illumio_ven/illumio-ven-ctl status
-      register: illumio_status
+        /opt/illumio_ven/illumio-ven-ctl status 2>&1
+      register: illumio_status_raw
       changed_when: false
       failed_when: false
+
+    - name: "Extraction du statut VEN et mode d'enforcement"
+      ansible.builtin.set_fact:
+        illumio_agent_state: >-
+          {%- if 'running' in illumio_status_raw.stdout -%}
+          Active
+          {%- elif 'unpaired' in illumio_status_raw.stdout -%}
+          Unpaired
+          {%- elif 'suspended' in illumio_status_raw.stdout -%}
+          Suspended
+          {%- elif 'error' in illumio_status_raw.stdout -%}
+          Error
+          {%- elif 'idle' in illumio_status_raw.stdout -%}
+          Idle
+          {%- else -%}
+          Active
+          {%- endif -%}
+        illumio_enforcement_mode: >-
+          {%- if 'enforced' in illumio_status_raw.stdout -%}
+          Full
+          {%- elif 'idle' in illumio_status_raw.stdout -%}
+          Idle
+          {%- elif 'visibility' in illumio_status_raw.stdout -%}
+          Visibility Only
+          {%- else -%}
+          Full
+          {%- endif -%}
 
     - name: "Affichage des informations Illumio"
       ansible.builtin.debug:
         msg:
           - "🛡️ Illumio VEN détecté"
           - "Version : {{ illumio_version.stdout_lines[0] if illumio_version.stdout_lines is defined else 'N/A' }}"
-          - "Statut : {{ illumio_status.stdout | default('Statut inconnu') }}"
+          - "Statut VEN : {{ illumio_agent_state }}"
+          - "Mode d'Enforcement : {{ illumio_enforcement_mode }}"
 
     - name: "Détection si l'agent est arrêté"
       ansible.builtin.set_fact:
-        illumio_needs_start: "{{ 'not running' in illumio_status.stdout or 'stopped' in illumio_status.stdout }}"
+        illumio_needs_start: "{{ illumio_agent_state in ['Error', 'Idle'] }}"
 
     - name: "Démarrage de l'agent Illumio si nécessaire"
       ansible.builtin.shell: |
@@ -54,18 +82,11 @@
         - illumio_needs_start | bool
         - illumio_start is defined
 
-    - name: "Vérification du mode actuel d'Illumio"
-      ansible.builtin.shell: |
-        /opt/illumio_ven/illumio-ven-ctl get-mode
-      register: illumio_mode
-      changed_when: false
-      failed_when: false
-
     - name: "Information sur le mode Illumio"
       ansible.builtin.debug:
         msg: 
-          - "🔒 Mode Illumio actuel : {{ illumio_mode.stdout | default('Mode inconnu') }}"
-          - "Note: Mode Enforced recommandé pour la sécurité"
+          - "🔒 Mode Illumio confirmé : {{ illumio_enforcement_mode }}"
+          - "Note: Mode Full (Enforced) est recommandé pour la sécurité maximale"
 
     - name: "Test de connectivité au PCE (si possible)"
       ansible.builtin.shell: |
