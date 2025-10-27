@@ -1,17 +1,63 @@
-================================================================================
-BANNER - APPLICATION ENVIRONMENT
-================================================================================
+#!/usr/bin/ksh
 
-Serveur: {{ ansible_hostname | default('Unknown') }}
-Système: {{ ansible_distribution | default('Unknown') }} {{ ansible_distribution_version | default('') }}
-Architecture: {{ ansible_architecture | default('Unknown') }}
-Code Application: {{ banner_codeAP | default('N/A') }}
+#-----------------------------------------------------------------------------
+# Include
+#-----------------------------------------------------------------------------
+. "/apps/toolboxes/exploit/include/inc_banner.ksh"
+. "/apps/toolboxes/exploit/include/inc_terminal.ksh"
+
+#-----------------------------------------------------------------------------
+# Definition des variables
+#-----------------------------------------------------------------------------
+typeset APPLI_NAME="$(basename ${0})"
+typeset APPLI_CODE="AP{{ banner_codeAP | default('00000') }}"
+typeset ENV="{{ env_link[banner_env] | default('PROD') }}"
+typeset CONTACT_MEO="IA OPEN FRB"
+typeset CONTACT_MOE=""
+typeset CONTACT_BPM=""
+typeset CONTACT_SDM=""
+typeset SIZE=80
+
+#-----------------------------------------------------------------------------
+# Definition des fonctions
+#-----------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
+# Script principal
+#-----------------------------------------------------------------------------
+COLOR_ENV=""
+[ "${ENV}" = "DEV" ] && COLOR_ENV="${__TERM__COLOR_WHITE}"
+[ "${ENV}" = "PROD" ] && COLOR_ENV="${__TERM__COLOR_RED}"
+[ "${ENV}" = "QUA" ] && COLOR_ENV="${__TERM__COLOR_CYAN}"
+
+set_style "${__TERM__STYLE_BOLD}"
+set_fgcolor "${COLOR_ENV}"
+print_hr ${SIZE} "-" "+"
+banner "${APPLI_NAME}" | linecut ${SIZE} "|"
+print_hr ${SIZE} "-" "+"
+print -- "CODE AP : ${APPLI_CODE}" | wordwrap ${SIZE} "|"
+print -- "ENVIRONNEMENT : ${ENV}" | wordwrap ${SIZE} "|"
+print_hr ${SIZE} "-" "+"
+print -- "SERVEUR : {{ ansible_hostname | default('Unknown') }}" | wordwrap ${SIZE} "|"
+print -- "SYSTÈME : {{ ansible_distribution | default('Unknown') }} {{ ansible_distribution_version | default('') }}" | wordwrap ${SIZE} "|"
+print -- "ARCHITECTURE : {{ ansible_architecture | default('Unknown') }}" | wordwrap ${SIZE} "|"
 {% if banner_middlewares is defined and banner_middlewares != "" -%}
-Middlewares détectés: {{ banner_middlewares }}
+print -- "MIDDLEWARES : {{ banner_middlewares }}" | wordwrap ${SIZE} "|"
 {% endif -%}
+print_hr ${SIZE} "-" "+"
+print -- "CONTACTS :" | wordwrap ${SIZE} "|"
+print -- " - MEO : ${CONTACT_MEO}" | wordwrap ${SIZE} "|"
+print -- " - MOE : ${CONTACT_MOE}" | wordwrap ${SIZE} "|"
+print -- " - BPM : ${CONTACT_BPM}" | wordwrap ${SIZE} "|"
+print -- " - SDM : ${CONTACT_SDM}" | wordwrap ${SIZE} "|"
 
-ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT
+if [[ -f "${0%/*}/${APPLI_NAME}.info" && -s "${0%/*}/${APPLI_NAME}.info" ]]; then
+print_hr ${SIZE} "-" "+"
+cat "${0%/*}/${APPLI_NAME}.info" 2>/dev/null | wordwrap ${SIZE} "|"
+fi
 
-Date: {{ ansible_date_time.iso8601 | default('N/A') }}
-
-================================================================================
+print_hr ${SIZE} "-" "+"
+print -- "ACCÈS RESTREINT - UTILISATEURS AUTORISÉS UNIQUEMENT" | wordwrap ${SIZE} "|"
+print_hr ${SIZE} "-" "+"
+set_fgcolor "${__TERM__FGCOLOR_DEFAULT}"
+set_style "${__TERM__STYLE_OFF}"
