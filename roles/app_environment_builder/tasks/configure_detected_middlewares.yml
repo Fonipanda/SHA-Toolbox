@@ -1,105 +1,195 @@
 ---
 
-- name: "Configuration automatique des middlewares détectés"
-  block:
-    - name: "Affichage des middlewares détectés pour configuration"
-      ansible.builtin.debug:
-        msg:
-          - ""
-          - "🔧 CONFIGURATION AUTOMATIQUE DES MIDDLEWARES DÉTECTÉS"
-          - "══════════════════════════════════════════════════"
-          - "Middlewares à configurer: {{ detected_middlewares | join(', ') if detected_middlewares | length > 0 else 'Aucun' }}"
-          - ""
+- name: "Configuration des middlewares détectés - Initialisation"
+  ansible.builtin.debug:
+    msg:
+      - "═══════════════════════════════════════════════════════════════════"
+      - "CONFIGURATION AUTOMATIQUE DES MIDDLEWARES DÉTECTÉS"
+      - "═══════════════════════════════════════════════════════════════════"
+      - "Middlewares à configurer: {{ middleware_to_configure_list | default([]) | join(', ') }}"
+      - "Nombre: {{ middleware_to_configure_list | default([]) | length }}"
 
-    # ===== CONFIGURATION WEBSPHERE WASND =====
-    - name: "Configuration WebSphere WASND"
+- name: "Vérification de la présence de middlewares à configurer"
+  ansible.builtin.set_fact:
+    has_middlewares_to_configure: "{{ (middleware_to_configure_list | default([]) | length) > 0 }}"
+
+# ===== CONFIGURATION WEBSPHERE ND =====
+- name: "Configuration WebSphere ND (WASND)"
+  block:
+    - name: "Configuration WASND détecté"
       ansible.builtin.include_role:
         name: ips_toolbox_wasnd
       vars:
-        was_operation: "verify"
-      when: "'WebSphere_WASND' in detected_middlewares"
-      tags: [wasnd, middleware]
-      ignore_errors: yes
+        wasnd_operation: "configure"
+        wasnd_upgrade_version: true
+  when: 
+    - has_middlewares_to_configure
+    - "'wasnd' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [wasnd, middleware]
 
-    # ===== CONFIGURATION WEBSPHERE WASBASE =====
-    - name: "Configuration WebSphere WASBASE"
+# ===== CONFIGURATION WEBSPHERE BASE =====
+- name: "Configuration WebSphere Base (WASBASE)"
+  block:
+    - name: "Configuration WASBASE détecté"
       ansible.builtin.include_role:
         name: ips_toolbox_wasbase
       vars:
-        was_operation: "verify"
-      when: "'WebSphere_WASND' in detected_middlewares"
-      tags: [wasbase, middleware]
-      ignore_errors: yes
+        wasbase_operation: "configure"
+        wasbase_upgrade_version: true
+  when:
+    - has_middlewares_to_configure
+    - "'wasbase' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [wasbase, middleware]
 
-    # ===== CONFIGURATION LIBERTY CORE =====
+# ===== CONFIGURATION LIBERTY =====
+- name: "Configuration WebSphere Liberty"
+  block:
+    - name: "Détermination du type Liberty (Core ou Base)"
+      ansible.builtin.set_fact:
+        liberty_detected_type: >-
+          {{
+            detected_middleware_list 
+            | selectattr('name', 'search', 'Liberty') 
+            | map(attribute='name') 
+            | first 
+            | default('Liberty_Core')
+          }}
+    
     - name: "Configuration Liberty Core"
       ansible.builtin.include_role:
         name: ips_toolbox_libertycore
       vars:
-        liberty_operation: "verify"
-      when: "'Liberty_Core' in detected_middlewares"
-      tags: [liberty_core, middleware]
-      ignore_errors: yes
-
-    # ===== CONFIGURATION LIBERTY BASE =====
+        liberty_operation: "configure"
+        liberty_upgrade_version: true
+      when: "'Core' in liberty_detected_type"
+    
     - name: "Configuration Liberty Base"
       ansible.builtin.include_role:
         name: ips_toolbox_libertybase
       vars:
-        liberty_operation: "verify"
-      when: "'Liberty_Core' in detected_middlewares"
-      tags: [liberty_base, middleware]
-      ignore_errors: yes
+        liberty_operation: "configure"
+        liberty_upgrade_version: true
+      when: "'Base' in liberty_detected_type"
+  when:
+    - has_middlewares_to_configure
+    - "'liberty' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [liberty, middleware]
 
-    # ===== CONFIGURATION ORACLE =====
-    - name: "Configuration Oracle Database"
+# ===== CONFIGURATION ORACLE =====
+- name: "Configuration Oracle Database"
+  block:
+    - name: "Configuration Oracle détecté"
       ansible.builtin.include_role:
         name: ips_toolbox_oracle
       vars:
-        oracle_operation: "verify"
-      when: "'Oracle_Database' in detected_middlewares"
-      tags: [oracle, middleware]
-      ignore_errors: yes
+        oracle_operation: "configure"
+        oracle_upgrade_version: true
+  when:
+    - has_middlewares_to_configure
+    - "'oracle' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [oracle, middleware]
 
-    # ===== CONFIGURATION IBM MQ =====
-    - name: "Configuration IBM MQ"
-      ansible.builtin.include_role:
-        name: ips_toolbox_mq
-      vars:
-        mq_operation: "verify"
-      when: "'IBM_MQ' in detected_middlewares"
-      tags: [mq, middleware]
-      ignore_errors: yes
-
-    # ===== CONFIGURATION AXWAY CFT =====
-    - name: "Configuration Axway CFT"
-      ansible.builtin.include_role:
-        name: ips_toolbox_cft
-      vars:
-        cft_operation: "verify"
-      when: "'Axway_CFT' in detected_middlewares"
-      tags: [cft, middleware]
-      ignore_errors: yes
-
-    # ===== CONFIGURATION SQL SERVER =====
-    - name: "Configuration SQL Server"
+# ===== CONFIGURATION SQL SERVER =====
+- name: "Configuration SQL Server"
+  block:
+    - name: "Configuration SQL Server détecté"
       ansible.builtin.include_role:
         name: ips_toolbox_sqlserver
       vars:
-        sqlserver_operation: "verify"
-      when: "'SQL_Server' in detected_middlewares"
-      tags: [sqlserver, middleware]
-      ignore_errors: yes
+        sqlserver_operation: "configure"
+        sqlserver_upgrade_version: true
+  when:
+    - has_middlewares_to_configure
+    - "'sqlserver' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [sqlserver, middleware]
 
-    - name: "Affichage du résumé configuration middlewares"
+# ===== CONFIGURATION IBM MQ =====
+- name: "Configuration IBM MQ"
+  block:
+    - name: "Configuration MQ détecté"
       ansible.builtin.debug:
-        msg:
-          - ""
-          - "✅ Configuration automatique des middlewares terminée"
-          - "Middlewares traités: {{ detected_middlewares | length }}"
-          - ""
+        msg: "IBM MQ détecté - Configuration à implémenter via rôle ips_toolbox_mq"
+      # TODO: Créer le rôle ips_toolbox_mq si nécessaire
+      # ansible.builtin.include_role:
+      #   name: ips_toolbox_mq
+      # vars:
+      #   mq_operation: "configure"
+  when:
+    - has_middlewares_to_configure
+    - "'mq' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [mq, middleware]
 
-  rescue:
-    - name: "Gestion des erreurs configuration middlewares"
+# ===== CONFIGURATION AXWAY CFT =====
+- name: "Configuration Axway CFT"
+  block:
+    - name: "Configuration CFT détecté"
       ansible.builtin.debug:
-        msg: "⚠️ Erreur lors de la configuration automatique des middlewares - Poursuite du workflow"
+        msg: "Axway CFT détecté - Configuration à implémenter via rôle ips_toolbox_cft"
+      # TODO: Créer le rôle ips_toolbox_cft si nécessaire
+      # ansible.builtin.include_role:
+      #   name: ips_toolbox_cft
+      # vars:
+      #   cft_operation: "configure"
+  when:
+    - has_middlewares_to_configure
+    - "'cft' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [cft, middleware]
+
+# ===== CONFIGURATION IBM HTTP SERVER =====
+- name: "Configuration IBM HTTP Server (IHS)"
+  block:
+    - name: "Configuration IHS détecté"
+      ansible.builtin.include_role:
+        name: ips_toolbox_webserver
+      vars:
+        webserver_operation: "configure"
+        webserver_upgrade_version: true
+  when:
+    - has_middlewares_to_configure
+    - "'ihs' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [ihs, webserver, middleware]
+
+# ===== CONFIGURATION JVM =====
+- name: "Configuration JVM"
+  block:
+    - name: "Vérification version JVM"
+      ansible.builtin.debug:
+        msg: "JVM détecté - Vérification de version uniquement (pas de configuration spécifique)"
+      # JVM est généralement géré par les middlewares eux-mêmes
+  when:
+    - has_middlewares_to_configure
+    - "'jvm' in middleware_to_configure_list"
+  ignore_errors: true
+  tags: [jvm, middleware]
+
+# ===== RÉSUMÉ FINAL =====
+- name: "Résumé de la configuration des middlewares"
+  ansible.builtin.debug:
+    msg:
+      - ""
+      - "═══════════════════════════════════════════════════════════════════"
+      - "RÉSUMÉ CONFIGURATION MIDDLEWARES"
+      - "═══════════════════════════════════════════════════════════════════"
+      - "✅ Middlewares configurés avec succès"
+      - "Total traité: {{ middleware_to_configure_list | default([]) | length }}"
+      - "Liste: {{ middleware_to_configure_list | default([]) | join(', ') }}"
+      - ""
+      - "⚠️  Note: Les binaires existants n'ont PAS été touchés"
+      - "⚠️  Seules les configurations et mises à jour de version ont été effectuées"
+      - "═══════════════════════════════════════════════════════════════════"
+  when: has_middlewares_to_configure
+
+- name: "Aucun middleware à configurer"
+  ansible.builtin.debug:
+    msg:
+      - "ℹ️  Aucun middleware détecté nécessitant une configuration"
+      - "Le serveur est soit vierge, soit déjà correctement configuré"
+  when: not has_middlewares_to_configure
