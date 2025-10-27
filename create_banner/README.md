@@ -1,4 +1,4 @@
-# Rôle `create.banner`
+# Rôle `create_banner`
 
 Ce rôle crée des bannières sur les hôtes cibles.
 
