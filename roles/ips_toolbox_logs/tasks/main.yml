@@ -1,4 +1,5 @@
 ---
+
 - name: "Initialisation du rôle ips_toolbox_logs"
   ansible.builtin.set_fact:
     logs_component: "logs"
@@ -125,26 +126,45 @@
 
 - name: "Vérification du statut final des services de purge"
   ansible.builtin.shell: |
-    echo "=== Statut services purge logs ==="
-    systemctl is-enabled purge_logs.timer 2>/dev/null || echo "Timer non activé"
-    systemctl is-active purge_logs.timer 2>/dev/null || echo "Timer non actif"
-    systemctl list-timers purge_logs.timer --no-pager 2>/dev/null || echo "Timer non trouvé"
-    echo "=== Fin statut ==="
-  register: purge_logs_final_status
+    systemctl is-enabled purge_logs.timer 2>/dev/null
+  register: timer_enabled
+  changed_when: false
+  failed_when: false
+
+- name: "Vérification de l'état actif du timer"
+  ansible.builtin.shell: |
+    systemctl is-active purge_logs.timer 2>/dev/null
+  register: timer_active
+  changed_when: false
+  failed_when: false
+
+- name: "Récupération de la prochaine exécution du timer"
+  ansible.builtin.shell: |
+    systemctl list-timers purge_logs.timer --no-pager --no-legend 2>/dev/null | awk '{print $1, $2, $3, $4, $5}'
+  register: timer_next
   changed_when: false
   failed_when: false
 
 - name: "Affichage du résumé de configuration purge logs"
   ansible.builtin.debug:
     msg:
-      - "=== RÉSUMÉ PURGE LOGS ==="
-      - "Service purge_logs: {{ 'CRÉÉ' if 'SERVICE_MISSING' in purge_logs_service_check.stdout else 'PRÉSENT' }}"
-      - "Timer purge_logs: {{ 'CRÉÉ' if 'TIMER_MISSING' in purge_logs_timer_check.stdout else 'PRÉSENT' }}"
-      - "Configuration exploit_rotate-log.conf: {{ 'CRÉÉ' if not rotate_log_conf_check.stat.exists else 'PRÉSENT' }}"
+      - "╔═══════════════════════════════════════════════════════════════╗"
+      - "║           RÉSUMÉ CONFIGURATION PURGE LOGS                     ║"
+      - "╚═══════════════════════════════════════════════════════════════╝"
       - ""
-      - "STATUT FINAL:"
-      - "{{ purge_logs_final_status.stdout_lines | default(['Statut non disponible']) }}"
-      - "=== FIN RÉSUMÉ ==="
+      - "📋 Composants:"
+      - "   • Service purge_logs    : {{ 'CRÉÉ ✨' if 'SERVICE_MISSING' in purge_logs_service_check.stdout else 'PRÉSENT ✅' }}"
+      - "   • Timer purge_logs      : {{ 'CRÉÉ ✨' if 'TIMER_MISSING' in purge_logs_timer_check.stdout else 'PRÉSENT ✅' }}"
+      - "   • Configuration rotate  : {{ 'CRÉÉ ✨' if not rotate_log_conf_check.stat.exists else 'PRÉSENT ✅' }}"
+      - ""
+      - "🔧 État des services:"
+      - "   • Timer activé          : {{ '✅ OUI' if timer_enabled.rc == 0 and timer_enabled.stdout == 'enabled' else '❌ NON' }}"
+      - "   • Timer actif           : {{ '✅ OUI' if timer_active.rc == 0 and timer_active.stdout == 'active' else '❌ NON' }}"
+      - ""
+      - "⏰ Planification:"
+      - "   • Prochaine exécution   : {{ timer_next.stdout | default('Non planifié') }}"
+      - ""
+      - "╚═══════════════════════════════════════════════════════════════╝"
 
 - name: "Enregistrement du résultat purge logs"
   ansible.builtin.include_role:
