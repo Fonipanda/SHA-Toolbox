@@ -10,6 +10,32 @@
 
 # ===== DÉTECTION MIDDLEWARES (Serveurs d'Applications + Bases de Données + Messaging) =====
 
+# ===== DÉTECTION AMÉLIORÉE WEBSPHERE VIA SCRIPT PYTHON =====
+- name: "Copie du script de détection WebSphere"
+  ansible.builtin.copy:
+    src: websphere_manager.py
+    dest: /tmp/websphere_manager.py
+    mode: '0755'
+  when: ansible_os_family == "RedHat"
+
+- name: "Exécution du script de détection WebSphere"
+  ansible.builtin.command: python3 /tmp/websphere_manager.py
+  register: websphere_detection_output
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family == "RedHat"
+
+- name: "Enregistrement du produit WebSphere détecté"
+  ansible.builtin.set_fact:
+    websphere_product_detected: "{{ websphere_detection_output.stdout | default('None') }}"
+  when: 
+    - ansible_os_family == "RedHat"
+    - websphere_detection_output is defined
+
+- name: "Affichage du produit WebSphere détecté par script Python"
+  ansible.builtin.debug:
+    msg: "Produit WebSphere détecté via script: {{ websphere_product_detected | default('None') }}"
+
 # ===== DÉTECTION WEBSERVER / WAS ND =====
 - name: "Détection WebSphere Application Server (WAS ND)"
   block:
