@@ -15,3 +15,20 @@ banner_sshd_config_path: "/etc/ssh/sshd_config"
 banner_configure_ssh: true
 banner_restart_sshd: true
 
+# Mapping des environnements
+env_link:
+  DEVELOPPEMENT: "DEV"
+  TEST: "DEV"
+  INTEGRATION: "INT"
+  PRE-RECETTE: "QUA"
+  QUALIFICATION: "QUA"
+  RECETTE: "QUA"
+  PRE-PRODUCTION: "PRP"
+  BACKUP: "PROD"
+  PRODUCTION: "PROD"
+
+# Environnement par défaut
+banner_env: "PRODUCTION"
+
+# Chemin vers le script de bannière de la toolbox
+toolbox_banner_binary: "/apps/toolboxes/exploit/banner"
