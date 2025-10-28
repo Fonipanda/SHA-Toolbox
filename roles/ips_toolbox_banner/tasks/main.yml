@@ -4,10 +4,11 @@
   ansible.builtin.set_fact:
     banner_component: "banner"
     banner_operation: "{{ banner_operation | default('create') }}"
+    banner_company_name: "{{ banner_company_name | default('Entreprise') }}"
 
-- name: "Création de la bannière MOTD"
+- name: "Création de la bannière MOTD (/etc/motd)"
   ansible.builtin.template:
-    src: motd.j2
+    src: infos.j2
     dest: /etc/motd
     mode: '0644'
     owner: root
@@ -16,7 +17,7 @@
 
 - name: "Création de la bannière issue (console locale)"
   ansible.builtin.template:
-    src: issue.j2
+    src: infos.j2
     dest: /etc/issue
     mode: '0644'
     owner: root
@@ -26,7 +27,7 @@
 
 - name: "Création de la bannière issue.net (SSH)"
   ansible.builtin.template:
-    src: issue.j2
+    src: infos.j2
     dest: /etc/issue.net
     mode: '0644'
     owner: root
@@ -48,5 +49,7 @@
   ansible.builtin.debug:
     msg:
       - "✅ Bannières créées pour {{ ansible_hostname }}"
+      - "Type: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Virtualisation: {{ ansible_virtualization_type | default('physical') }}"
       - "Application: {{ banner_codeAP | default('N/A') }}"
-      - "Middlewares détectés: {{ banner_middlewares | default('Aucun') }}"
+      - "Middlewares: {{ banner_middlewares | default('Aucun') }}"
