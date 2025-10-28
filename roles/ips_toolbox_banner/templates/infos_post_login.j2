@@ -23,11 +23,14 @@ This server is integrated into RHEL IDM
 {% endif -%}
 * Serial Number    {{ banner_serial_number | default(ansible_product_serial) | default('Unknown') }}
 * Ip Address       {{ ansible_default_ipv4.address | default('Unknown') }}
-{% if banner_middlewares is defined and banner_middlewares != "" -%}
-* Middlewares      {{ banner_middlewares }}
+{% if detected_middleware_list is defined and detected_middleware_list | length > 0 -%}
+{% for mw in detected_middleware_list -%}
+* Middleware       {{ mw.name }} {{ mw.version | regex_replace('\\n.*', '') | trim }}
+{% endfor -%}
 {% endif -%}
 {% if banner_codeAP is defined and banner_codeAP != "" -%}
 * Application      {{ banner_codeAP }}
 {% endif -%}
 *******************************************************************************
+
 
