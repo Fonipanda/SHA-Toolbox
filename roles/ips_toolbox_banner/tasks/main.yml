@@ -18,6 +18,30 @@
   ansible.builtin.set_fact:
     banner_serial_number: "{{ system_serial_number.stdout | trim if system_serial_number is defined and system_serial_number.stdout is defined else ansible_product_serial | default('Unknown') }}"
 
+- name: "Création d'un prompt shell simple et propre"
+  ansible.builtin.copy:
+    dest: /etc/profile.d/clean_prompt.sh
+    mode: '0644'
+    owner: root
+    group: root
+    content: |
+      # Prompt simple et propre sans codes ANSI visibles
+      # Généré par SHA-Toolbox
+      if [ "$PS1" ]; then
+        PS1='$ '
+      fi
+  ignore_errors: true
+  when: ansible_os_family != "Windows"
+
+- name: "Nettoyage des prompts avec codes ANSI dans bashrc"
+  ansible.builtin.lineinfile:
+    path: /etc/bashrc
+    regexp: '.*\[033\[.*PS1.*'
+    state: absent
+    backup: yes
+  ignore_errors: true
+  when: ansible_os_family != "Windows"
+
 - name: "Création de la bannière PRÉ-LOGIN pour issue (console locale)"
   ansible.builtin.template:
     src: infos_pre_login.j2
@@ -73,6 +97,7 @@
       - "✅ Bannières créées pour {{ ansible_hostname }}"
       - "   • PRÉ-LOGIN (/etc/issue.net): Disclaimer uniquement"
       - "   • POST-LOGIN (/etc/motd): Informations système complètes"
+      - "   • PROMPT: Nettoyé et simplifié ($ sans codes ANSI)"
       - "Type: {{ ansible_distribution }} {{ ansible_distribution_version }}"
       - "Virtualisation: {{ ansible_virtualization_type | default('physical') }}"
       - "Serial Number: {{ banner_serial_number }}"
