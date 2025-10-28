@@ -21,7 +21,7 @@ This server is integrated into RHEL IDM
 {% else -%}
 * Virtualization   {{ ansible_virtualization_type | default('physical') }}
 {% endif -%}
-* Serial Number    {{ ansible_product_serial | default('Unknown') }}
+* Serial Number    {{ banner_serial_number | default(ansible_product_serial) | default('Unknown') }}
 * Ip Address       {{ ansible_default_ipv4.address | default('Unknown') }}
 {% if banner_middlewares is defined and banner_middlewares != "" -%}
 * Middlewares      {{ banner_middlewares }}
@@ -30,3 +30,4 @@ This server is integrated into RHEL IDM
 * Application      {{ banner_codeAP }}
 {% endif -%}
 *******************************************************************************
+
