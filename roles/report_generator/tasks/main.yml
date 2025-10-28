@@ -72,7 +72,7 @@
     msg:
       - ""
       - "╔════════════════════════════════════════════════════════════════════════╗"
-      - "║        RÉCAPITULATIF COMPLET D'EXÉCUTION - CREATE SOCLE - AAP2         ║"
+      - "║      RÉCAPITULATIF COMPLET D'EXÉCUTION - SHA-TOOLBOX AAP2             ║"
       - "╚════════════════════════════════════════════════════════════════════════╝"
       - ""
       - "┌─ INFORMATIONS GÉNÉRALES ────────────────────────────────────────────┐"
@@ -88,7 +88,7 @@
       - "┌─ MIDDLEWARES ET SERVICES DÉTECTÉS ──────────────────────────────────┐"
       - "│"
       - "│ 🔵 MIDDLEWARES D'APPLICATIONS ({{ execution_summary.middlewares_detected | length }})"
-      - "│    {{ execution_summary.middlewares_detected | map(attribute='name') | join(', ') if execution_summary.middlewares_detected | length > 0 else '   Aucun middleware détecté' }}"
+      - "{% if execution_summary.middlewares_detected | length > 0 %}{% for mw in execution_summary.middlewares_detected %}│    • {{ mw.name }} - Version: {{ mw.version | regex_replace('\\n.*', '') | trim }}{% endfor %}{% else %}│    Aucun middleware détecté{% endif %}"
       - "│"
       - "│ 🟢 SERVICES SYSTÈME PAR CATÉGORIE ({{ execution_summary.services_detected | length }})"
       - "│    • Synchronisation: chronyd"
