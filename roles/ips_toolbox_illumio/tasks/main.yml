@@ -88,23 +88,38 @@
           - "🔒 Mode Illumio confirmé : {{ illumio_enforcement_mode }}"
           - "Note: Mode Full (Enforced) est recommandé pour la sécurité maximale"
 
-    - name: "Test de connectivité au PCE (si possible)"
+    - name: "Test de connectivité au PCE avec JSON"
       ansible.builtin.shell: |
-        /opt/illumio_ven/illumio-ven-ctl connectivity-test 2>&1
-      register: illumio_connection
+        /opt/illumio_ven/illumio-ven-ctl connectivity-test -j 2>/dev/null || /opt/illumio_ven/illumio-ven-ctl connectivity-test 2>&1
+      register: illumio_connection_raw
       changed_when: false
       failed_when: false
 
-    - name: "Extraction du statut de connectivité PCE"
+    - name: "Extraction du statut de connectivité PCE depuis JSON ou texte"
       ansible.builtin.set_fact:
         illumio_pce_connectivity: >-
-          {%- if illumio_connection.rc == 0 and 'success' in illumio_connection.stdout | lower -%}
-          Connected
-          {%- elif 'paired' in illumio_status_raw.stdout and 'running' in illumio_status_raw.stdout -%}
-          Connected
+          {%- if illumio_connection_raw.stdout | trim | length == 0 -%}
+          Unknown
           {%- else -%}
+            {%- set output = illumio_connection_raw.stdout | lower -%}
+            {%- if 'success' in output or 'passed' in output or '"status":"success"' in output or '"status": "success"' in output -%}
+          Connected
+            {%- elif 'fail' in output or 'error' in output or '"status":"fail"' in output -%}
           Disconnected
+            {%- elif 'paired' in illumio_status_raw.stdout and 'running' in illumio_status_raw.stdout -%}
+          Connected
+            {%- else -%}
+          Disconnected
+            {%- endif -%}
           {%- endif -%}
+
+    - name: "Affichage du résultat brut du test de connectivité (debug)"
+      ansible.builtin.debug:
+        msg:
+          - "Test de connectivité output:"
+          - "{{ illumio_connection_raw.stdout | default('No output') }}"
+          - "Return code: {{ illumio_connection_raw.rc | default('N/A') }}"
+      when: illumio_connection_raw is defined
 
     - name: "Affichage du test de connectivité"
       ansible.builtin.debug:
