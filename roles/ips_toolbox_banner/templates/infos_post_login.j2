@@ -1,0 +1,32 @@
+System under eTAC supervision
+{% if 'idm-prod' in ansible_fqdn | lower or 'idm' in (ansible_dns.search | default([]) | join(' ') | lower) -%}
+This server is integrated into RHEL IDM (IDM-PROD)
+{% elif 'idm-qual' in ansible_fqdn | lower or ansible_domain | lower == 'idm-qual.domain' -%}
+This server is integrated into RHEL IDM (IDM-QUAL)
+{% elif 'idm-dev' in ansible_fqdn | lower or ansible_domain | lower == 'idm-dev.domain' -%}
+This server is integrated into RHEL IDM (IDM-DEV)
+{% else -%}
+This server is integrated into RHEL IDM
+{% endif -%}
+*******************************************************************************
+* Welcome to {{ ansible_distribution }} {{ ansible_distribution_version }} ({{ ansible_distribution_release | default('') }}) {{ ansible_architecture }}
+*
+*                 #{{ banner_company_name | default('Entreprise') }}
+*
+* Hostname         {{ ansible_hostname }}
+* Manufacturer     {{ ansible_system_vendor | default('Unknown') }}
+* Machine Type     {{ ansible_product_name | default('Unknown') }} ({{ ansible_architecture }})
+{% if ansible_virtualization_role is defined and ansible_virtualization_role == 'guest' -%}
+* Virtualization   guest {{ ansible_virtualization_type | capitalize }}
+{% else -%}
+* Virtualization   {{ ansible_virtualization_type | default('physical') }}
+{% endif -%}
+* Serial Number    {{ ansible_product_serial | default('Unknown') }}
+* Ip Address       {{ ansible_default_ipv4.address | default('Unknown') }}
+{% if banner_middlewares is defined and banner_middlewares != "" -%}
+* Middlewares      {{ banner_middlewares }}
+{% endif -%}
+{% if banner_codeAP is defined and banner_codeAP != "" -%}
+* Application      {{ banner_codeAP }}
+{% endif -%}
+*******************************************************************************
