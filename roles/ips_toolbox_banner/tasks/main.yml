@@ -6,18 +6,9 @@
     banner_operation: "{{ banner_operation | default('create') }}"
     banner_company_name: "{{ banner_company_name | default('Entreprise') }}"
 
-- name: "Création de la bannière MOTD (/etc/motd)"
+- name: "Création de la bannière PRÉ-LOGIN pour issue (console locale)"
   ansible.builtin.template:
-    src: infos.j2
-    dest: /etc/motd
-    mode: '0644'
-    owner: root
-    group: root
-  ignore_errors: true
-
-- name: "Création de la bannière issue (console locale)"
-  ansible.builtin.template:
-    src: infos.j2
+    src: infos_pre_login.j2
     dest: /etc/issue
     mode: '0644'
     owner: root
@@ -25,9 +16,9 @@
   ignore_errors: true
   when: ansible_os_family != "Windows"
 
-- name: "Création de la bannière issue.net (SSH)"
+- name: "Création de la bannière PRÉ-LOGIN pour issue.net (SSH)"
   ansible.builtin.template:
-    src: infos.j2
+    src: infos_pre_login.j2
     dest: /etc/issue.net
     mode: '0644'
     owner: root
@@ -35,7 +26,16 @@
   ignore_errors: true
   when: ansible_os_family != "Windows"
 
-- name: "Configuration SSH pour afficher la bannière"
+- name: "Création de la bannière POST-LOGIN (MOTD)"
+  ansible.builtin.template:
+    src: infos_post_login.j2
+    dest: /etc/motd
+    mode: '0644'
+    owner: root
+    group: root
+  ignore_errors: true
+
+- name: "Configuration SSH pour afficher la bannière PRÉ-LOGIN"
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?Banner'
@@ -45,10 +45,22 @@
   ignore_errors: true
   when: ansible_os_family != "Windows"
 
+- name: "Désactivation de PrintLastLog dans SSH (Last login géré par PAM)"
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PrintLastLog'
+    line: 'PrintLastLog yes'
+    backup: yes
+  notify: restart sshd
+  ignore_errors: true
+  when: ansible_os_family != "Windows"
+
 - name: "Affichage du statut de création des bannières"
   ansible.builtin.debug:
     msg:
       - "✅ Bannières créées pour {{ ansible_hostname }}"
+      - "   • PRÉ-LOGIN (/etc/issue.net): Disclaimer uniquement"
+      - "   • POST-LOGIN (/etc/motd): Informations système complètes"
       - "Type: {{ ansible_distribution }} {{ ansible_distribution_version }}"
       - "Virtualisation: {{ ansible_virtualization_type | default('physical') }}"
       - "Application: {{ banner_codeAP | default('N/A') }}"
