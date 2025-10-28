@@ -17,7 +17,7 @@
       - "📝 CRÉATION D'UTILISATEURS TECHNIQUES"
       - "══════════════════════════════════════"
       - "Middlewares détectés: {{ users_middlewares | length }}"
-      - "{{ users_middlewares | map(attribute='name', default='  - ' + item) | list | join('\n') if users_middlewares | length > 0 else '  ⚠️ Aucun middleware détecté - Pas de création utilisateur' }}"
+      - "{% if users_middlewares | length > 0 %}{{ users_middlewares | map(attribute='name') | list | join(', ') }}{% else %}⚠️ Aucun middleware détecté - Pas de création utilisateur{% endif %}"
       - ""
 
 # ===== CRÉATION UTILISATEURS SELON MIDDLEWARES =====
