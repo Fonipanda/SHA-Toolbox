@@ -81,6 +81,11 @@
     - profile_d_files_with_ansi.files | length > 0
   ignore_errors: true
 
+- name: "Formatage des middlewares pour la bannière"
+  ansible.builtin.set_fact:
+    banner_middlewares_formatted: "{% if detected_middleware_list | default([]) | length > 0 %}{{ detected_middleware_list | map(attribute='name') | join(', ') }}{% else %}Aucun{% endif %}"
+    banner_middlewares_with_versions: "{% if detected_middleware_list | default([]) | length > 0 %}{% for mw in detected_middleware_list %}{{ mw.name }} {{ mw.version | regex_replace('\\n.*', '') | trim }}{{ ', ' if not loop.last else '' }}{% endfor %}{% else %}Aucun{% endif %}"
+
 - name: "Création de la bannière PRÉ-LOGIN pour issue (console locale)"
   ansible.builtin.template:
     src: infos_pre_login.j2
@@ -141,4 +146,5 @@
       - "Virtualisation: {{ ansible_virtualization_type | default('physical') }}"
       - "Serial Number: {{ banner_serial_number }}"
       - "Application: {{ banner_codeAP | default('N/A') }}"
-      - "Middlewares: {{ banner_middlewares | default('Aucun') }}"
+      - "Middlewares détectés: {{ banner_middlewares_formatted | default('Aucun') }}"
+      - "Middlewares avec versions: {{ banner_middlewares_with_versions | default('Aucun') }}"
