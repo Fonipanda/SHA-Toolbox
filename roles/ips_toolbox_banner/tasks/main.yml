@@ -6,6 +6,18 @@
     banner_operation: "{{ banner_operation | default('create') }}"
     banner_company_name: "{{ banner_company_name | default('Entreprise') }}"
 
+- name: "Récupération du Serial Number via dmidecode"
+  ansible.builtin.shell: |
+    dmidecode -s system-serial-number 2>/dev/null | head -1 | grep -v '^#' || echo "{{ ansible_product_serial | default('Unknown') }}"
+  register: system_serial_number
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Enregistrement du Serial Number"
+  ansible.builtin.set_fact:
+    banner_serial_number: "{{ system_serial_number.stdout | trim if system_serial_number is defined and system_serial_number.stdout is defined else ansible_product_serial | default('Unknown') }}"
+
 - name: "Création de la bannière PRÉ-LOGIN pour issue (console locale)"
   ansible.builtin.template:
     src: infos_pre_login.j2
@@ -63,5 +75,6 @@
       - "   • POST-LOGIN (/etc/motd): Informations système complètes"
       - "Type: {{ ansible_distribution }} {{ ansible_distribution_version }}"
       - "Virtualisation: {{ ansible_virtualization_type | default('physical') }}"
+      - "Serial Number: {{ banner_serial_number }}"
       - "Application: {{ banner_codeAP | default('N/A') }}"
       - "Middlewares: {{ banner_middlewares | default('Aucun') }}"
