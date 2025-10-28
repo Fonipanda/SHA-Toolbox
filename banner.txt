@@ -1,0 +1,34 @@
+########################################################################
+
+ #Nom Entreprise
+
+ Toute personne qui se connecte ou tente de se connecter a ce systeme,
+ qu'elle y soit autorisee ou non, reconnait que ses activites peuvent
+ etre surveillees et enregistrees et que les informations correspondantes
+ lui seront opposees si necessaire, notamment en cas de non-respect des
+ regles internes.
+
+ Any person who connects to this system or attemps to do so, whether duly
+ authorized or not, acknowledges that their activities may be monitored
+ or recorded and that the related informations could be used against them
+ if relevant, notably in case of corporate rules violation."
+
+########################################################################
+System under eTAC supervision
+This server is integrated into RHEL IDM (IDM-PROD) #à détecter/adapter suivant le host
+Last login: Mon Oct 27 12:48:34 2025 from 10.241.174.192 #horodatage à mettre à jour suite au login de l'utilisateur
+*******************************************************************************
+* Welcome to RedHat 8.1000 (Ootpa) x86_64 #à détecter/adapter suivant le host
+*
+*                 #Nom Entreprise
+*
+* Hostname         SxxVLxxxxxxx #à détecter/adapter suivant le host
+* Manufacturer     VMware, Inc. #à détecter/adapter suivant le host
+* Machine Type     VMware Virtual Platform (x86_64) #à détecter/adapter suivant le host
+* Virtualization   guest VMware #à détecter/adapter suivant le host
+* Serial Number    VMware-42 20 03 77 d0 b8 98 9a-e2 e6 0a 73 0b e9 b5 e5 #à détecter/adapter suivant le host
+* Hostname         SxxVLxxxxxxx #à détecter/adapter suivant le host
+* Ip Address       xxx.xxx.xxx.xxx #à détecter/adapter suivant le host
+*******************************************************************************
+$
+
