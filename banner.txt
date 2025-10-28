@@ -1,17 +1,20 @@
-########################################################################
+########################################################################Last login: Tue Oct 28 09:26:35 2025 from 10.229.34.188
+System under eTAC supervision
+This server is integrated into RHEL IDM
+*******************************************************************************
+* Welcome to RedHat 9.4 (Plow) x86_64
+*
+*                 #TATA
+*
+* Hostname         SxxVLxxxxxxx
+* Manufacturer     QEMU
+* Machine Type     Standard PC (i440FX + PIIX, 1996) (x86_64)
+* Virtualization   guest Kvm
+* Serial Number    NA -> il faut trouver VMware-42 29 fa df 52 68 69 b5-2f e4 59 80 e7 1b ec 77
+* Ip Address       xxx.xxx.xxx.xxx
+* Application      12345
+[033[01;31m][HORSPROD][033[00m] u@h:w$
 
- #Nom Entreprise
-
- Toute personne qui se connecte ou tente de se connecter a ce systeme,
- qu'elle y soit autorisee ou non, reconnait que ses activites peuvent
- etre surveillees et enregistrees et que les informations correspondantes
- lui seront opposees si necessaire, notamment en cas de non-respect des
- regles internes.
-
- Any person who connects to this system or attemps to do so, whether duly
- authorized or not, acknowledges that their activities may be monitored
- or recorded and that the related informations could be used against them
- if relevant, notably in case of corporate rules violation."
 
 ########################################################################
 System under eTAC supervision
@@ -31,3 +34,4 @@ Last login: Mon Oct 27 12:48:34 2025 from 10.241.174.192 #horodatage à mettre �
 * Ip Address       xxx.xxx.xxx.xxx #à détecter/adapter suivant le host
 *******************************************************************************
 $
+
