@@ -18,29 +18,68 @@
   ansible.builtin.set_fact:
     banner_serial_number: "{{ system_serial_number.stdout | trim if system_serial_number is defined and system_serial_number.stdout is defined else ansible_product_serial | default('Unknown') }}"
 
-- name: "Création d'un prompt shell simple et propre"
+- name: "Création d'un prompt shell simple et propre (chargé en dernier)"
   ansible.builtin.copy:
-    dest: /etc/profile.d/clean_prompt.sh
+    dest: /etc/profile.d/zzz_clean_prompt.sh
     mode: '0644'
     owner: root
     group: root
     content: |
-      # Prompt simple et propre sans codes ANSI visibles
-      # Généré par SHA-Toolbox
+      # Prompt simple et propre - chargé en DERNIER (zzz_ prefix)
+      # Généré par SHA-Toolbox - Écrase tous les autres PS1
       if [ "$PS1" ]; then
-        PS1='$ '
+        export PS1='$ '
       fi
   ignore_errors: true
   when: ansible_os_family != "Windows"
 
-- name: "Nettoyage des prompts avec codes ANSI dans bashrc"
-  ansible.builtin.lineinfile:
-    path: /etc/bashrc
-    regexp: '.*\[033\[.*PS1.*'
-    state: absent
-    backup: yes
+- name: "Recherche et suppression des PS1 avec codes ANSI dans /etc/bashrc"
+  ansible.builtin.shell: |
+    if grep -q '033\[' /etc/bashrc 2>/dev/null; then
+      cp /etc/bashrc /etc/bashrc.bak
+      sed -i '/033\[/d' /etc/bashrc
+      echo "CLEANED"
+    else
+      echo "NOTHING_TO_CLEAN"
+    fi
+  register: bashrc_cleanup
+  changed_when: "'CLEANED' in bashrc_cleanup.stdout"
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Recherche et suppression des PS1 avec codes ANSI dans /etc/profile"
+  ansible.builtin.shell: |
+    if grep -q '033\[' /etc/profile 2>/dev/null; then
+      cp /etc/profile /etc/profile.bak
+      sed -i '/033\[/d' /etc/profile
+      echo "CLEANED"
+    else
+      echo "NOTHING_TO_CLEAN"
+    fi
+  register: profile_cleanup
+  changed_when: "'CLEANED' in profile_cleanup.stdout"
+  failed_when: false
+  when: ansible_os_family != "Windows"
+
+- name: "Recherche des fichiers profile.d contenant codes ANSI"
+  ansible.builtin.find:
+    paths: /etc/profile.d
+    patterns: "*.sh"
+    contains: '033\['
+  register: profile_d_files_with_ansi
   ignore_errors: true
   when: ansible_os_family != "Windows"
+
+- name: "Nettoyage des codes ANSI dans profile.d"
+  ansible.builtin.shell: |
+    cp "{{ item.path }}" "{{ item.path }}.bak"
+    sed -i '/033\[/d' "{{ item.path }}"
+  loop: "{{ profile_d_files_with_ansi.files }}"
+  when: 
+    - ansible_os_family != "Windows"
+    - profile_d_files_with_ansi.files is defined
+    - profile_d_files_with_ansi.files | length > 0
+  ignore_errors: true
 
 - name: "Création de la bannière PRÉ-LOGIN pour issue (console locale)"
   ansible.builtin.template:
