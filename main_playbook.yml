@@ -5,24 +5,24 @@
   gather_facts: true
   become: true
   serial: 1
-
+  
   vars:
     # Variables de base (collectées via Survey AAP2)
     code_ap: "{{ CodeAP }}"
     code5car: "{{ code5car }}"
     hostname_target: "{{ Hostname }}"
-
+    
     # Variables de reporting et traçabilité
     execution_timestamp: "{{ ansible_date_time.iso8601 }}"
     execution_id: "{{ ansible_date_time.epoch }}"
     report_dir: "/tmp/ansible_reports"
-
-    # Configuration
+    
+    # Configuration universelle (sans distinction d'environnement)
     enable_debug_mode: true
     system_uptime_limit: 90
     dynatrace_required: false
     illumio_enforcement_mode: "enforced"
-
+  
   pre_tasks:
     - name: "Validation des variables obligatoires du Survey AAP2"
       ansible.builtin.assert:
@@ -30,10 +30,48 @@
           - CodeAP is defined and CodeAP != ""
           - code5car is defined and code5car != ""
           - Hostname is defined and Hostname != ""
-          - "CodeAP | regex_search('^[0-9]{5}$')"
-          - "code5car | regex_search('^[A-Za-z0-9]{5}$')"
-        fail_msg: "Variables Survey AAP2 invalides. CodeAP (5 chiffres) et code5car (5 alphanum) requis"
+        fail_msg: |
+          ❌ Variables Survey AAP2 manquantes:
+          - CodeAP: {{ CodeAP | default('MANQUANT') }}
+          - code5car: {{ code5car | default('MANQUANT') }}
+          - Hostname: {{ Hostname | default('MANQUANT') }}
+        success_msg: "✅ Variables Survey AAP2 présentes"
 
+    - name: "Validation format CodeAP (5 ou 6 chiffres)"
+      ansible.builtin.assert:
+        that:
+          - CodeAP | string | regex_search('^[0-9]{5,6}$')
+        fail_msg: |
+          ❌ CodeAP invalide: {{ CodeAP }}
+          Format attendu: 5 ou 6 chiffres (ex: 12345 ou 123456)
+        success_msg: "✅ CodeAP valide: {{ CodeAP }}"
+
+    - name: "Validation format Code5car (5 alphanumériques OU trigramme+00)"
+      ansible.builtin.assert:
+        that:
+          - code5car | string | regex_search('^[A-Z0-9]{5}$')
+        fail_msg: |
+          ❌ code5car invalide: {{ code5car }}
+          Format attendu: 5 caractères alphanumériques (ex: ABC12)
+          OU trigramme + 2 zéros (ex: ABC00)
+        success_msg: "✅ code5car valide: {{ code5car }}"
+
+    - name: "Vérification que systemd est disponible"
+      ansible.builtin.command: systemctl --version
+      register: systemd_check
+      changed_when: false
+      failed_when: false
+
+    - name: "Validation systemd"
+      ansible.builtin.assert:
+        that:
+          - systemd_check.rc == 0
+          - "'systemd' in systemd_check.stdout"
+        fail_msg: |
+          ❌ systemd n'est pas disponible sur ce système
+          Ce playbook nécessite systemd pour fonctionner
+        success_msg: "✅ systemd disponible: {{ systemd_check.stdout_lines[0] | default('N/A') }}"
+    
     - name: "Création du répertoire de rapports"
       ansible.builtin.file:
         path: "{{ report_dir }}"
@@ -42,12 +80,12 @@
         owner: root
         group: root
       ignore_errors: true
-
+    
     - name: "Initialisation du rapport d'exécution"
       ansible.builtin.copy:
         content: |
           ================================================================
-          RAPPORT D'EXÉCUTION - APPLICATION ENVIRONMENT BUILDER
+          RAPPORT D'EXÉCUTION - SHA-TOOLBOX APPLICATION ENVIRONMENT BUILDER
           ================================================================
           Date d'exécution: {{ execution_timestamp }}
           ID d'exécution: {{ execution_id }}
@@ -71,14 +109,14 @@
                 tasks_from: detect_os
               tags: [facts, detection]
               ignore_errors: true
-
+            
             - name: "Détection du middleware installé (AVANT création arborescence)"
               ansible.builtin.include_role:
                 name: app_environment_builder
                 tasks_from: detect_middleware
               tags: [middleware, detection]
               ignore_errors: true
-
+            
             - name: "02 - Banner - Création bannière login"
               ansible.builtin.include_role:
                 name: ips_toolbox_banner
@@ -89,7 +127,7 @@
                 banner_middlewares: "{{ detected_middlewares | default([]) | join(', ') }}"
               tags: [banner]
               ignore_errors: true
-
+            
             - name: "03 - Users - Création d'utilisateurs techniques"
               ansible.builtin.include_role:
                 name: ips_toolbox_users
@@ -98,12 +136,12 @@
                 users_middlewares: "{{ detected_middlewares | default([]) }}"
               tags: [users]
               ignore_errors: true
-
+            
             - name: "03b - Configuration automatique des middlewares détectés"
               ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/app_environment_builder/tasks/configure_detected_middlewares.yml"
               tags: [middleware, config]
               ignore_errors: true
-
+            
             - name: "04 - Toolbox - Vérification, Installation et Mise à jour"
               ansible.builtin.include_role:
                 name: ips_toolbox_toolboxes
@@ -127,7 +165,7 @@
                 system_iis: "01"
               tags: [arborescence, filesystem]
               ignore_errors: true
-
+            
             - name: "06 - FileSystems - Création automatique"
               ansible.builtin.include_role:
                 name: ips_toolbox_system
@@ -152,7 +190,7 @@
                 system_component: "system"
               tags: [uptime, ntp]
               ignore_errors: true
-
+            
             - name: "08 - Dynatrace - Vérification agent (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_dynatrace
@@ -160,7 +198,7 @@
                 dynatrace_operation: "check"
               tags: [dynatrace]
               ignore_errors: true
-
+            
             - name: "09 - Illumio - Vérification statut (si présent)"
               ansible.builtin.include_role:
                 name: ips_toolbox_illumio
@@ -180,7 +218,7 @@
                 backup_type: "system"
               tags: [backup, tsm, rear]
               ignore_errors: true
-
+            
             - name: "11 - Autosys - Configuration backup applicatif"
               ansible.builtin.include_role:
                 name: ips_toolbox_autosys
@@ -188,7 +226,7 @@
                 autosys_operation: "configure"
               tags: [autosys, backup]
               ignore_errors: true
-
+            
             - name: "12 - Backup système - Vérification présence backup et export TSM"
               ansible.builtin.include_role:
                 name: ips_toolbox_backup
@@ -209,14 +247,14 @@
                 logs_test_purge: false
               tags: [logs, purge]
               ignore_errors: true
-
+      
       rescue:
         - name: "Gestion des erreurs du workflow"
           ansible.builtin.debug:
             msg:
               - "Une erreur s'est produite lors de l'exécution du workflow"
               - "Consultez les logs dans {{ report_dir }}"
-
+      
       always:
         - name: "Création du répertoire de rapports si nécessaire"
           ansible.builtin.file:
@@ -224,13 +262,13 @@
             state: directory
             mode: '0755'
           ignore_errors: true
-
+        
         - name: "14 - Génération du récapitulatif final d'exécution"
           ansible.builtin.include_role:
             name: report_generator
           tags: [report, summary]
           ignore_errors: yes
-
+        
         - name: "Finalisation du rapport d'exécution"
           ansible.builtin.lineinfile:
             path: "{{ report_dir }}/execution_{{ execution_id }}.log"
