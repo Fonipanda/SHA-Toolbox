@@ -27,6 +27,22 @@
   ignore_errors: true
   when: existing_backup_dirs | length > 0
 
+- name: "Détection du type de client de sauvegarde"
+  ansible.builtin.set_fact:
+    netbackup_detected: "{{ backup_clients.files | default([]) | selectattr('path', 'search', 'bplist') | list | length > 0 }}"
+    tsm_detected: "{{ backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list | length > 0 }}"
+    networker_detected: "{{ backup_clients.files | default([]) | selectattr('path', 'search', 'nsrinfo') | list | length > 0 }}"
+
+- name: "Affichage des clients de sauvegarde détectés"
+  ansible.builtin.debug:
+    msg:
+      - "📦 CLIENTS DE SAUVEGARDE DÉTECTÉS:"
+      - "   • Netbackup: {{ '✅ OUI' if netbackup_detected else '❌ NON' }}"
+      - "   • TSM: {{ '✅ OUI' if tsm_detected else '❌ NON' }}"
+      - "   • NetWorker: {{ '✅ OUI' if networker_detected else '❌ NON' }}"
+      - ""
+      - "⚠️ RÈGLE: Si Netbackup est détecté, TSM ne sera PAS configuré"
+
 - name: "Information si aucun répertoire de sauvegarde trouvé"
   ansible.builtin.debug:
     msg: "ℹ️ Aucun répertoire de client de sauvegarde détecté - Ignoré"
@@ -39,8 +55,15 @@
     - existing_backup_dirs | length > 0
     - backup_clients.files | default([]) | length == 0
 
-- name: "Vérification TSM si présent"
+- name: "Vérification TSM si présent ET Netbackup absent"
   block:
+    - name: "Information: Netbackup détecté, TSM ignoré"
+      ansible.builtin.debug:
+        msg:
+          - "⚠️ Netbackup est déjà installé sur ce serveur"
+          - "⚠️ TSM ne sera PAS configuré (règle d'exclusion mutuelle)"
+      when: netbackup_detected
+
     - name: "Test de la commande TSM dsmc"
       ansible.builtin.shell: |
         {{ item.path }} -version 2>&1 | head -1
@@ -48,7 +71,9 @@
       changed_when: false
       failed_when: false
       loop: "{{ backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list }}"
-      when: backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list | length > 0
+      when: 
+        - not netbackup_detected
+        - backup_clients.files | default([]) | selectattr('path', 'search', 'dsmc') | list | length > 0
       loop_control:
         label: "{{ item.path | basename }}"
 
