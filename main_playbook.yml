@@ -49,7 +49,7 @@
     - name: "Validation format Code5car (5 alphanumériques OU trigramme+00)"
       ansible.builtin.assert:
         that:
-          - code5car | string | regex_search('^[A-Z0-9]{5}$')
+          - code5car | string | regex_search(`^[A-Za-z0-9]{5}$`)
         fail_msg: |
           ❌ code5car invalide: {{ code5car }}
           Format attendu: 5 caractères alphanumériques (ex: ABC12)
