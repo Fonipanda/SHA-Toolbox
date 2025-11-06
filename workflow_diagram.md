@@ -1,186 +1,211 @@
-# SHA-Toolbox Workflow - Diagramme Mermaid
+# SHA-Toolbox - Workflow Diagram
 
 ```mermaid
-graph TD
-    Start([Début Playbook SHA-Toolbox]) --> Validation
-
-    Validation[Validation Surveys AAP2]
-    Validation --> V1{CodeAP<br/>5-6 chiffres?}
-    V1 -->|✅ Valide| V2{code5car<br/>5 alphanum?}
-    V1 -->|❌ Invalide| Erreur1[Erreur: CodeAP invalide]
-    V2 -->|✅ Valide| V3{systemd<br/>disponible?}
-    V2 -->|❌ Invalide| Erreur2[Erreur: code5car invalide]
-    V3 -->|✅ Oui| DetectOS
-    V3 -->|❌ Non| Erreur3[Erreur: systemd requis]
-
-    DetectOS[01 - Détection OS et Facts]
-    DetectOS --> DetectMW[Détection Middlewares]
+flowchart TD
+    A([Start SHA-Toolbox Playbook]) --> B{SystemD Check}
+    B -->|Running| C[Validate CodeAP & Code5car]
+    B -->|Not Running| ERR1[Error: SystemD Not Available]
     
-    DetectMW --> MW1[Scan WebSphere<br/>WASND/WASBASE/Liberty]
-    DetectMW --> MW2[Scan Oracle Database]
-    DetectMW --> MW3[Scan IBM MQ]
-    DetectMW --> MW4[Scan Axway CFT]
-    DetectMW --> MW5[Scan IHS/JVM]
+    C --> D{CodeAP Valid?<br/>5-6 digits}
+    D -->|Yes| E{Code5car Valid?<br/>5 alphanumeric or<br/>trigram+00}
+    D -->|No| ERR2[Error: Invalid CodeAP]
     
-    MW1 --> ConsolidateMW[Consolidation Middlewares]
-    MW2 --> ConsolidateMW
-    MW3 --> ConsolidateMW
-    MW4 --> ConsolidateMW
-    MW5 --> ConsolidateMW
+    E -->|Yes| F[Gather Host Facts]
+    E -->|No| ERR3[Error: Invalid Code5car]
     
-    ConsolidateMW --> Banner[02 - Création Banner]
+    F --> G[ips_toolbox_banner Role]
     
-    Banner --> B1[Banner PRÉ-LOGIN<br/>/etc/issue.net]
-    Banner --> B2[Banner POST-LOGIN<br/>/etc/motd]
-    Banner --> B3[Nettoyage Prompt<br/>zzz_clean_prompt.sh]
+    G --> H[Detect OS Type<br/>Linux/Windows]
+    H --> I[Get Serial Number]
+    I --> J[Create Pre-Login Banner<br/>/etc/issue.net]
+    J --> K[Create Post-Login Banner<br/>/etc/motd]
+    K --> L[Clean User Prompt<br/>Remove ANSI codes]
     
-    B1 --> Users
-    B2 --> Users
-    B3 --> Users
+    L --> M[ips_toolbox_users Role]
+    M --> N[Create Technical Users<br/>Based on Middleware]
     
-    Users[03 - Utilisateurs Techniques]
-    Users --> U1{Middlewares<br/>détectés?}
-    U1 -->|✅ Oui| U2[Création users<br/>oracle, wasadmin, liberty, etc.]
-    U1 -->|❌ Non| U3[Aucun utilisateur créé]
+    N --> O[app_environment_builder Role<br/>Detect Middleware]
     
-    U2 --> ConfigMW
-    U3 --> Toolbox
+    O --> P[Real Server Scan<br/>Not Fixed List]
+    P --> Q{CFT Detected?}
+    Q -->|Yes| R[Configure CFT<br/>Create CFT User]
+    Q -->|No| T
     
-    ConfigMW[04 - Configuration Middlewares]
-    ConfigMW --> CM1{Middleware<br/>à configurer?}
-    CM1 -->|✅ Oui| CM2[Configuration<br/>pas réinstallation]
-    CM1 -->|❌ Non| Toolbox
-    CM2 --> CM3[Upgrade versions<br/>si nécessaire]
-    CM3 --> Toolbox
+    R --> S[Get CFT Version]
+    S --> T{MQ Detected?}
     
-    Toolbox[05 - Toolbox IPS]
-    Toolbox --> T1{Toolbox<br/>présente?}
-    T1 -->|✅ Oui| T2[Vérification version]
-    T1 -->|❌ Non| T3[Installation Toolbox]
-    T2 --> T4{Mise à jour<br/>disponible?}
-    T4 -->|✅ Oui| T5[Update Toolbox]
-    T4 -->|❌ Non| FS
-    T3 --> FS
-    T5 --> FS
+    T -->|Yes| U[Configure MQ<br/>Create MQ User]
+    T -->|No| W
     
-    FS[06 - Arborescence Filesystems]
-    FS --> FS1[Création /applis]
-    FS --> FS2[Création /apps]
-    FS --> FS3[Sous-répertoires<br/>/applis/logs, /applis/delivery]
+    U --> V[Get MQ Version]
+    V --> W{SQL Server<br/>Detected?}
     
-    FS1 --> NTP
-    FS2 --> NTP
-    FS3 --> NTP
+    W -->|Yes| X[Configure SQL Server<br/>Create SQL User]
+    W -->|No| Z
     
-    NTP[07 - NTP/Chrony]
-    NTP --> N1{Chrony<br/>actif?}
-    N1 -->|✅ Oui| N2[Vérification sync]
-    N1 -->|❌ Non| N3[Démarrage Chrony]
-    N2 --> Dynatrace
-    N3 --> Dynatrace
+    X --> Y[Get SQL Server Version]
+    Y --> Z{WebSphere<br/>Detected?}
     
-    Dynatrace[08 - Dynatrace OneAgent]
-    Dynatrace --> DT1{OneAgent<br/>installé?}
-    DT1 -->|✅ Oui| DT2[Vérif statut + mode]
-    DT1 -->|❌ Non| Illumio
-    DT2 --> DT3{Agent<br/>actif?}
-    DT3 -->|✅ Connected| Illumio
-    DT3 -->|❌ Disconnected| DT4[Redémarrage agent]
-    DT4 --> Illumio
+    Z -->|Yes| AA{WAS Type?}
+    Z -->|No| AF
     
-    Illumio[09 - Illumio VEN]
-    Illumio --> IL1{VEN<br/>installé?}
-    IL1 -->|✅ Oui| IL2[Vérif statut VEN<br/>+ mode enforcement]
-    IL1 -->|❌ Non| Backup
-    IL2 --> IL3{PCE<br/>connecté?}
-    IL3 -->|✅ Connected| IL4{Mode<br/>enforced?}
-    IL3 -->|❌ Disconnected| IL5[Test connectivity -j]
-    IL4 -->|✅ Full| Backup
-    IL4 -->|❌ Autre| Backup
-    IL5 --> Backup
+    AA -->|Base| AB[Configure WAS Base<br/>Create Wasbase User]
+    AA -->|ND| AC[Configure WAS ND<br/>Create WasND User]
+    AA -->|Liberty Core| AD[Configure Liberty Core<br/>Create LibertyCore User]
+    AA -->|Liberty Base| AE[Configure Liberty Base<br/>Create LibertyBase User]
     
-    Backup[10 - Sauvegarde TSM/Netbackup]
-    Backup --> BK1{Type client<br/>backup?}
-    BK1 -->|Netbackup| BK2[Config Netbackup<br/>TSM IGNORÉ]
-    BK1 -->|TSM seul| BK3[Config TSM<br/>+ service dsmcad]
-    BK1 -->|NetWorker| BK4[Config NetWorker]
-    BK1 -->|Aucun| BK5[Aucune config backup]
+    AB --> AG[Use websphere_manager.py<br/>GitHub Integration]
+    AC --> AG
+    AD --> AG
+    AE --> AG
     
-    BK2 --> REAR
-    BK3 --> REAR
-    BK4 --> REAR
-    BK5 --> REAR
+    AG --> AH[Get WebSphere Version]
+    AH --> AF{IHS Detected?}
     
-    REAR[11 - REAR Backup Système]
-    REAR --> R1{Script REAR<br/>présent?}
-    R1 -->|✅ Oui| R2[Vérification config REAR]
-    R1 -->|❌ Non| Logs
-    R2 --> Logs
+    AF -->|Yes| AI[Configure IHS<br/>Create IHS User]
+    AF -->|No| AK
     
-    Logs[12 - Purge Logs]
-    Logs --> L1[Service purge_logs.service]
-    Logs --> L2[Timer purge_logs.timer<br/>OnCalendar=01:00:00]
-    Logs --> L3[Config rétention<br/>{{ log_purge_days }} jours]
+    AI --> AJ[Get IHS Version]
+    AJ --> AK{JVM Detected?}
     
-    L1 --> Autosys
-    L2 --> Autosys
-    L3 --> Autosys
+    AK -->|Yes| AL[Configure JVM<br/>Create JVM User]
+    AK -->|No| AN
     
-    Autosys[13 - Autosys optionnel]
-    Autosys --> A1{Autosys<br/>détecté?}
-    A1 -->|✅ Oui| A2[Config Autosys]
-    A1 -->|❌ Non| Report
-    A2 --> Report
+    AL --> AM[Get JVM Version]
+    AM --> AN[ips_toolbox_toolboxes Role]
     
-    Report[14 - Rapport Final]
-    Report --> R1[Collecte résultats]
-    Report --> R2[Middlewares + Versions]
-    Report --> R3[Services par catégorie]
-    Report --> R4[Agents supervision]
-    Report --> R5[Infrastructure]
-    Report --> R6[Sauvegarde]
+    AN --> AO[Install/Update Toolboxes]
+    AO --> AP[ips_toolbox_system Role]
     
-    R1 --> Recap
-    R2 --> Recap
-    R3 --> Recap
-    R4 --> Recap
-    R5 --> Recap
-    R6 --> Recap
+    AP --> AQ{Create Filesystems}
+    AQ --> AR[Create /applis]
+    AQ --> AS[Create /apps]
     
-    Recap[Récapitulatif Complet]
-    Recap --> End([Fin Playbook<br/>✅ Succès])
+    AR --> AT[Configure NTP]
+    AS --> AT
     
-    Erreur1 --> EndError([Fin Playbook<br/>❌ Erreur])
-    Erreur2 --> EndError
-    Erreur3 --> EndError
+    AT --> AU[ips_toolbox_dynatrace Role]
     
-    style Start fill:#90EE90
-    style End fill:#90EE90
-    style EndError fill:#FFB6C1
-    style Erreur1 fill:#FF6B6B
-    style Erreur2 fill:#FF6B6B
-    style Erreur3 fill:#FF6B6B
-    style DetectOS fill:#87CEEB
-    style Banner fill:#87CEEB
-    style Users fill:#87CEEB
-    style ConfigMW fill:#87CEEB
-    style Toolbox fill:#87CEEB
-    style FS fill:#87CEEB
-    style NTP fill:#87CEEB
-    style Dynatrace fill:#FFD700
-    style Illumio fill:#FFD700
-    style Backup fill:#FFD700
-    style REAR fill:#FFD700
-    style Logs fill:#DDA0DD
-    style Autosys fill:#DDA0DD
-    style Report fill:#98FB98
-    style Recap fill:#98FB98
+    AU --> AV{Dynatrace<br/>OneAgent?}
+    AV -->|Installed| AW[Get OneAgent Status<br/>& Monitoring Mode]
+    AV -->|Not Installed| AZ
+    
+    AW --> AX[Display Dynatrace Info]
+    AX --> AZ[ips_toolbox_illumio Role]
+    
+    AZ --> BA{Illumio VEN?}
+    BA -->|Installed| BB[Get VEN Status,<br/>Enforcement Mode,<br/>PCE Connectivity]
+    BA -->|Not Installed| BE
+    
+    BB --> BC[Use connectivity-test-j<br/>Command]
+    BC --> BD[Display Illumio Info]
+    BD --> BE[ips_toolbox_backup Role]
+    
+    BE --> BF{Netbackup<br/>Detected?}
+    
+    BF -->|Yes| BG[Configure Netbackup]
+    BF -->|No| BH{TSM<br/>Available?}
+    
+    BG --> BL
+    
+    BH -->|Yes| BI[Configure TSM<br/>Conditional Trigger]
+    BH -->|No| BL[Backup Configuration Complete]
+    
+    BI --> BJ[Use Correct TSM Paths]
+    BJ --> BK[Get TSM Status]
+    BK --> BM[Display TSM Info]
+    BM --> BL
+    
+    BL --> BN[ips_toolbox_logs Role]
+    
+    BN --> BO{Configure<br/>Log Purge?}
+    BO -->|Yes| BP[Get Days from Survey Input]
+    BO -->|No| BS
+    
+    BP --> BQ[Create SystemD Timer<br/>Execute at 01:00]
+    BQ --> BR[Display Log Purge Summary]
+    BR --> BS[report_generator Role]
+    
+    BS --> BT[Organize Summary by Themes]
+    BT --> BU[Include Middleware Versions]
+    BU --> BV[Include Dynatrace,<br/>Illumio, TSM Status]
+    BV --> BW[Generate Final Report]
+    
+    BW --> BX([Execution Complete])
+    
+    ERR1 --> ERR[Playbook Failed]
+    ERR2 --> ERR
+    ERR3 --> ERR
+    
+    style A fill:#90EE90
+    style BX fill:#90EE90
+    style ERR fill:#FFB6C1
+    style ERR1 fill:#FFB6C1
+    style ERR2 fill:#FFB6C1
+    style ERR3 fill:#FFB6C1
+    style O fill:#87CEEB
+    style G fill:#FFD700
+    style M fill:#FFD700
+    style AU fill:#DDA0DD
+    style AZ fill:#DDA0DD
+    style BE fill:#F0E68C
+    style BN fill:#F0E68C
+    style BS fill:#98FB98
 ```
 
-**Légende:**
-- 🟢 Vert clair: Début/Fin succès
-- 🔵 Bleu ciel: Étapes principales configuration
-- 🟡 Jaune: Agents de supervision
-- 🟣 Violet: Logs et optionnels
-- 🟢 Vert pâle: Rapports
-- 🔴 Rouge: Erreurs
+## Workflow Description
+
+### Phase 1: Validation & Initialization
+1. **SystemD Check**: Verify SystemD is running
+2. **Code Validation**: Validate CodeAP (5-6 digits) and Code5car (5 alphanumeric or trigram+00)
+3. **Gather Facts**: Collect host information
+
+### Phase 2: Banner Configuration
+1. Detect OS type (Linux/Windows)
+2. Get system Serial Number
+3. Create pre-login banner (`/etc/issue.net`)
+4. Create post-login banner (`/etc/motd`) with middleware versions
+5. Clean user prompt (remove ANSI codes, ensure ends with `$`)
+
+### Phase 3: Middleware Detection & Configuration
+1. **Real Server Scan**: Dynamic detection (not fixed list)
+2. **Middleware-Specific Detection**:
+   - CFT: Configure & create CFT user
+   - MQ: Configure & create MQ user
+   - SQL Server: Configure & create SQL user
+   - WebSphere (Base/ND/Liberty): Use `websphere_manager.py` from GitHub
+   - IHS: Configure & create IHS user
+   - JVM: Configure & create JVM user
+3. **Version Extraction**: Get version for each detected middleware
+
+### Phase 4: Toolbox & System Setup
+1. Install/update toolboxes
+2. Create filesystems (`/applis`, `/apps`)
+3. Configure NTP
+
+### Phase 5: Service Integration
+1. **Dynatrace**: Get OneAgent status and monitoring mode
+2. **Illumio**: Get VEN status, enforcement mode, PCE connectivity (using `connectivity-test-j`)
+3. **Backup Systems**:
+   - Check Netbackup first
+   - If Netbackup not detected, configure TSM (conditional)
+   - Use correct TSM paths
+
+### Phase 6: Log Management
+1. Configure log purge timer
+2. Use Survey input for days specification
+3. Schedule execution at 01:00 via SystemD timer
+
+### Phase 7: Reporting
+1. Organize summary by themes
+2. Include all detected middleware versions
+3. Include Dynatrace, Illumio, TSM status
+4. Generate final execution report
+
+## Key Features
+- **Real-time Detection**: Middleware detection via actual server scanning
+- **Conditional Logic**: TSM only if Netbackup not present
+- **Dynamic User Creation**: Technical users created based on detected middleware
+- **Version Tracking**: All middleware versions captured and displayed
+- **Survey Integration**: Log purge days from AAP2 Survey input
+- **Comprehensive Reporting**: Organized by themes with all service status
