@@ -1,9 +1,16 @@
 ---
-
 - name: "Initialisation du rôle ips_toolbox_logs"
   ansible.builtin.set_fact:
     logs_component: "logs"
     logs_role_name: "ips_toolbox_logs"
+    log_purge_retention_days: "{{ log_purge_days | default(30) }}"
+
+- name: "Affichage configuration purge logs"
+  ansible.builtin.debug:
+    msg:
+      - "📋 CONFIGURATION PURGE LOGS"
+      - "   • Rétention: {{ log_purge_retention_days }} jours"
+      - "   • Heure d'exécution: 01:00"
 
 - name: "Vérification de l'existence du service purge_logs"
   ansible.builtin.shell: |
@@ -28,13 +35,13 @@
   ansible.builtin.copy:
     content: |
       [Unit]
-      Description=Purge des logs applicatifs /applis/logs
+      Description=Purge des logs applicatifs /applis/logs (rétention {{ log_purge_retention_days }} jours)
       Documentation=file:///apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
       After=multi-user.target
 
       [Service]
       Type=oneshot
-      ExecStart=/apps/toolboxes/exploit/bin/exploit_rotate_log.ksh
+      ExecStart=/apps/toolboxes/exploit/bin/exploit_rotate_log.ksh {{ log_purge_retention_days }}
       User=root
       Group=root
       StandardOutput=journal
@@ -49,16 +56,15 @@
   when: "'SERVICE_MISSING' in purge_logs_service_check.stdout"
   notify: "Recharger systemd"
 
-- name: "Création du timer systemd purge_logs.timer"
+- name: "Création du timer systemd purge_logs.timer (exécution à 01:00)"
   ansible.builtin.copy:
     content: |
       [Unit]
-      Description=Timer pour purge automatique des logs
+      Description=Timer pour purge automatique des logs (01:00 tous les jours)
       Requires=purge_logs.service
 
       [Timer]
-      OnCalendar=daily
-      RandomizedDelaySec=3600
+      OnCalendar=*-*-* 01:00:00
       Persistent=true
 
       [Install]
@@ -74,11 +80,16 @@
   ansible.builtin.copy:
     content: |
       # Configuration rotation et purge des logs - SHA-Toolbox
+      # Rétention: {{ log_purge_retention_days }} jours
+      # Exécution: 01:00 tous les jours
       # Répertoires de logs à traiter
       LOG_DIRS="/applis/logs /apps/exploit/logs /var/log"
       
       # Rétention en jours
       RETENTION_DAYS=30
+      
+      # Rétention en jours (nombre de jours à conserver)
+      RETENTION_DAYS={{ log_purge_retention_days }}
       
       # Compression après rotation
       COMPRESS=yes
