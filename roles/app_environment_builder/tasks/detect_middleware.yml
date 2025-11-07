@@ -1,4 +1,8 @@
 ---
+# roles/app_environment_builder/tasks/detect_middleware.yml
+# Détection automatique des middlewares et services système
+# Version 3.2 - Catégorisation complète selon services.txt
+# Déclenche automatiquement l'installation/configuration via les rôles
 
 - name: "Initialisation de la liste des middlewares et services détectés"
   ansible.builtin.set_fact:
@@ -97,48 +101,110 @@
 # ===== DÉTECTION LIBERTY =====
 - name: "Détection WebSphere Liberty"
   block:
-    - name: "Vérification des répertoires Liberty"
+    - name: "Vérification étendue des répertoires Liberty"
       ansible.builtin.stat:
         path: "{{ item }}"
       loop:
         - /opt/IBM/WebSphere/Liberty
         - /usr/IBM/WebSphere/Liberty
         - /opt/wlp
+        - /apps/WebSphere/Liberty
+        - /apps/wlp
+        - /opt/IBM/wlp
+        - /usr/wlp
       register: liberty_dir_check
+
+    - name: "Détermination du chemin Liberty détecté"
+      ansible.builtin.set_fact:
+        liberty_detected_path: "{{ liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | first | default('') }}"
+      when: liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
+
+    - name: "Affichage debug chemin Liberty détecté"
+      ansible.builtin.debug:
+        msg: "Chemin Liberty détecté: {{ liberty_detected_path | default('AUCUN') }}"
 
     - name: "Vérification processus Liberty"
       ansible.builtin.shell: |
-        pgrep -f "java.*liberty" | wc -l
+        pgrep -f "java.*wlp\|java.*liberty\|java.*Liberty" | wc -l
       register: liberty_process_check
       changed_when: false
       failed_when: false
 
+    - name: "Recherche binaire productInfo dans chemin détecté"
+      ansible.builtin.shell: |
+        find {{ liberty_detected_path }} -name "productInfo" -type f 2>/dev/null | head -1
+      register: liberty_productinfo_path
+      changed_when: false
+      failed_when: false
+      when: liberty_detected_path is defined and liberty_detected_path != ''
+
     - name: "Extraction de la version Liberty si présent"
       ansible.builtin.shell: |
-        /opt/IBM/WebSphere/Liberty/bin/productInfo version 2>/dev/null | grep "Product name" | cut -d: -f2 || echo "Liberty"
+        {{ liberty_productinfo_path.stdout }} version 2>/dev/null | grep -E "Product name|Version" | head -2 || echo "Liberty Unknown"
       register: liberty_version
       changed_when: false
       failed_when: false
-      when: liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
+      when: 
+        - liberty_productinfo_path is defined
+        - liberty_productinfo_path.stdout is defined
+        - liberty_productinfo_path.stdout != ''
 
-    - name: "Détection type Liberty (Core ou Base)"
+    - name: "Détection type Liberty (Core ou Base) - Méthode 1: appSecurity"
       ansible.builtin.shell: |
-        if [ -f /opt/IBM/WebSphere/Liberty/lib/features/appSecurity-*.jar ]; then
+        if find {{ liberty_detected_path }}/lib/features -name "appSecurity-*.jar" 2>/dev/null | grep -q .; then
           echo "Liberty_Base"
         else
           echo "Liberty_Core"
         fi
-      register: liberty_type
+      register: liberty_type_method1
       changed_when: false
       failed_when: false
-      when: liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
+      when: liberty_detected_path is defined and liberty_detected_path != ''
+
+    - name: "Détection type Liberty (Core ou Base) - Méthode 2: features list"
+      ansible.builtin.shell: |
+        if [ -d "{{ liberty_detected_path }}/lib/features" ]; then
+          feature_count=$(ls {{ liberty_detected_path }}/lib/features/*.jar 2>/dev/null | wc -l)
+          if [ "$feature_count" -gt 50 ]; then
+            echo "Liberty_Base"
+          else
+            echo "Liberty_Core"
+          fi
+        else
+          echo "Liberty_Core"
+        fi
+      register: liberty_type_method2
+      changed_when: false
+      failed_when: false
+      when: liberty_detected_path is defined and liberty_detected_path != ''
+
+    - name: "Détermination finale du type Liberty"
+      ansible.builtin.set_fact:
+        liberty_final_type: >-
+          {%- if liberty_type_method1 is defined and 'Base' in liberty_type_method1.stdout -%}
+          WebSphere_Liberty_Base
+          {%- elif liberty_type_method2 is defined and 'Base' in liberty_type_method2.stdout -%}
+          WebSphere_Liberty_Base
+          {%- else -%}
+          WebSphere_Liberty_Core
+          {%- endif -%}
+      when: liberty_detected_path is defined and liberty_detected_path != ''
+
+    - name: "Affichage debug type Liberty final"
+      ansible.builtin.debug:
+        msg: 
+          - "Type Liberty détecté: {{ liberty_final_type | default('N/A') }}"
+          - "Méthode 1 (appSecurity): {{ liberty_type_method1.stdout | default('N/A') }}"
+          - "Méthode 2 (feature count): {{ liberty_type_method2.stdout | default('N/A') }}"
 
     - name: "Ajout de Liberty à la liste des MIDDLEWARES détectés"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + [{'name': liberty_type.stdout | default('Liberty_Core'), 'type': 'application_server', 'path': '/opt/IBM/WebSphere/Liberty', 'version': liberty_version.stdout | default('N/A'), 'status': 'installed', 'processes': liberty_process_check.stdout | int}] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': liberty_final_type, 'type': 'application_server', 'path': liberty_detected_path, 'version': liberty_version.stdout | default('N/A') | regex_replace('\\n', ' ') | trim, 'status': 'installed', 'processes': liberty_process_check.stdout | int}] }}"
         middleware_to_configure: "{{ middleware_to_configure + ['liberty'] }}"
         users_to_create: "{{ users_to_create + ['liberty'] }}"
       when: 
+        - liberty_detected_path is defined
+        - liberty_detected_path != ''
         - liberty_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
 
 # ===== DÉTECTION ORACLE =====
@@ -268,40 +334,174 @@
       loop:
         - /opt/IBM/HTTPServer
         - /usr/IBM/HTTPServer
+        - /opt/IBM/IHS
+        - /apps/IBM/HTTPServer
       register: ihs_dir_check
+
+    - name: "Détermination du chemin IHS détecté"
+      ansible.builtin.set_fact:
+        ihs_detected_path: "{{ ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | map(attribute='item') | first | default('') }}"
+      when: ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
+
+    - name: "Vérification du répertoire bin IHS"
+      ansible.builtin.stat:
+        path: "{{ ihs_detected_path }}/bin"
+      register: ihs_bin_check
+      when: ihs_detected_path is defined and ihs_detected_path != ''
+
+    - name: "Vérification binaire apachectl"
+      ansible.builtin.stat:
+        path: "{{ ihs_detected_path }}/bin/apachectl"
+      register: ihs_apachectl_check
+      when: ihs_detected_path is defined and ihs_detected_path != ''
 
     - name: "Vérification processus IHS"
       ansible.builtin.shell: |
-        pgrep -f "IBM/HTTPServer" | wc -l
+        pgrep -f "IBM/HTTPServer\|IBM/IHS\|httpd.*IBM" | wc -l
       register: ihs_process_check
       changed_when: false
       failed_when: false
 
+    - name: "Extraction version IHS"
+      ansible.builtin.shell: |
+        {{ ihs_detected_path }}/bin/apachectl -v 2>/dev/null | grep "Server version" | cut -d: -f2 || echo "N/A"
+      register: ihs_version
+      changed_when: false
+      failed_when: false
+      when: 
+        - ihs_detected_path is defined 
+        - ihs_detected_path != ''
+        - ihs_apachectl_check is defined
+        - ihs_apachectl_check.stat.exists
+
+    - name: "Détermination du statut IHS"
+      ansible.builtin.set_fact:
+        ihs_status: >-
+          {%- if ihs_bin_check is defined and ihs_bin_check.stat.exists and ihs_apachectl_check is defined and ihs_apachectl_check.stat.exists -%}
+          ✅ OK - Binaires présents
+          {%- elif ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0 -%}
+          ⚠️ KO - Répertoire présent mais binaires manquants
+          {%- else -%}
+          ❌ KO - Non installé
+          {%- endif -%}
+      when: ihs_detected_path is defined
+
+    - name: "Affichage statut IHS"
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════════════════════════════"
+          - "IBM HTTP Server (IHS) - Détection"
+          - "═══════════════════════════════════════════════════════════════════"
+          - "Chemin: {{ ihs_detected_path | default('NON DETECTE') }}"
+          - "Répertoire bin: {{ ihs_bin_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') }}"
+          - "Binaire apachectl: {{ ihs_apachectl_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') }}"
+          - "Version: {{ ihs_version.stdout | default('N/A') | trim }}"
+          - "Processus actifs: {{ ihs_process_check.stdout | default('0') }}"
+          - "Statut global: {{ ihs_status | default('❌ KO') }}"
+          - "═══════════════════════════════════════════════════════════════════"
+      when: ihs_detected_path is defined and ihs_detected_path != ''
+
     - name: "Ajout de IHS à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_HTTP_Server', 'type': 'web_server', 'path': '/opt/IBM/HTTPServer', 'version': 'N/A', 'status': 'installed', 'processes': ihs_process_check.stdout | int}] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_HTTP_Server', 'type': 'web_server', 'path': ihs_detected_path, 'version': ihs_version.stdout | default('N/A') | trim, 'status': ihs_status | default('installed'), 'processes': ihs_process_check.stdout | int, 'bin_ok': ihs_bin_check.stat.exists | default(false), 'apachectl_ok': ihs_apachectl_check.stat.exists | default(false)}] }}"
         middleware_to_configure: "{{ middleware_to_configure + ['ihs'] }}"
       when:
+        - ihs_detected_path is defined
+        - ihs_detected_path != ''
         - ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0
-        - (ihs_process_check.stdout | int) > 0
 
 # ===== DÉTECTION JVM =====
 - name: "Détection JVM (Java Virtual Machine)"
   block:
-    - name: "Vérification Java installé"
+    - name: "Recherche du chemin Java"
+      ansible.builtin.shell: |
+        which java 2>/dev/null || echo ""
+      register: java_path_check
+      changed_when: false
+      failed_when: false
+
+    - name: "Recherche JAVA_HOME"
+      ansible.builtin.shell: |
+        echo $JAVA_HOME
+      register: java_home_check
+      changed_when: false
+      failed_when: false
+
+    - name: "Recherche alternatives Java"
+      ansible.builtin.shell: |
+        find /usr/lib/jvm -type f -name java 2>/dev/null | head -1 || echo ""
+      register: java_alt_check
+      changed_when: false
+      failed_when: false
+
+    - name: "Détermination du chemin Java final"
+      ansible.builtin.set_fact:
+        java_final_path: >-
+          {%- if java_path_check.stdout != '' -%}
+          {{ java_path_check.stdout }}
+          {%- elif java_home_check.stdout != '' -%}
+          {{ java_home_check.stdout }}/bin/java
+          {%- elif java_alt_check.stdout != '' -%}
+          {{ java_alt_check.stdout }}
+          {%- else -%}
+          N/A
+          {%- endif -%}
+
+    - name: "Vérification Java installé et version"
       ansible.builtin.shell: |
         java -version 2>&1 | head -1 || echo "N/A"
       register: jvm_version
       changed_when: false
       failed_when: false
 
+    - name: "Extraction version complète Java"
+      ansible.builtin.shell: |
+        java -version 2>&1 | head -3
+      register: jvm_version_full
+      changed_when: false
+      failed_when: false
+      when: jvm_version.rc == 0
+
+    - name: "Vérification du répertoire bin Java"
+      ansible.builtin.stat:
+        path: "{{ java_final_path | dirname }}"
+      register: java_bin_check
+      when: java_final_path != 'N/A'
+
+    - name: "Détermination du statut JVM"
+      ansible.builtin.set_fact:
+        jvm_status: >-
+          {%- if jvm_version.rc == 0 and java_bin_check is defined and java_bin_check.stat.exists -%}
+          ✅ OK - Java fonctionnel
+          {%- elif jvm_version.rc == 0 -%}
+          ⚠️ OK - Java présent mais chemin bin incertain
+          {%- else -%}
+          ❌ KO - Java non installé
+          {%- endif -%}
+
+    - name: "Affichage statut JVM"
+      ansible.builtin.debug:
+        msg:
+          - "═══════════════════════════════════════════════════════════════════"
+          - "JVM (Java Virtual Machine) - Détection"
+          - "═══════════════════════════════════════════════════════════════════"
+          - "Chemin Java: {{ java_final_path | default('NON DETECTE') }}"
+          - "Répertoire bin: {{ java_bin_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') if java_bin_check is defined else '⚠️ Non vérifié' }}"
+          - "Version courte: {{ jvm_version.stdout | default('N/A') | trim }}"
+          - "Version complète:"
+          - "{{ jvm_version_full.stdout | default('N/A') }}"
+          - "JAVA_HOME: {{ java_home_check.stdout | default('Non défini') }}"
+          - "Statut global: {{ jvm_status | default('❌ KO') }}"
+          - "═══════════════════════════════════════════════════════════════════"
+      when: jvm_version.rc == 0
+
     - name: "Ajout JVM à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + [{'name': 'JVM', 'type': 'runtime', 'path': 'N/A', 'version': jvm_version.stdout | default('N/A'), 'status': 'installed'}] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'JVM', 'type': 'runtime', 'path': java_final_path, 'version': jvm_version.stdout | default('N/A') | trim, 'status': jvm_status | default('installed'), 'bin_ok': java_bin_check.stat.exists | default(false) if java_bin_check is defined else false, 'java_home': java_home_check.stdout | default('N/A')}] }}"
         middleware_to_configure: "{{ middleware_to_configure + ['jvm'] }}"
       when:
         - jvm_version.rc == 0
-        - "'version' in jvm_version.stdout or 'openjdk' in jvm_version.stdout"
+        - "'version' in jvm_version.stdout or 'openjdk' in jvm_version.stdout or 'java' in jvm_version.stdout | lower"
 
 # ===== DÉTECTION SERVICES SYSTÈME (PAR CATÉGORIES services.txt) =====
 
