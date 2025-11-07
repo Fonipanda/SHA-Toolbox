@@ -21,7 +21,7 @@
 
     - name: "Vérification du statut de l'agent Dynatrace"
       ansible.builtin.shell: |
-        systemctl is-active dynatrace-oneagent 2>&1 || /apps/dynatrace/oneagent/agent/tools/oneagentctl status 2>&1
+        systemctl is-active oneagent 2>&1 || /apps/dynatrace/oneagent/agent/tools/oneagentctl status 2>&1
       register: dynatrace_status_raw
       changed_when: false
       failed_when: false
@@ -52,7 +52,7 @@
 
     - name: "Redémarrage de l'agent Dynatrace si nécessaire"
       ansible.builtin.shell: |
-        systemctl restart dynatrace-oneagent || /apps/dynatrace/oneagent/agent/tools/oneagentctl restart
+        systemctl restart oneagent || /apps/dynatrace/oneagent/agent/tools/oneagentctl restart
       register: dynatrace_restart_result
       when: dynatrace_needs_restart | bool
       changed_when: true
