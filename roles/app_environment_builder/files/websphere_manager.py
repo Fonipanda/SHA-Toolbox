@@ -18,7 +18,16 @@ class WebsphereManager:
         
         # Mapping product types to their installation directories
         self.product_mapping = {
-            "Liberty": ["/apps/WebSphere", "/opt/IBM/WebSphere/Liberty", "/usr/IBM/WebSphere/Liberty", "/opt/wlp"],
+            "Liberty": [
+                "/apps/WebSphere", 
+                "/opt/IBM/WebSphere/Liberty", 
+                "/usr/IBM/WebSphere/Liberty", 
+                "/opt/wlp",
+                "/apps/WebSphere/Liberty",
+                "/apps/wlp",
+                "/opt/IBM/wlp",
+                "/usr/wlp"
+            ],
             "Was_8": ["/apps/WebSphere85", "/apps/WebSphere855", "/opt/IBM/WebSphere/AppServer8"],
             "Was_9": ["/apps/WebSphere95", "/apps/WebSphere9", "/opt/IBM/WebSphere/AppServer"]
         }
