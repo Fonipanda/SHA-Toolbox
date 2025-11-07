@@ -88,7 +88,7 @@
       - "┌─ MIDDLEWARES ET SERVICES DÉTECTÉS ──────────────────────────────────┐"
       - "│"
       - "│ 🔵 MIDDLEWARES D'APPLICATIONS ({{ execution_summary.middlewares_detected | length }})"
-      - "{% if execution_summary.middlewares_detected | length > 0 %}{% for mw in execution_summary.middlewares_detected %}│    • {{ mw.name }} - Version: {{ mw.version | regex_replace('\\n.*', '') | trim }}{% endfor %}{% else %}│    Aucun middleware détecté{% endif %}"
+      - "{% if execution_summary.middlewares_detected | length > 0 %}{% for mw in execution_summary.middlewares_detected %}│    • {{ mw.name }} - Version: {{ mw.version | regex_replace('\\n.*', '') | trim }}{% if mw.name == 'IBM_HTTP_Server' %} - Binaires: {{ '✅ OK' if mw.bin_ok | default(false) and mw.apachectl_ok | default(false) else '❌ KO' }}{% endif %}{% if mw.name == 'JVM' %} - Binaires: {{ '✅ OK' if mw.bin_ok | default(false) else '⚠️ Partiel' }}{% endif %}{% endfor %}{% else %}│    Aucun middleware détecté{% endif %}"
       - "│"
       - "│ 🟢 SERVICES SYSTÈME PAR CATÉGORIE ({{ execution_summary.services_detected | length }})"
       - "│    • Synchronisation: chronyd"
