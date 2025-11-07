@@ -1,4 +1,0 @@
----
-# Default variables for the create.banner role
-toolbox_banner_defaults:
-  binary: "/apps/toolboxes/exploit/banner"
