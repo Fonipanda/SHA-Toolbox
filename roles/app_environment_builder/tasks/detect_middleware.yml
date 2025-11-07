@@ -372,12 +372,13 @@
         - ihs_detected_path is defined 
         - ihs_detected_path != ''
         - ihs_apachectl_check is defined
+        - ihs_apachectl_check.stat is defined
         - ihs_apachectl_check.stat.exists
 
     - name: "Détermination du statut IHS"
       ansible.builtin.set_fact:
         ihs_status: >-
-          {%- if ihs_bin_check is defined and ihs_bin_check.stat.exists and ihs_apachectl_check is defined and ihs_apachectl_check.stat.exists -%}
+          {%- if ihs_bin_check is defined and ihs_bin_check.stat is defined and ihs_bin_check.stat.exists and ihs_apachectl_check is defined and ihs_apachectl_check.stat is defined and ihs_apachectl_check.stat.exists -%}
           ✅ OK - Binaires présents
           {%- elif ihs_dir_check.results | selectattr('stat.exists', 'equalto', true) | list | length > 0 -%}
           ⚠️ KO - Répertoire présent mais binaires manquants
@@ -393,8 +394,8 @@
           - "IBM HTTP Server (IHS) - Détection"
           - "═══════════════════════════════════════════════════════════════════"
           - "Chemin: {{ ihs_detected_path | default('NON DETECTE') }}"
-          - "Répertoire bin: {{ ihs_bin_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') }}"
-          - "Binaire apachectl: {{ ihs_apachectl_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') }}"
+          - "Répertoire bin: {{ ihs_bin_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') if (ihs_bin_check is defined and ihs_bin_check.stat is defined) else '⚠️ Non vérifié' }}"
+          - "Binaire apachectl: {{ ihs_apachectl_check.stat.exists | default(false) | ternary('✅ OK', '❌ KO') if (ihs_apachectl_check is defined and ihs_apachectl_check.stat is defined) else '⚠️ Non vérifié' }}"
           - "Version: {{ ihs_version.stdout | default('N/A') | trim }}"
           - "Processus actifs: {{ ihs_process_check.stdout | default('0') }}"
           - "Statut global: {{ ihs_status | default('❌ KO') }}"
@@ -403,7 +404,7 @@
 
     - name: "Ajout de IHS à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_HTTP_Server', 'type': 'web_server', 'path': ihs_detected_path, 'version': ihs_version.stdout | default('N/A') | trim, 'status': ihs_status | default('installed'), 'processes': ihs_process_check.stdout | int, 'bin_ok': ihs_bin_check.stat.exists | default(false), 'apachectl_ok': ihs_apachectl_check.stat.exists | default(false)}] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'IBM_HTTP_Server', 'type': 'web_server', 'path': ihs_detected_path, 'version': ihs_version.stdout | default('N/A') | trim, 'status': ihs_status | default('installed'), 'processes': ihs_process_check.stdout | int, 'bin_ok': ihs_bin_check.stat.exists | default(false) if (ihs_bin_check is defined and ihs_bin_check.stat is defined) else false, 'apachectl_ok': ihs_apachectl_check.stat.exists | default(false) if (ihs_apachectl_check is defined and ihs_apachectl_check.stat is defined) else false}] }}"
         middleware_to_configure: "{{ middleware_to_configure + ['ihs'] }}"
       when:
         - ihs_detected_path is defined
@@ -471,7 +472,7 @@
     - name: "Détermination du statut JVM"
       ansible.builtin.set_fact:
         jvm_status: >-
-          {%- if jvm_version.rc == 0 and java_bin_check is defined and java_bin_check.stat.exists -%}
+          {%- if jvm_version.rc == 0 and java_bin_check is defined and java_bin_check.stat is defined and java_bin_check.stat.exists -%}
           ✅ OK - Java fonctionnel
           {%- elif jvm_version.rc == 0 -%}
           ⚠️ OK - Java présent mais chemin bin incertain
@@ -497,7 +498,7 @@
 
     - name: "Ajout JVM à la liste des MIDDLEWARES"
       ansible.builtin.set_fact:
-        detected_middlewares: "{{ detected_middlewares + [{'name': 'JVM', 'type': 'runtime', 'path': java_final_path, 'version': jvm_version.stdout | default('N/A') | trim, 'status': jvm_status | default('installed'), 'bin_ok': java_bin_check.stat.exists | default(false) if java_bin_check is defined else false, 'java_home': java_home_check.stdout | default('N/A')}] }}"
+        detected_middlewares: "{{ detected_middlewares + [{'name': 'JVM', 'type': 'runtime', 'path': java_final_path, 'version': jvm_version.stdout | default('N/A') | trim, 'status': jvm_status | default('installed'), 'bin_ok': java_bin_check.stat.exists | default(false) if (java_bin_check is defined and java_bin_check.stat is defined) else false, 'java_home': java_home_check.stdout | default('N/A')}] }}"
         middleware_to_configure: "{{ middleware_to_configure + ['jvm'] }}"
       when:
         - jvm_version.rc == 0
